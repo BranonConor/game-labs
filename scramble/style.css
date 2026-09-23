@@ -59,9 +59,15 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .tile.effect-double { border-color: #ffc3de; background: repeating-linear-gradient(90deg, transparent 0 5px, #fff5dc2b 6px), linear-gradient(145deg, #fff0dc, #e79dba 54%, #b3659c 55%); color: #4f2b54; box-shadow: inset 3px 3px #fff6e1, inset -4px -4px #974973, 0 3px #60375a, 0 0 13px #f77eb57a; }
 .tile.effect-boost { border-color: #c4ffdf; background: repeating-linear-gradient(0deg, transparent 0 5px, #efffde3a 6px), linear-gradient(145deg, #efffe6, #9ceac7 52%, #4db49e 53%); color: #23565c; box-shadow: inset 3px 3px #fbffeb, inset -4px -4px #3d8c87, 0 3px #376e6b, 0 0 13px #79e8ba8c; }
 .tile.effect-double::before, .tile.effect-boost::before { content: ""; position: absolute; top: 10%; right: 12%; width: 4px; height: 4px; background: #fff9d4; box-shadow: -4px 4px #fff9d4, 4px 4px #fff9d4, 0 8px #fff9d4; }
-.tile .effect-badge { position: absolute; bottom: 5%; right: 7%; padding: 1px 2px; background: #82395f; color: #fff3da; font: 700 clamp(8px, 1vw, 12px) "Silkscreen", monospace; line-height: 1; border: 1px solid #fff3d4c4; text-shadow: none; }
+.tile .effect-badge { position: absolute; z-index: 5; bottom: calc(100% + 5px); right: -5px; padding: 5px 7px; background: #82395f; color: #fff3da; font: 700 10px "Silkscreen", monospace; line-height: 1.2; white-space: nowrap; border: 1px solid #fff3d4c4; box-shadow: 2px 2px #171629; text-shadow: none; opacity: 0; visibility: hidden; transform: translateY(4px); transition: opacity .12s, transform .12s, visibility .12s; pointer-events: none; }
 .tile.effect-boost .effect-badge { background: #246d68; }
-.tile.effect-spent .effect-badge { filter: grayscale(1); opacity: .6; }
+.tile:focus-visible { z-index: 4; }
+.tile:focus-visible .effect-badge { opacity: 1; visibility: visible; transform: translateY(0); }
+.tile.effect-spent .effect-badge { filter: grayscale(1); }
+@media (hover: hover) and (pointer: fine) {
+  .tile:hover { z-index: 4; }
+  .tile:hover .effect-badge { opacity: 1; visibility: visible; transform: translateY(0); }
+}
 .tile.effect-spent::before { opacity: .25; }
 .tile.traced { border-color: var(--route-color); box-shadow: inset 0 0 0 3px var(--route-color), inset 0 0 0 5px var(--route-deep), 0 3px var(--route-deep); }
 .tile.traced-latest { box-shadow: inset 0 0 0 3px var(--route-color), inset 0 0 0 5px var(--route-deep), 0 3px var(--route-deep), 0 0 16px var(--route-color); }

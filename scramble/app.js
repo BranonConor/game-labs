@@ -243,7 +243,10 @@ import { startAtmosphere } from "./atmosphere.js";
       if (letter) {
         const badge = document.createElement("span");
         badge.className = effect ? "effect-badge" : "value";
-        badge.textContent = effect ? effect === "double" ? "×2" : "+5" : VALUES[letter];
+        badge.textContent = effect
+          ? `${effect === "double" ? "×2 WORD" : "+5 POINTS"}${spent ? " · USED" : ""}`
+          : VALUES[letter];
+        if (effect) badge.setAttribute("aria-hidden", "true");
         tile.append(badge);
       }
       if (isSelected) {
@@ -307,9 +310,10 @@ import { startAtmosphere } from "./atmosphere.js";
     const result = path.length ? verdict() : null;
     $("submit").disabled = !result?.word || state.finished;
     $("clear").disabled = !path.length || state.finished;
+    const readyEffects = path.filter((index) => effectTiles.has(index) && !state.spentEffects.includes(index));
     $("points-preview").textContent = result?.word
       ? `+${result.points} PTS = (${result.letterPoints} LETTERS + ${result.bonus} NEW${result.boost ? ` + ${result.boost} BOOST` : ""})${result.multiplier > 1 ? " ×2" : ""}`
-      : "";
+      : readyEffects.length ? `${readyEffects.map((index) => effectTiles.get(index) === "double" ? "×2" : "+5").join(" + ")} READY ON THIS PATH` : "";
     if (result?.word) message(`${result.word} fits. Press Enter to lock it in.`, "good");
     else if (result) message(result.reason, result.error ? "error" : "");
   }

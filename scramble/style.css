@@ -16,7 +16,7 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 [hidden] { display: none !important; }
 .shell { position: relative; z-index: 1; width: min(1220px, calc(100% - 42px)); margin: auto; padding: 25px 0 22px; }
 .topbar, .edition, .panel-top, .draft-actions, footer { display: flex; align-items: center; justify-content: space-between; }
-.topbar { border-bottom: 1px solid #56627c; padding-bottom: 23px; }
+.topbar { padding-bottom: 23px; }
 .brand, h1, h2, .overline, .edition, .panel-top, .board-hud, .draft-preview, .action-button, .secondary-button, .points-preview, .word-list, footer, .end-result { font-family: "Silkscreen", monospace; }
 .brand { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 23px; letter-spacing: -.08em; text-shadow: 2px 3px #605681; white-space: nowrap; }
 .egg-logo { width: 45px; height: 45px; image-rendering: pixelated; filter: drop-shadow(3px 4px #161426); animation: egg-float 3.4s ease-in-out infinite alternate; }

@@ -5,6 +5,8 @@ import { startAtmosphere } from "./atmosphere.js";
 
   const SIZE = 8;
   const DURATION = 4 * 60 * 1000;
+  const FULL_BOARD_BONUS = 50;
+  const FINALE_DURATION = 2100;
   const VALUES = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
   const ROUTE_COLORS = [
     { light: "#ffac6d", deep: "#a45148" },
@@ -33,6 +35,7 @@ import { startAtmosphere } from "./atmosphere.js";
   const storageKey = `scramble-v6:${boardId}`;
   const $ = (id) => document.getElementById(id);
   const boardElement = $("board");
+  const boardWrap = boardElement.parentElement;
   const feedback = $("feedback");
   const wordEntry = $("word-entry");
 
@@ -102,7 +105,7 @@ import { startAtmosphere } from "./atmosphere.js";
   const specialTiles = shuffle(fixed.flatMap((letter, index) => letter ? [index] : []));
   effectTiles.set(specialTiles[0], "double");
   specialTiles.slice(1, 3).forEach((index) => effectTiles.set(index, "boost"));
-  const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], spentEffects: [], score: 0 });
+  const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], spentEffects: [], score: 0, fullBoardBonusAwarded: false });
   let state = freshState();
   let path = [];
   let draft = [];
@@ -125,6 +128,12 @@ import { startAtmosphere } from "./atmosphere.js";
       console.warn("Could not save today's run:", error);
       message("Browser storage is unavailable; keep this tab open to preserve your run.", "error");
     }
+  }
+
+  if (state.finished && state.endedReason === "full" && !state.fullBoardBonusAwarded) {
+    state.score += FULL_BOARD_BONUS;
+    state.fullBoardBonusAwarded = true;
+    save();
   }
 
   function letterAt(index) {
@@ -279,6 +288,7 @@ import { startAtmosphere } from "./atmosphere.js";
       tile.className = `tile${seed ? " fixed" : played ? " played" : draftLetter ? " draft" : ""}${effect ? ` effect-${effect}` : ""}${spent ? " effect-spent" : ""}${lastRoute ? " traced" : ""}${tracedLatest ? " traced-latest" : ""}${isSelected ? " selected" : ""}${pathPosition === next ? " next-empty" : ""}`;
       tile.dataset.index = index;
       tile.style.setProperty("--glint-offset", `${-0.41 * (index % 11)}s`);
+      tile.style.setProperty("--finale-delay", `${(Math.abs(Math.floor(index / SIZE) - 3.5) + Math.abs(index % SIZE - 3.5)) * 45}ms`);
       if (lastRoute) {
         const color = ROUTE_COLORS[lastRoute.color];
         tile.dataset.routeColor = lastRoute.color;
@@ -534,9 +544,28 @@ import { startAtmosphere } from "./atmosphere.js";
   function showResults() {
     $("final-score").textContent = state.score;
     $("end-reason").textContent = state.endedReason === "full" ? "BOARD COMPLETE / THE BOARD IS YOURS" : state.endedReason === "stuck" ? "NO WORDS LEFT / THE BOARD IS YOURS" : "TIME'S UP / THE BOARD IS YOURS";
-    const outcome = state.endedReason === "full" ? "You filled the board!" : state.endedReason === "stuck" ? "No valid scoring words remain." : "Time ran out.";
+    const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "No valid scoring words remain." : "Time ran out.";
     $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${outcome} This solo prototype has no global leaderboard yet.`;
     if (!$("end-dialog").open) $("end-dialog").showModal();
+  }
+
+  function playFinale(reason) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      showResults();
+      return;
+    }
+    $("finale-title").textContent = reason === "full" ? "BOARD COMPLETE" : reason === "stuck" ? "NO MOVES LEFT" : "TIME'S UP";
+    $("finale-detail").textContent = reason === "full" ? `+${FULL_BOARD_BONUS} FULL BOARD BONUS` : "RUN COMPLETE";
+    $("finale").hidden = false;
+    boardWrap.classList.add("finale-active");
+    boardWrap.classList.toggle("finale-full", reason === "full");
+    boardElement.classList.add("finale");
+    window.setTimeout(() => {
+      $("finale").hidden = true;
+      boardWrap.classList.remove("finale-active", "finale-full");
+      boardElement.classList.remove("finale");
+      showResults();
+    }, FINALE_DURATION);
   }
 
   function finish(reason) {
@@ -544,6 +573,10 @@ import { startAtmosphere } from "./atmosphere.js";
     state.endedAt = Date.now();
     state.endedReason = reason;
     state.finished = true;
+    if (reason === "full") {
+      state.score += FULL_BOARD_BONUS;
+      state.fullBoardBonusAwarded = true;
+    }
     moveWorker?.terminate();
     moveWorker = null;
     moveWorkerReady = false;
@@ -552,7 +585,7 @@ import { startAtmosphere } from "./atmosphere.js";
     save();
     renderProgress();
     tick();
-    showResults();
+    playFinale(reason);
   }
 
   boardElement.addEventListener("pointerdown", (event) => {
@@ -658,7 +691,7 @@ import { startAtmosphere } from "./atmosphere.js";
     if (lexiconText && !moveWorker) startMoveWorker(lexiconText);
   });
   $("share").addEventListener("click", async () => {
-    const text = `SCRAMBLE · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}\nSolo prototype · no public leaderboard`;
+    const text = `SCRAMBLE · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}\nSolo prototype · no public leaderboard`;
     try {
       await navigator.clipboard.writeText(text);
       $("share-status").textContent = "Result copied!";
@@ -675,12 +708,16 @@ import { startAtmosphere } from "./atmosphere.js";
   $("board-footer").textContent = practiceSeed ? "RESEEDED PRACTICE BOARD · LOCAL SOLO PROTOTYPE · NO LEADERBOARD YET" : "SHARED DAILY BOARD · LOCAL SOLO PROTOTYPE · NO LEADERBOARD YET";
   $("restart").textContent = practiceSeed ? "Restart this practice board" : "Restart today's prototype board";
   renderProgress();
-  tick();
   void loadDictionary();
   void startAtmosphere($("atmosphere"));
-  if (state.finished) showResults();
-  else if (state.startedAt && initialFilled + Object.keys(state.played).length === SIZE * SIZE) finish("full");
-  else if (state.startedAt && remaining() <= 0) finish("time");
+  if (state.finished) {
+    tick();
+    showResults();
+  } else if (state.startedAt && initialFilled + Object.keys(state.played).length === SIZE * SIZE) {
+    finish("full");
+  } else {
+    tick();
+  }
   window.setInterval(tick, 250);
   window.addEventListener("resize", () => { if (state.words.length) renderBoard(); });
 })();

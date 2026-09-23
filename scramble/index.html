@@ -35,6 +35,13 @@
               <h2>READY TO<br><span>SCRAMBLE?</span></h2>
               <button id="start-button" class="action-button" type="button" disabled>LOADING WORDS... <span aria-hidden="true">↗</span></button>
             </div>
+            <div id="finale" class="board-finale" role="status" hidden>
+              <div class="finale-card">
+                <img src="./egg.svg" alt="">
+                <strong id="finale-title"></strong>
+                <span id="finale-detail"></span>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -64,7 +71,7 @@
       <p class="overline">THE RECIPE</p><h2>Make a word.<br>Change the board.</h2>
       <p>Drag or tap side-sharing tiles. Turn freely; no diagonals or repeating a tile in one word. Use at least four tiles, including one filled and one empty. Submitted paths are off-limits for later words.</p>
       <p>Type the missing letters; filled tiles are skipped. Tap the word preview for a phone keyboard. <strong>Enter</strong> locks a valid word; <strong>Esc</strong> clears it. Use arrow keys and Space to select tiles by keyboard.</p>
-      <p>New letters score their value +2 each. Pink <strong>×2</strong> doubles the word; mint <strong>+5</strong> adds five before doubling. Each effect works once.</p>
+      <p>New letters score their value +2 each. Pink <strong>×2</strong> doubles the word; mint <strong>+5</strong> adds five before doubling. Each effect works once. Fill all 64 tiles for a <strong>+50</strong> bonus.</p>
       <p>The run ends when time expires, the board is full, or no scoring word remains. Everyone gets the same daily board; DEV / RESEED is practice. The open word list is not an official Scrabble dictionary.</p>
       <button class="action-button" type="button" data-close>GOT IT <span aria-hidden="true">↗</span></button>
     </dialog>

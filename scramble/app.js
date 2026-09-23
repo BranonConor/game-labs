@@ -135,7 +135,6 @@ import { startAtmosphere } from "./atmosphere.js";
     const startButton = $("start-button");
     startButton.disabled = true;
     startButton.firstChild.textContent = "LOADING WORDS... ";
-    message("Loading the English word list...");
     try {
       const response = await fetch(`${import.meta.env.BASE_URL}lexicon.txt`);
       if (!response.ok) throw new Error(`Dictionary request failed: HTTP ${response.status}`);
@@ -146,7 +145,7 @@ import { startAtmosphere } from "./atmosphere.js";
       startButton.firstChild.textContent = "START THE CLOCK ";
       startButton.disabled = false;
       renderProgress();
-      if (!state.finished) message(`${loaded.size.toLocaleString()} words ready. Select a path to play.`, "good");
+      if (feedback.textContent === "Dictionary unavailable. Check your connection and retry loading.") message("");
     } catch (error) {
       console.error("Could not load Scramble's dictionary:", error);
       startButton.firstChild.textContent = "RETRY WORD LIST ";
@@ -310,10 +309,9 @@ import { startAtmosphere } from "./atmosphere.js";
     $("clear").disabled = !path.length || state.finished;
     $("points-preview").textContent = result?.word
       ? `+${result.points} PTS = (${result.letterPoints} LETTERS + ${result.bonus} NEW${result.boost ? ` + ${result.boost} BOOST` : ""})${result.multiplier > 1 ? " ×2" : ""}`
-      : "New letters score their tile values + 2 each.";
+      : "";
     if (result?.word) message(`${result.word} fits. Press Enter to lock it in.`, "good");
     else if (result) message(result.reason, result.error ? "error" : "");
-    else if (!state.finished && state.startedAt) message("Drag or tap neighboring tiles, then type the missing letters.");
   }
 
   function renderProgress() {

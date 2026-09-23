@@ -45,12 +45,12 @@
         <aside class="sidebar">
           <section class="draft-panel" aria-label="Current word">
             <div class="panel-top"><span>CURRENT WORD</span><span id="path-length">NO PATH</span></div>
+            <div id="draft-preview" class="draft-preview" aria-live="polite"><span class="preview-placeholder">SELECT A PATH ON THE GRID</span></div>
             <label class="input-label" for="word-entry">TYPE THE MISSING LETTERS</label>
             <input id="word-entry" class="word-entry" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" placeholder="SELECT A PATH FIRST" aria-describedby="feedback" disabled>
-            <div id="draft-preview" class="draft-preview" aria-live="polite"><span class="preview-placeholder">SELECT A PATH ON THE GRID</span></div>
-            <p id="feedback" class="feedback" role="status" aria-live="polite">Starting letters are fixed. Your new letters lock in when you submit.</p>
             <div class="draft-actions"><button id="submit" class="action-button" type="button" disabled>LOCK IN WORD <span aria-hidden="true">↵</span></button><button id="clear" class="secondary-button" type="button" disabled>ESC / CLEAR</button></div>
-            <div id="points-preview" class="points-preview">Select a path to preview its score.</div>
+            <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+            <div id="points-preview" class="points-preview"></div>
           </section>
 
           <section class="notes-panel" aria-label="Submitted words">

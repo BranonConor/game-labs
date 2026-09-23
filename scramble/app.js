@@ -6,6 +6,14 @@ import { startAtmosphere } from "./atmosphere.js";
   const SIZE = 8;
   const DURATION = 4 * 60 * 1000;
   const VALUES = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
+  const ROUTE_COLORS = [
+    { light: "#ffac6d", deep: "#a45148" },
+    { light: "#f77eb5", deep: "#943f83" },
+    { light: "#79e8ba", deep: "#327d76" },
+    { light: "#af98ff", deep: "#6550a2" },
+    { light: "#7bcdec", deep: "#387aa8" },
+    { light: "#ffe477", deep: "#a77d40" }
+  ];
   const SEED_WORDS = [
     "GARDEN", "MARKET", "WINTER", "SUMMER", "SHADOW", "FLOWER", "SILVER", "SPIRIT",
     "NATURE", "SCHOOL", "RABBIT", "PEPPER", "POCKET", "TRAVEL", "BRING", "STARE",
@@ -17,10 +25,11 @@ import { startAtmosphere } from "./atmosphere.js";
   const requestedSeed = new URLSearchParams(location.search).get("seed");
   const practiceSeed = requestedSeed && /^[\w-]{1,64}$/.test(requestedSeed) ? requestedSeed : null;
   const boardId = practiceSeed ? `${day}:${practiceSeed}` : day;
-  const storageKey = `scramble-v4:${boardId}`;
+  const storageKey = `scramble-v5:${boardId}`;
   const $ = (id) => document.getElementById(id);
   const boardElement = $("board");
   const feedback = $("feedback");
+  const wordEntry = $("word-entry");
 
   function randomForDay(date) {
     let seed = 2166136261;
@@ -84,7 +93,11 @@ import { startAtmosphere } from "./atmosphere.js";
     }
   }
   const initialFilled = fixed.filter(Boolean).length;
-  const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], score: 0 });
+  const effectTiles = new Map();
+  const specialTiles = shuffle(fixed.flatMap((letter, index) => letter ? [index] : []));
+  effectTiles.set(specialTiles[0], "double");
+  specialTiles.slice(1, 3).forEach((index) => effectTiles.set(index, "boost"));
+  const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], spentEffects: [], score: 0 });
   let state = freshState();
   let path = [];
   let draft = [];
@@ -94,7 +107,7 @@ import { startAtmosphere } from "./atmosphere.js";
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (saved && (saved.startedAt === null || Number.isFinite(saved.startedAt))
       && typeof saved.finished === "boolean" && saved.played && typeof saved.played === "object"
-      && Array.isArray(saved.words) && Number.isFinite(saved.score)) state = saved;
+      && Array.isArray(saved.words) && Array.isArray(saved.spentEffects) && Number.isFinite(saved.score)) state = saved;
   } catch (error) {
     console.warn("Could not restore today's run:", error);
     feedback.textContent = "Saved run unavailable. Starting a new run.";
@@ -186,21 +199,24 @@ import { startAtmosphere } from "./atmosphere.js";
     if (!dictionary.has(word)) return { reason: `${word} isn't in this game's word list. Backspace to revise.`, error: true };
     if (state.words.some((entry) => entry.word === word)) return { reason: "You've already submitted this word. Try another.", error: true };
     const letterPoints = draft.reduce((sum, letter) => sum + VALUES[letter], 0);
-    return { word, letterPoints, bonus: newCount * 2, points: letterPoints + newCount * 2 };
+    const triggered = path.filter((index) => effectTiles.has(index) && !state.spentEffects.includes(index));
+    const boost = triggered.filter((index) => effectTiles.get(index) === "boost").length * 5;
+    const multiplier = triggered.some((index) => effectTiles.get(index) === "double") ? 2 : 1;
+    return { word, letterPoints, bonus: newCount * 2, boost, multiplier, triggered, points: (letterPoints + newCount * 2 + boost) * multiplier };
   }
 
   function renderBoard() {
     const focusedIndex = boardElement.contains(document.activeElement) ? Number(document.activeElement.dataset.index) : -1;
     const next = nextEmptyPosition();
-    const latestRoute = state.words.at(-1)?.path || [];
-    const olderRoutes = state.words.slice(0, -1).filter((entry) => Array.isArray(entry.path));
     boardElement.setAttribute("aria-hidden", state.startedAt ? "false" : "true");
     const tiles = fixed.map((seed, index) => {
       const played = state.played[index];
       const pathPosition = path.indexOf(index);
       const isSelected = pathPosition !== -1;
-      const tracedLatest = latestRoute.includes(index);
-      const tracedEarlier = !tracedLatest && olderRoutes.some((entry) => entry.path.includes(index));
+      const lastRoute = [...state.words].reverse().find((entry) => entry.path.includes(index));
+      const tracedLatest = lastRoute && lastRoute === state.words.at(-1);
+      const effect = effectTiles.get(index);
+      const spent = effect && state.spentEffects.includes(index);
       let draftLetter = null;
       if (isSelected && !seed && !played) {
         const draftIndex = path.slice(0, pathPosition).filter((item) => !letterAt(item)).length;
@@ -209,22 +225,27 @@ import { startAtmosphere } from "./atmosphere.js";
       const letter = seed || played || draftLetter;
       const tile = document.createElement("button");
       tile.type = "button";
-      tile.className = `tile${seed ? " fixed" : played ? " played" : draftLetter ? " draft" : ""}${tracedLatest ? " traced-latest" : tracedEarlier ? " traced" : ""}${isSelected ? " selected" : ""}${pathPosition === next ? " next-empty" : ""}`;
+      tile.className = `tile${seed ? " fixed" : played ? " played" : draftLetter ? " draft" : ""}${effect ? ` effect-${effect}` : ""}${spent ? " effect-spent" : ""}${lastRoute ? " traced" : ""}${tracedLatest ? " traced-latest" : ""}${isSelected ? " selected" : ""}${pathPosition === next ? " next-empty" : ""}`;
       tile.dataset.index = index;
       tile.style.setProperty("--glint-offset", `${-0.41 * (index % 11)}s`);
+      if (lastRoute) {
+        const color = ROUTE_COLORS[lastRoute.color];
+        tile.style.setProperty("--route-color", color.light);
+        tile.style.setProperty("--route-deep", color.deep);
+      }
       tile.disabled = !state.startedAt || state.finished || !dictionary;
       tile.setAttribute("aria-label", state.startedAt
-        ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${seed ? ", starting letter" : played ? ", locked letter" : draftLetter ? ", unsubmitted letter" : ""}${tracedLatest || tracedEarlier ? ", part of a submitted word" : ""}${isSelected ? ", selected" : ""}`
+        ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${seed ? ", starting letter" : played ? ", locked letter" : draftLetter ? ", unsubmitted letter" : ""}${effect ? `, ${effect === "double" ? "double score" : "five bonus points"} effect ${spent ? "spent" : "ready"}` : ""}${lastRoute ? ", part of a submitted word" : ""}${isSelected ? ", selected" : ""}`
         : "Hidden tile. Start the clock to reveal the board.");
       tile.setAttribute("aria-pressed", isSelected ? "true" : "false");
       const face = document.createElement("span");
       face.textContent = letter || "";
       tile.append(face);
       if (letter) {
-        const value = document.createElement("span");
-        value.className = "value";
-        value.textContent = VALUES[letter];
-        tile.append(value);
+        const badge = document.createElement("span");
+        badge.className = effect ? "effect-badge" : "value";
+        badge.textContent = effect ? effect === "double" ? "×2" : "+5" : VALUES[letter];
+        tile.append(badge);
       }
       if (isSelected) {
         const order = document.createElement("span");
@@ -241,14 +262,19 @@ import { startAtmosphere } from "./atmosphere.js";
       svg.classList.add("trail-lines");
       svg.setAttribute("viewBox", `0 0 ${boardElement.clientWidth} ${boardElement.clientHeight}`);
       svg.setAttribute("aria-hidden", "true");
-      routes.forEach((entry, index) => {
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-        if (index === routes.length - 1) line.classList.add("latest");
-        line.setAttribute("points", entry.path.map((tileIndex) => {
+      routes.forEach((entry) => {
+        const points = entry.path.map((tileIndex) => {
           const tile = tiles[tileIndex];
           return `${tile.offsetLeft + tile.offsetWidth / 2},${tile.offsetTop + tile.offsetHeight / 2}`;
-        }).join(" "));
-        svg.append(line);
+        }).join(" ");
+        const colors = ROUTE_COLORS[entry.color];
+        for (const [kind, color] of [["outer", colors.deep], ["inner", colors.light]]) {
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+          line.classList.add(kind);
+          line.setAttribute("stroke", color);
+          line.setAttribute("points", points);
+          svg.append(line);
+        }
       });
       boardElement.append(svg);
     }
@@ -258,6 +284,9 @@ import { startAtmosphere } from "./atmosphere.js";
   function renderDraft() {
     const preview = $("draft-preview");
     preview.replaceChildren();
+    wordEntry.disabled = path.length < 4 || state.finished || !dictionary;
+    wordEntry.placeholder = path.length >= 4 ? "TYPE MISSING LETTERS" : "SELECT A PATH FIRST";
+    wordEntry.value = draft.join("");
     if (!path.length) {
       const placeholder = document.createElement("span");
       placeholder.className = "preview-placeholder";
@@ -280,7 +309,7 @@ import { startAtmosphere } from "./atmosphere.js";
     $("submit").disabled = !result?.word || state.finished;
     $("clear").disabled = !path.length || state.finished;
     $("points-preview").textContent = result?.word
-      ? `+${result.points} PTS  =  ${result.letterPoints} LETTERS + ${result.bonus} NEW-TILE BONUS`
+      ? `+${result.points} PTS = (${result.letterPoints} LETTERS + ${result.bonus} NEW${result.boost ? ` + ${result.boost} BOOST` : ""})${result.multiplier > 1 ? " ×2" : ""}`
       : "New letters score their tile values + 2 each.";
     if (result?.word) message(`${result.word} fits. Press Enter to lock it in.`, "good");
     else if (result) message(result.reason, result.error ? "error" : "");
@@ -290,12 +319,7 @@ import { startAtmosphere } from "./atmosphere.js";
   function renderProgress() {
     const filled = initialFilled + Object.keys(state.played).length;
     $("score").textContent = String(state.score).padStart(4, "0");
-    $("filled-count").textContent = `${filled} / 64 TILES FILLED`;
-    $("words-count").textContent = `${state.words.length} WORDS`;
-    $("board-status").textContent = state.finished ? "RUN COMPLETE" : state.startedAt ? "BUILDING..." : "AWAITING START";
-    $("board-status").classList.toggle("live", Boolean(state.startedAt && !state.finished));
-    $("live-label").textContent = state.finished ? "FINISHED" : state.startedAt ? "LIVE ●" : "READY";
-    $("live-label").classList.toggle("live", Boolean(state.startedAt && !state.finished));
+    $("filled-count").textContent = `${filled}/64 FILLED`;
     document.body.classList.toggle("run-active", Boolean(state.startedAt && !state.finished));
     $("start-overlay").hidden = Boolean(state.startedAt);
     boardElement.classList.toggle("covered", !state.startedAt);
@@ -310,9 +334,13 @@ import { startAtmosphere } from "./atmosphere.js";
     for (const entry of state.words) {
       const item = document.createElement("li");
       const word = document.createElement("span");
+      word.className = "noted-word";
+      const chip = document.createElement("span");
+      chip.className = "word-chip";
+      chip.style.backgroundColor = ROUTE_COLORS[entry.color].light;
       const earned = document.createElement("span");
       earned.className = "earned";
-      word.textContent = entry.word;
+      word.append(chip, document.createTextNode(entry.word));
       earned.textContent = `+${entry.points}`;
       item.append(word, earned);
       list.prepend(item);
@@ -383,7 +411,11 @@ import { startAtmosphere } from "./atmosphere.js";
     for (const index of path) {
       if (!letterAt(index)) state.played[index] = draft[typed++];
     }
-    state.words.push({ word: result.word, points: result.points, path: [...path] });
+    const lastColor = state.words.at(-1)?.color;
+    let color = crypto.getRandomValues(new Uint32Array(1))[0] % ROUTE_COLORS.length;
+    if (color === lastColor) color = (color + 1) % ROUTE_COLORS.length;
+    state.spentEffects.push(...result.triggered);
+    state.words.push({ word: result.word, points: result.points, path: [...path], color });
     state.score += result.points;
     const label = `${result.word} locked in for ${result.points} points.`;
     path = [];
@@ -450,6 +482,12 @@ import { startAtmosphere } from "./atmosphere.js";
     if (next < 0 || next >= SIZE * SIZE || (step === -1 && index % SIZE === 0) || (step === 1 && index % SIZE === SIZE - 1)) return;
     boardElement.children[next].focus();
   });
+  wordEntry.addEventListener("input", () => {
+    const blanks = path.filter((index) => !letterAt(index)).length;
+    draft = [...wordEntry.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, blanks)];
+    renderBoard();
+    renderDraft();
+  });
   document.addEventListener("keydown", (event) => {
     if (!state.startedAt || state.finished || document.querySelector("dialog[open]")) return;
     if (event.key === "Escape") {
@@ -457,14 +495,16 @@ import { startAtmosphere } from "./atmosphere.js";
     } else if (event.key === "Enter" && path.length && (!event.target.matches("button") || event.target.id === "submit")) {
       event.preventDefault();
       submitWord();
-    } else if (event.key === "Backspace" && path.length && draft.length) {
+    } else if (event.key === "Backspace" && path.length && draft.length && event.target !== wordEntry) {
       event.preventDefault();
       draft.pop();
       renderBoard();
       renderDraft();
-    } else if (/^[a-z]$/i.test(event.key) && path.length) {
+    } else if (/^[a-z]$/i.test(event.key) && path.length && event.target !== wordEntry) {
       event.preventDefault();
-      if (nextEmptyPosition() >= 0) {
+      if (path.length < 4) {
+        message("Choose at least four tiles before typing.");
+      } else if (nextEmptyPosition() >= 0) {
         draft.push(event.key.toUpperCase());
         renderBoard();
         renderDraft();
@@ -526,4 +566,5 @@ import { startAtmosphere } from "./atmosphere.js";
     else finish("time");
   }
   window.setInterval(tick, 250);
+  window.addEventListener("resize", () => { if (state.words.length) renderBoard(); });
 })();

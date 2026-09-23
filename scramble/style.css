@@ -82,12 +82,9 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .overlay-egg { width: clamp(52px, 8vw, 86px); height: auto; image-rendering: pixelated; filter: drop-shadow(5px 5px #4b3855); animation: egg-float 3s ease-in-out infinite alternate; }
 .start-overlay h2 { font: 700 clamp(19px, 3vw, 30px)/1.2 "Silkscreen", monospace; letter-spacing: -.09em; margin: 12px 0; }
 .start-overlay h2 span { color: #ffcf83; }
-.start-overlay p { color: #c5cbd2; line-height: 1.6; font-size: 13px; margin: 0 0 18px; }
 .sidebar { display: grid; gap: 13px; }
 .draft-panel, .notes-panel { padding: 18px 19px; }
-.draft-instruction { color: #c6cbd0; font-size: 12px; line-height: 1.55; margin: 16px 0 13px; }
-.draft-instruction strong { color: #ffe0aa; }
-.input-label { display: block; margin: 0 0 7px; color: #c5d9cb; font: 10px "Silkscreen", monospace; }
+.input-label { display: block; margin: 18px 0 7px; color: #c5d9cb; font: 10px "Silkscreen", monospace; }
 .word-entry { width: 100%; min-height: 50px; border: 1px solid #c3a382; border-radius: 0; background: #101b2e; color: #ffe2a6; padding: 9px 12px; box-shadow: inset 3px 3px #0b1324, 3px 3px #504358; font: 16px "Silkscreen", monospace; letter-spacing: .12em; text-transform: uppercase; }
 .word-entry::placeholder { color: #97a9b0; font-size: 11px; letter-spacing: 0; }
 .word-entry:disabled { opacity: .62; }

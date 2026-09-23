@@ -37,7 +37,6 @@
             <div id="start-overlay" class="start-overlay">
               <img class="overlay-egg" src="./egg.svg" alt="">
               <h2>READY TO<br><span>SCRAMBLE?</span></h2>
-              <p>Four minutes. One board.<br>Every word changes what comes next.</p>
               <button id="start-button" class="action-button" type="button" disabled>LOADING WORDS... <span aria-hidden="true">↗</span></button>
             </div>
           </div>
@@ -46,7 +45,6 @@
         <aside class="sidebar">
           <section class="draft-panel" aria-label="Current word">
             <div class="panel-top"><span>CURRENT WORD</span><span id="path-length">NO PATH</span></div>
-            <p class="draft-instruction">Drag or tap a path of <strong>side-sharing tiles</strong>. Turn as often as you like, but no diagonals. Type to fill the gaps.</p>
             <label class="input-label" for="word-entry">TYPE THE MISSING LETTERS</label>
             <input id="word-entry" class="word-entry" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" placeholder="SELECT A PATH FIRST" aria-describedby="feedback" disabled>
             <div id="draft-preview" class="draft-preview" aria-live="polite"><span class="preview-placeholder">SELECT A PATH ON THE GRID</span></div>
@@ -66,12 +64,11 @@
 
     <dialog id="rules-dialog" class="modal">
       <button class="modal-close" type="button" data-close aria-label="Close">×</button>
-      <p class="overline">SCRAMBLE / FIELD GUIDE</p><h2>Make a word.<br>Change the board.</h2>
-      <p>Drag through side-sharing tiles, or tap them one by one. Move up, down, left, or right and turn as often as you like—no diagonal steps and no tile reused within one word. Your path needs at least four tiles, one existing letter, and one empty tile.</p>
-      <p>Type the missing letters in the input or directly from your keyboard; existing letters are skipped automatically. <strong>Enter</strong> submits a valid word and locks your new tiles. <strong>Esc</strong> clears the unsubmitted path and letters. Backspace removes your last typed letter. On a keyboard, use arrow keys to move around the board and Space to select tiles.</p>
-      <p>New letters score their printed Scrabble-style values plus two points each. Reused letters help you connect words, but do not score again. Some starting tiles carry a one-use effect: a pink <strong>×2</strong> doubles that word's score; a mint <strong>+5</strong> adds five before doubling. Both are spent when a valid word crosses them. Each accepted route keeps its own color on the board.</p>
-      <p>Fill the board or keep building until the four-minute clock expires. You can only submit each word once.</p>
-      <p>The default board is the same for everyone on a given UTC day. DEV / RESEED makes a separate practice board with a fresh timer. Words are checked against a pinned, broad English word-game lexicon, including common inflections and regional spellings; this is not an official Scrabble dictionary. Your run is saved locally; no global ranking is active.</p>
+      <p class="overline">THE RECIPE</p><h2>Make a word.<br>Change the board.</h2>
+      <p>Drag or tap side-sharing tiles. Turn freely; no diagonals or reused tiles. Use at least four tiles, including one filled and one empty.</p>
+      <p>Type the missing letters; filled tiles are skipped. <strong>Enter</strong> locks a valid word. <strong>Esc</strong> clears your draft. Use arrow keys and Space to select tiles by keyboard.</p>
+      <p>New letters score their value +2 each. Pink <strong>×2</strong> doubles the word; mint <strong>+5</strong> adds five before doubling. Each effect works once.</p>
+      <p>Fill what you can in four minutes. Everyone gets the same daily board; DEV / RESEED is practice. The open word list is not an official Scrabble dictionary.</p>
       <button class="action-button" type="button" data-close>GOT IT <span aria-hidden="true">↗</span></button>
     </dialog>
 

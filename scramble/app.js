@@ -442,7 +442,6 @@ import { startAtmosphere } from "./atmosphere.js";
     const seconds = Math.ceil(ms / 1000);
     $("timer").textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
     $("timer").classList.toggle("urgent", ms < 30000 && Boolean(state.startedAt && !state.finished));
-    $("meter-fill").style.width = `${ms / DURATION * 100}%`;
     if (state.startedAt && !state.finished && ms <= 0) finish("time");
   }
 

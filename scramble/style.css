@@ -43,10 +43,8 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .hud-stat strong.urgent { color: #ff938c; animation: next-pulse .7s ease-in-out infinite alternate; }
 .hud-score { justify-items: end; }
 .hud-score strong { color: #ffe2a7; }
-.hud-center { display: grid; gap: 4px; min-width: 68px; text-align: center; }
+.hud-center { display: grid; place-items: center; min-width: 68px; text-align: center; }
 .hud-center span { font-size: 8px; white-space: nowrap; }
-.meter { height: 6px; background: #0f1728; border: 1px solid #616176; padding: 1px; }
-.meter div { height: 100%; width: 100%; background: linear-gradient(90deg, #81c6b7, #ffdc96); transition: width .7s linear; }
 .board-wrap { position: relative; width: min(100%, 610px, max(320px, calc(100dvh - 255px))); margin: 14px auto 0; padding: 10px; border: 1px solid #b58c81; background: #192636; box-shadow: inset 0 0 0 4px #2a3e49, inset 0 0 0 7px #121f2d, 4px 5px 0 #101529, 0 15px 40px #090e1c99; }
 .board { position: relative; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: clamp(3px, .65vw, 7px); touch-action: none; user-select: none; }
 .tile { position: relative; z-index: 1; display: grid; place-items: center; aspect-ratio: 1; min-width: 0; padding: 0 0 5%; border: 1px solid #5f697a; border-radius: 2px; background: linear-gradient(145deg, #3b4e5d 0%, #304253 48%, #263647 49%); color: transparent; font-family: "Silkscreen", monospace; font-size: clamp(17px, 2.9vw, 34px); line-height: 1; box-shadow: inset 2px 2px #849aa14d, inset -3px -3px #08172888, 0 3px #111d29; transition: background .12s, transform .12s, filter .12s, box-shadow .15s; }

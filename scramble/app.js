@@ -287,7 +287,6 @@ import { startAtmosphere } from "./atmosphere.js";
     const preview = $("draft-preview");
     preview.replaceChildren();
     wordEntry.disabled = path.length < 4 || state.finished || !dictionary;
-    wordEntry.placeholder = path.length >= 4 ? "TYPE MISSING LETTERS" : "SELECT A PATH FIRST";
     wordEntry.value = draft.join("");
     if (!path.length) {
       const placeholder = document.createElement("span");
@@ -491,7 +490,7 @@ import { startAtmosphere } from "./atmosphere.js";
     renderDraft();
   });
   document.addEventListener("keydown", (event) => {
-    if (!state.startedAt || state.finished || document.querySelector("dialog[open]")) return;
+    if (!state.startedAt || state.finished || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || document.querySelector("dialog[open]")) return;
     if (event.key === "Escape") {
       if (path.length) { event.preventDefault(); clearPath(); message("Path and unsubmitted letters cleared."); }
     } else if (event.key === "Enter" && path.length && (!event.target.matches("button") || event.target.id === "submit")) {

@@ -69,6 +69,7 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .tile.effect-spent::before { opacity: .25; }
 .tile.traced { border-color: var(--route-color); box-shadow: inset 0 0 0 3px var(--route-color), inset 0 0 0 5px var(--route-deep), 0 3px var(--route-deep); }
 .tile.traced-latest { box-shadow: inset 0 0 0 3px var(--route-color), inset 0 0 0 5px var(--route-deep), 0 3px var(--route-deep), 0 0 16px var(--route-color); }
+.tile.traced:not(:disabled) { cursor: not-allowed; }
 .tile.selected { transform: translateY(-2px); border-color: #fff4ca; box-shadow: inset 2px 2px #ffffff50, inset -3px -3px #ad856c7d, 0 4px #725e63, 0 0 11px #ffca8788; }
 .trail-lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .trail-lines polyline { fill: none; stroke-linecap: square; stroke-linejoin: round; }
@@ -78,7 +79,7 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .board.inspecting .tile.route-focus { z-index: 3; filter: brightness(1.12); }
 .board.inspecting .trail-lines polyline:not(.route-focus) { opacity: .1; }
 .tile.next-empty.selected { animation: next-pulse .8s ease-in-out infinite alternate; }
-.tile:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+.tile:hover:not(:disabled):not(.traced) { filter: brightness(1.15); transform: translateY(-1px); }
 .tile .value { position: absolute; bottom: 5%; right: 8%; font: 700 clamp(8px, 1vw, 12px) "DM Sans", sans-serif; opacity: .85; text-shadow: none; }
 .tile .path-order { position: absolute; top: 4%; left: 7%; font: 700 clamp(8px, .9vw, 11px) "DM Sans", sans-serif; color: #533d4f; text-shadow: 1px 1px #ffefbd; }
 .tile.draft .path-order { color: #47324e; text-shadow: none; }

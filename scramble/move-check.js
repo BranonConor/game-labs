@@ -21,8 +21,10 @@ export function createMoveFinder(words) {
     return start;
   }
 
-  return function hasScoringMove(board, usedWords) {
-    if (!board.includes(null) || board.every((letter) => letter === null)) return false;
+  return function hasScoringMove(board, usedWords, claimedTiles) {
+    const claimed = new Set(claimedTiles);
+    if (!board.some((letter, index) => letter === null && !claimed.has(index))
+      || !board.some((letter, index) => letter !== null && !claimed.has(index))) return false;
     const letters = board.map((letter) => letter?.toLowerCase() || null);
     const used = new Set(usedWords.map((word) => word.toLowerCase()));
 
@@ -31,7 +33,7 @@ export function createMoveFinder(words) {
       if (prefix.length === LIMIT) return false;
 
       for (const next of NEIGHBORS[index]) {
-        if (visited & BITS[next]) continue;
+        if (claimed.has(next) || visited & BITS[next]) continue;
         const nextVisited = visited | BITS[next];
         const letter = letters[next];
         if (letter) {
@@ -57,6 +59,7 @@ export function createMoveFinder(words) {
     const starts = BITS.map((_, index) => index);
     starts.sort((a, b) => Number(Boolean(letters[b])) - Number(Boolean(letters[a])));
     for (const start of starts) {
+      if (claimed.has(start)) continue;
       const letter = letters[start];
       if (letter) {
         const first = lowerBound(letter, 0, words.length);

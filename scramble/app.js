@@ -30,7 +30,7 @@ import { startAtmosphere } from "./atmosphere.js";
   const requestedSeed = new URLSearchParams(location.search).get("seed");
   const practiceSeed = requestedSeed && /^[\w-]{1,64}$/.test(requestedSeed) ? requestedSeed : null;
   const boardId = practiceSeed ? `${day}:${practiceSeed}` : day;
-  const storageKey = `scramble-v5:${boardId}`;
+  const storageKey = `scramble-v6:${boardId}`;
   const $ = (id) => document.getElementById(id);
   const boardElement = $("board");
   const feedback = $("feedback");
@@ -131,6 +131,10 @@ import { startAtmosphere } from "./atmosphere.js";
     return fixed[index] || state.played[index] || null;
   }
 
+  function claimedTiles() {
+    return new Set(state.words.flatMap((entry) => entry.path));
+  }
+
   function message(text, tone = "") {
     feedback.textContent = text;
     feedback.className = `feedback ${tone}`;
@@ -143,6 +147,7 @@ import { startAtmosphere } from "./atmosphere.js";
       id: ++moveCheckId,
       board: fixed.map((letter, index) => letter || state.played[index] || null),
       usedWords: state.words.map((entry) => entry.word),
+      claimedTiles: [...claimedTiles()],
     });
   }
 
@@ -232,6 +237,8 @@ import { startAtmosphere } from "./atmosphere.js";
 
   function verdict() {
     if (!dictionary) return { reason: "The word list is still loading." };
+    const claimed = claimedTiles();
+    if (path.some((index) => claimed.has(index))) return { reason: "Tiles in submitted words cannot be used again." };
     if (path.length < 4) return { reason: "Choose at least 4 neighboring tiles for a word." };
     const existing = path.filter((index) => letterAt(index)).length;
     const newCount = path.length - existing;
@@ -251,6 +258,7 @@ import { startAtmosphere } from "./atmosphere.js";
   function renderBoard() {
     const focusedIndex = boardElement.contains(document.activeElement) ? Number(document.activeElement.dataset.index) : -1;
     const next = nextEmptyPosition();
+    const claimed = claimedTiles();
     boardElement.setAttribute("aria-hidden", state.startedAt ? "false" : "true");
     const tiles = fixed.map((seed, index) => {
       const played = state.played[index];
@@ -279,9 +287,10 @@ import { startAtmosphere } from "./atmosphere.js";
       }
       tile.disabled = !state.startedAt || state.finished || !dictionary;
       tile.setAttribute("aria-label", state.startedAt
-        ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${seed ? ", starting letter" : played ? ", locked letter" : draftLetter ? ", unsubmitted letter" : ""}${effect ? `, ${effect === "double" ? "double score" : "five bonus points"} effect ${spent ? "spent" : "ready"}` : ""}${lastRoute ? ", part of a submitted word" : ""}${isSelected ? ", selected" : ""}`
+        ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${seed ? ", starting letter" : played ? ", locked letter" : draftLetter ? ", unsubmitted letter" : ""}${effect ? `, ${effect === "double" ? "double score" : "five bonus points"} effect ${spent ? "spent" : "ready"}` : ""}${claimed.has(index) ? ", claimed by a submitted word, unavailable" : ""}${isSelected ? ", selected" : ""}`
         : "Hidden tile. Start the clock to reveal the board.");
       tile.setAttribute("aria-pressed", isSelected ? "true" : "false");
+      tile.setAttribute("aria-disabled", claimed.has(index) ? "true" : "false");
       const face = document.createElement("span");
       face.textContent = letter || "";
       tile.append(face);
@@ -455,6 +464,11 @@ import { startAtmosphere } from "./atmosphere.js";
   function extendPath(index, interpolate = false) {
     const last = path.at(-1);
     if (index === last) return;
+    const claimed = claimedTiles();
+    if (claimed.has(index)) {
+      if (!interpolate) message("Tiles in submitted words cannot be used again.", "error");
+      return;
+    }
     if (draft.length) {
       if (!interpolate) message("Press Esc to clear your draft before changing the path.", "error");
       return;
@@ -464,8 +478,8 @@ import { startAtmosphere } from "./atmosphere.js";
     } else {
       const segment = interpolate ? straightSegment(last, index) : adjacent(last, index) ? [last, index] : null;
       const additions = segment?.slice(1);
-      if (!additions || path.length + additions.length > 16 || additions.some((tile) => path.includes(tile))) {
-        if (!interpolate) message("Use neighboring tiles without revisiting one, or press Esc to start over.", "error");
+      if (!additions || path.length + additions.length > 16 || additions.some((tile) => path.includes(tile) || claimed.has(tile))) {
+        if (!interpolate) message("Use neighboring unclaimed tiles without revisiting one, or press Esc to start over.", "error");
         return;
       }
       path.push(...additions);
@@ -476,6 +490,10 @@ import { startAtmosphere } from "./atmosphere.js";
 
   function beginSelection(index) {
     if (!state.startedAt || state.finished) return;
+    if (claimedTiles().has(index)) {
+      message("Tiles in submitted words cannot be used again.", "error");
+      return;
+    }
     if (path.length) {
       extendPath(index);
     } else {
@@ -541,6 +559,10 @@ import { startAtmosphere } from "./atmosphere.js";
     const tile = event.target.closest(".tile");
     if (!tile || !state.startedAt || state.finished) return;
     event.preventDefault();
+    if (claimedTiles().has(Number(tile.dataset.index))) {
+      message("Tiles in submitted words cannot be used again.", "error");
+      return;
+    }
     boardElement.setPointerCapture(event.pointerId);
     pointerActive = true;
     beginSelection(Number(tile.dataset.index));

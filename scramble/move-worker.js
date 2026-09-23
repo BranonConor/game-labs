@@ -11,7 +11,7 @@ self.onmessage = ({ data }) => {
     self.postMessage({
       type: "result",
       id: data.id,
-      hasMove: hasScoringMove(data.board, data.usedWords),
+      hasMove: hasScoringMove(data.board, data.usedWords, data.claimedTiles),
     });
   }
 };

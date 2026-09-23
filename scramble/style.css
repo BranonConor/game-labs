@@ -76,6 +76,9 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .trail-lines polyline { fill: none; stroke-linecap: square; stroke-linejoin: round; }
 .trail-lines polyline.outer { stroke-width: 19; }
 .trail-lines polyline.inner { stroke-width: 11; }
+.board.inspecting .tile:not(.route-focus) { opacity: .23; filter: grayscale(.65); }
+.board.inspecting .tile.route-focus { z-index: 3; filter: brightness(1.12); }
+.board.inspecting .trail-lines polyline:not(.route-focus) { opacity: .1; }
 .tile.next-empty.selected { animation: next-pulse .8s ease-in-out infinite alternate; }
 .tile:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
 .tile .value { position: absolute; bottom: 5%; right: 8%; font: 700 clamp(8px, 1vw, 12px) "DM Sans", sans-serif; opacity: .85; text-shadow: none; }
@@ -118,6 +121,9 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .points-preview { font-size: 9px; color: #f1d6a5; margin-top: 8px; }
 .word-list { list-style: none; padding: 0; margin: 12px 0 0; max-height: 141px; overflow: auto; font-size: 11px; }
 .word-list li { display: flex; justify-content: space-between; padding: 7px 0; border-top: 1px solid #3e4e60; }
+.word-list li[data-word-index] { padding-inline: 4px; transition: opacity .12s, background .12s; }
+.word-list li[data-word-index]:is(:hover, :focus-visible, .route-focus) { background: #ffffff12; }
+.word-list.inspecting li[data-word-index]:not(.route-focus) { opacity: .35; }
 .noted-word { display: flex; align-items: center; gap: 7px; }
 .word-chip { width: 11px; height: 11px; flex: none; border: 1px solid #fbe1be; box-shadow: 2px 2px #161528, inset 1px 1px #fff8; }
 .word-list .empty-note { font: 12px "DM Sans", sans-serif; color: #a5bac0; }

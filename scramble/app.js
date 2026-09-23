@@ -21,6 +21,11 @@ import { startAtmosphere } from "./atmosphere.js";
     "GHOST", "GRAPE", "SMILE", "PLANT", "FRUIT", "GREEN", "BREAD", "QUICK", "ZEBRA"
   ];
   let dictionary = null;
+  let lexiconText = null;
+  let moveWorker = null;
+  let moveWorkerReady = false;
+  let moveCheckId = 0;
+  let inspectedRoute = null;
   const day = new Date().toISOString().slice(0, 10);
   const requestedSeed = new URLSearchParams(location.search).get("seed");
   const practiceSeed = requestedSeed && /^[\w-]{1,64}$/.test(requestedSeed) ? requestedSeed : null;
@@ -131,6 +136,43 @@ import { startAtmosphere } from "./atmosphere.js";
     feedback.className = `feedback ${tone}`;
   }
 
+  function checkRemainingMoves() {
+    if (!moveWorkerReady || !state.startedAt || state.finished) return;
+    moveWorker.postMessage({
+      type: "check",
+      id: ++moveCheckId,
+      board: fixed.map((letter, index) => letter || state.played[index] || null),
+      usedWords: state.words.map((entry) => entry.word),
+    });
+  }
+
+  function startMoveWorker(words) {
+    try {
+      const worker = new Worker(new URL("./move-worker.js", import.meta.url), { type: "module" });
+      moveWorker = worker;
+      worker.onmessage = ({ data }) => {
+        if (worker !== moveWorker) return;
+        if (data.type === "ready") {
+          moveWorkerReady = true;
+          checkRemainingMoves();
+        } else if (data.type === "result" && data.id === moveCheckId && !state.finished && !data.hasMove) {
+          finish("stuck");
+        }
+      };
+      worker.onerror = (error) => {
+        console.error("Could not check for remaining Scramble moves:", error);
+        worker.terminate();
+        moveWorker = null;
+        moveWorkerReady = false;
+        if (!state.finished) message("Could not check remaining moves; the timer will still end this run.", "error");
+      };
+      worker.postMessage({ type: "init", words });
+    } catch (error) {
+      console.error("Could not start Scramble's move checker:", error);
+      if (!state.finished) message("Could not check remaining moves; the timer will still end this run.", "error");
+    }
+  }
+
   async function loadDictionary() {
     const startButton = $("start-button");
     startButton.disabled = true;
@@ -142,9 +184,11 @@ import { startAtmosphere } from "./atmosphere.js";
       const loaded = new Set(text.trim().toUpperCase().split(/\s+/));
       if (loaded.size < 100000) throw new Error("Dictionary download was incomplete.");
       dictionary = loaded;
+      lexiconText = text;
       startButton.firstChild.textContent = "START THE CLOCK ";
       startButton.disabled = false;
       renderProgress();
+      if (!state.finished) startMoveWorker(text);
       if (feedback.textContent === "Dictionary unavailable. Check your connection and retry loading.") message("");
     } catch (error) {
       console.error("Could not load Scramble's dictionary:", error);
@@ -229,6 +273,7 @@ import { startAtmosphere } from "./atmosphere.js";
       tile.style.setProperty("--glint-offset", `${-0.41 * (index % 11)}s`);
       if (lastRoute) {
         const color = ROUTE_COLORS[lastRoute.color];
+        tile.dataset.routeColor = lastRoute.color;
         tile.style.setProperty("--route-color", color.light);
         tile.style.setProperty("--route-deep", color.deep);
       }
@@ -258,7 +303,7 @@ import { startAtmosphere } from "./atmosphere.js";
       return tile;
     });
     boardElement.replaceChildren(...tiles);
-    const routes = state.words.filter((entry) => Array.isArray(entry.path) && entry.path.length > 1);
+    const routes = state.words.map((entry, index) => ({ ...entry, index })).filter((entry) => Array.isArray(entry.path) && entry.path.length > 1);
     if (routes.length) {
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.classList.add("trail-lines");
@@ -273,6 +318,7 @@ import { startAtmosphere } from "./atmosphere.js";
         for (const [kind, color] of [["outer", colors.deep], ["inner", colors.light]]) {
           const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
           line.classList.add(kind);
+          line.dataset.wordIndex = entry.index;
           line.setAttribute("stroke", color);
           line.setAttribute("points", points);
           svg.append(line);
@@ -281,6 +327,36 @@ import { startAtmosphere } from "./atmosphere.js";
       boardElement.append(svg);
     }
     if (focusedIndex >= 0 && state.startedAt && !state.finished) boardElement.children[focusedIndex].focus();
+    if (inspectedRoute !== null) {
+      const index = inspectedRoute;
+      inspectedRoute = null;
+      inspectScramble(index);
+    }
+  }
+
+  function inspectScramble(index) {
+    if (inspectedRoute === index) return;
+    inspectedRoute = index;
+    const selected = index === null ? null : state.words[index];
+    const color = selected ? ROUTE_COLORS[selected.color] : null;
+    boardElement.classList.toggle("inspecting", Boolean(selected));
+    $("word-list").classList.toggle("inspecting", Boolean(selected));
+    for (const tile of boardElement.querySelectorAll(".tile")) {
+      const inPath = Boolean(selected?.path.includes(Number(tile.dataset.index)));
+      tile.classList.toggle("route-focus", inPath);
+      const original = tile.dataset.routeColor;
+      const palette = inPath ? color : original === undefined ? null : ROUTE_COLORS[Number(original)];
+      if (palette) {
+        tile.style.setProperty("--route-color", palette.light);
+        tile.style.setProperty("--route-deep", palette.deep);
+      }
+    }
+    for (const line of boardElement.querySelectorAll(".trail-lines polyline")) {
+      line.classList.toggle("route-focus", Number(line.dataset.wordIndex) === index);
+    }
+    for (const item of $("word-list").querySelectorAll("[data-word-index]")) {
+      item.classList.toggle("route-focus", Number(item.dataset.wordIndex) === index);
+    }
   }
 
   function renderDraft() {
@@ -318,6 +394,8 @@ import { startAtmosphere } from "./atmosphere.js";
   }
 
   function renderProgress() {
+    inspectedRoute = null;
+    boardElement.classList.remove("inspecting");
     const filled = initialFilled + Object.keys(state.played).length;
     $("score").textContent = String(state.score).padStart(4, "0");
     $("filled-count").textContent = `${filled}/64 FILLED`;
@@ -325,6 +403,7 @@ import { startAtmosphere } from "./atmosphere.js";
     $("start-overlay").hidden = Boolean(state.startedAt);
     boardElement.classList.toggle("covered", !state.startedAt);
     const list = $("word-list");
+    list.classList.remove("inspecting");
     list.replaceChildren();
     if (!state.words.length) {
       const empty = document.createElement("li");
@@ -332,8 +411,15 @@ import { startAtmosphere } from "./atmosphere.js";
       empty.textContent = "Nothing inked in yet. The board is yours.";
       list.append(empty);
     }
-    for (const entry of state.words) {
+    for (const [index, entry] of state.words.entries()) {
       const item = document.createElement("li");
+      item.dataset.wordIndex = index;
+      item.tabIndex = 0;
+      item.setAttribute("aria-label", `${entry.word}, ${entry.points} points. Focus this scramble on the board.`);
+      item.addEventListener("mouseenter", () => inspectScramble(index));
+      item.addEventListener("mouseleave", () => inspectScramble(null));
+      item.addEventListener("focus", () => inspectScramble(index));
+      item.addEventListener("blur", () => inspectScramble(null));
       const word = document.createElement("span");
       word.className = "noted-word";
       const chip = document.createElement("span");
@@ -425,11 +511,14 @@ import { startAtmosphere } from "./atmosphere.js";
     renderProgress();
     message(label, "good");
     if (initialFilled + Object.keys(state.played).length === SIZE * SIZE) finish("full");
+    else checkRemainingMoves();
   }
 
   function showResults() {
     $("final-score").textContent = state.score;
-    $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${state.endedReason === "full" ? "You filled the board!" : "Time ran out."} This solo prototype has no global leaderboard yet.`;
+    $("end-reason").textContent = state.endedReason === "full" ? "BOARD COMPLETE / THE BOARD IS YOURS" : state.endedReason === "stuck" ? "NO WORDS LEFT / THE BOARD IS YOURS" : "TIME'S UP / THE BOARD IS YOURS";
+    const outcome = state.endedReason === "full" ? "You filled the board!" : state.endedReason === "stuck" ? "No valid scoring words remain." : "Time ran out.";
+    $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${outcome} This solo prototype has no global leaderboard yet.`;
     if (!$("end-dialog").open) $("end-dialog").showModal();
   }
 
@@ -438,6 +527,9 @@ import { startAtmosphere } from "./atmosphere.js";
     state.endedAt = Date.now();
     state.endedReason = reason;
     state.finished = true;
+    moveWorker?.terminate();
+    moveWorker = null;
+    moveWorkerReady = false;
     path = [];
     draft = [];
     save();
@@ -518,10 +610,11 @@ import { startAtmosphere } from "./atmosphere.js";
     if (!dictionary) { void loadDictionary(); return; }
     if (state.startedAt) return;
     state.startedAt = Date.now();
-      save();
-      renderProgress();
-      tick();
-    });
+    save();
+    renderProgress();
+    tick();
+    checkRemainingMoves();
+  });
   $("rules").addEventListener("click", () => $("rules-dialog").showModal());
   $("reseed").addEventListener("click", () => {
     const params = new URLSearchParams(location.search);
@@ -541,6 +634,7 @@ import { startAtmosphere } from "./atmosphere.js";
     $("end-dialog").close();
     renderProgress();
     tick();
+    if (lexiconText && !moveWorker) startMoveWorker(lexiconText);
   });
   $("share").addEventListener("click", async () => {
     const text = `SCRAMBLE · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}\nSolo prototype · no public leaderboard`;
@@ -562,10 +656,9 @@ import { startAtmosphere } from "./atmosphere.js";
   tick();
   void loadDictionary();
   void startAtmosphere($("atmosphere"));
-  if (state.finished || (state.startedAt && remaining() <= 0)) {
-    if (state.finished) showResults();
-    else finish("time");
-  }
+  if (state.finished) showResults();
+  else if (state.startedAt && initialFilled + Object.keys(state.played).length === SIZE * SIZE) finish("full");
+  else if (state.startedAt && remaining() <= 0) finish("time");
   window.setInterval(tick, 250);
   window.addEventListener("resize", () => { if (state.words.length) renderBoard(); });
 })();

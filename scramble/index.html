@@ -55,7 +55,7 @@
           </section>
 
           <section class="notes-panel" aria-label="Submitted words">
-            <div class="panel-top"><span>FIELD NOTES</span><span id="notes-count">0 FOUND</span></div>
+            <div class="panel-top"><span>SCRAMBLES</span><span id="notes-count">0 FOUND</span></div>
             <ol id="word-list" class="word-list"><li class="empty-note">Nothing inked in yet. The board is yours.</li></ol>
           </section>
         </aside>
@@ -69,13 +69,13 @@
       <p>Drag or tap side-sharing tiles. Turn freely; no diagonals or reused tiles. Use at least four tiles, including one filled and one empty.</p>
       <p>Type the missing letters; filled tiles are skipped. Tap the word preview for a phone keyboard. <strong>Enter</strong> locks a valid word; <strong>Esc</strong> clears it. Use arrow keys and Space to select tiles by keyboard.</p>
       <p>New letters score their value +2 each. Pink <strong>×2</strong> doubles the word; mint <strong>+5</strong> adds five before doubling. Each effect works once.</p>
-      <p>Fill what you can in four minutes. Everyone gets the same daily board; DEV / RESEED is practice. The open word list is not an official Scrabble dictionary.</p>
+      <p>The run ends when time expires, the board is full, or no scoring word remains. Everyone gets the same daily board; DEV / RESEED is practice. The open word list is not an official Scrabble dictionary.</p>
       <button class="action-button" type="button" data-close>GOT IT <span aria-hidden="true">↗</span></button>
     </dialog>
 
     <dialog id="end-dialog" class="modal">
       <button class="modal-close" type="button" data-close aria-label="Close">×</button>
-      <p class="overline">TIME'S UP / THE BOARD IS YOURS</p><h2>NICE WORK,<br><span>WORDSMITH.</span></h2>
+      <p class="overline" id="end-reason">THE BOARD IS YOURS</p><h2>NICE WORK,<br><span>WORDSMITH.</span></h2>
       <div class="end-result"><strong id="final-score">0</strong><span>POINTS</span></div>
       <p id="final-summary"></p>
       <button id="share" class="action-button" type="button">COPY RESULT <span aria-hidden="true">↗</span></button>

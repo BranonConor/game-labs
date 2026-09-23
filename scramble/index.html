@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111324">
+    <meta name="description" content="Scramble: a daily word arcade. Make words, fill the board, beat the clock.">
+    <title>Scramble — Daily word arcade</title>
+    <link rel="icon" type="image/svg+xml" href="./egg.svg">
+    <link rel="stylesheet" href="./style.css">
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <canvas id="atmosphere" class="atmosphere-canvas" aria-hidden="true"></canvas>
+    <main class="shell">
+      <header class="topbar">
+        <h1 class="brand"><img class="egg-logo" src="./egg.svg" alt=""> <span>SCRAMBLE</span><span class="brand-star" aria-hidden="true">✳</span></h1>
+        <div class="header-actions">
+          <div class="edition"><span id="board-kind">DAILY GRID</span><strong id="date-label"></strong></div>
+          <button id="rules" class="help-button" type="button" aria-label="How to play"><span class="help-label">HOW TO PLAY</span><span class="help-icon" aria-hidden="true">?</span></button>
+        </div>
+      </header>
+
+      <section class="headline">
+        <p class="overline">WORDPLAY, OVER EASY / ISSUE <span id="issue-number">000</span></p>
+      </section>
+
+      <div class="game-layout">
+        <section class="board-panel" aria-label="Daily letter grid">
+          <div class="panel-top"><span>01 / THE BOARD</span><span class="panel-status" id="board-status">AWAITING START</span></div>
+          <div class="board-wrap">
+            <div id="board" class="board covered" role="group" aria-label="Eight by eight letter grid"></div>
+            <div id="start-overlay" class="start-overlay">
+              <img class="overlay-egg" src="./egg.svg" alt="">
+              <h2>READY TO<br><span>SCRAMBLE?</span></h2>
+              <p>Four minutes. One board.<br>Every word changes what comes next.</p>
+              <button id="start-button" class="action-button" type="button" disabled>LOADING WORDS... <span aria-hidden="true">↗</span></button>
+            </div>
+          </div>
+          <p class="board-caption"><span class="key seeded-key"></span> Starting letter <span class="key played-key"></span> Your letter <span class="key draft-key"></span> Draft</p>
+        </section>
+
+        <aside class="sidebar">
+          <section class="score-panel" aria-label="Run status">
+            <div class="panel-top"><span>02 / YOUR RUN</span><span class="live-dot" id="live-label">READY</span></div>
+            <div class="readouts"><div><span>TIME LEFT</span><strong id="timer">04:00</strong></div><div><span>TOTAL SCORE</span><strong id="score">0000</strong></div></div>
+            <div class="meter"><div id="meter-fill"></div></div>
+            <div class="run-subline"><span id="filled-count">0 / 64 TILES FILLED</span><span id="words-count">0 WORDS</span></div>
+          </section>
+
+          <section class="draft-panel" aria-label="Current word">
+            <div class="panel-top"><span>03 / CURRENT WORD</span><span id="path-length">NO PATH</span></div>
+            <p class="draft-instruction">Drag or tap a path of <strong>side-sharing tiles</strong>. Turn as often as you like, but no diagonals. Type to fill the gaps.</p>
+            <div id="draft-preview" class="draft-preview" aria-live="polite"><span class="preview-placeholder">SELECT A PATH ON THE GRID</span></div>
+            <p id="feedback" class="feedback" role="status" aria-live="polite">Starting letters are fixed. Your new letters lock in when you submit.</p>
+            <div class="draft-actions"><button id="submit" class="action-button" type="button" disabled>LOCK IN WORD <span aria-hidden="true">↵</span></button><button id="clear" class="secondary-button" type="button" disabled>ESC / CLEAR</button></div>
+            <div id="points-preview" class="points-preview">Select a path to preview its score.</div>
+          </section>
+
+          <section class="notes-panel" aria-label="Submitted words">
+            <div class="panel-top"><span>04 / FIELD NOTES</span><span id="notes-count">0 FOUND</span></div>
+            <ol id="word-list" class="word-list"><li class="empty-note">Nothing inked in yet. The board is yours.</li></ol>
+          </section>
+        </aside>
+      </div>
+      <footer><span id="board-footer">SHARED DAILY BOARD · LOCAL SOLO PROTOTYPE · NO LEADERBOARD YET</span><div class="footer-actions"><a class="text-link" href="./lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="reseed" class="text-link dev-link" type="button">DEV / RESEED ↻</button></div></footer>
+    </main>
+
+    <dialog id="rules-dialog" class="modal">
+      <button class="modal-close" type="button" data-close aria-label="Close">×</button>
+      <p class="overline">SCRAMBLE / FIELD GUIDE</p><h2>Make a word.<br>Change the board.</h2>
+      <p>Drag through side-sharing tiles, or tap them one by one. Move up, down, left, or right and turn as often as you like—no diagonal steps and no tile reused within one word. Your path needs at least four tiles, one existing letter, and one empty tile.</p>
+      <p>Type the missing letters; existing letters are skipped automatically. <strong>Enter</strong> submits a valid word and locks your new tiles. <strong>Esc</strong> clears the unsubmitted path and letters. Backspace removes your last typed letter. On a keyboard, use arrow keys to move around the board and Space to select tiles.</p>
+      <p>New letters score their printed Scrabble-style values plus two points each. Reused letters help you connect words, but do not score again. Accepted routes remain connected on the board. Fill the board or keep building until the four-minute clock expires. You can only submit each word once.</p>
+      <p>The default board is the same for everyone on a given UTC day. DEV / RESEED makes a separate practice board with a fresh timer. Words are checked against a pinned, broad English word-game lexicon, including common inflections and regional spellings; this is not an official Scrabble dictionary. Your run is saved locally; no global ranking is active.</p>
+      <button class="action-button" type="button" data-close>GOT IT <span aria-hidden="true">↗</span></button>
+    </dialog>
+
+    <dialog id="end-dialog" class="modal">
+      <button class="modal-close" type="button" data-close aria-label="Close">×</button>
+      <p class="overline">TIME'S UP / THE BOARD IS YOURS</p><h2>NICE WORK,<br><span>WORDSMITH.</span></h2>
+      <div class="end-result"><strong id="final-score">0</strong><span>POINTS</span></div>
+      <p id="final-summary"></p>
+      <button id="share" class="action-button" type="button">COPY RESULT <span aria-hidden="true">↗</span></button>
+      <p id="share-status" role="status"></p>
+      <button id="restart" class="text-link" type="button">Restart today's prototype board</button>
+    </dialog>
+  </body>
+</html>

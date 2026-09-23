@@ -1,0 +1,11 @@
+Scramble prototype lexicon
+
+Source: Letterpress English word list by atebits
+https://github.com/atebits/Words/blob/f4976d6a6d34beb431dec8d4b443a138f4dc8bee/Words/en.txt
+Source license: CC0 1.0 Universal
+https://github.com/atebits/Words/blob/f4976d6a6d34beb431dec8d4b443a138f4dc8bee/LICENSE
+
+This snapshot contains only ASCII alphabetic words of length 4 through 16.
+It is an independent open word-game lexicon, not an official Scrabble word list.
+The source combines US, UK, and Australian spellings and is refined for
+Letterpress. Dictionary decisions should be versioned before competitive play.

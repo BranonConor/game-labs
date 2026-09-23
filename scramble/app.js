@@ -418,6 +418,7 @@ import { startAtmosphere } from "./atmosphere.js";
     const filled = initialFilled + Object.keys(state.played).length;
     $("score").textContent = String(state.score).padStart(4, "0");
     $("filled-count").textContent = `${filled}/64 FILLED`;
+    $("skip-to-end").disabled = state.finished;
     document.body.classList.toggle("run-active", Boolean(state.startedAt && !state.finished));
     $("start-overlay").hidden = Boolean(state.startedAt);
     boardElement.classList.toggle("covered", !state.startedAt);
@@ -675,6 +676,11 @@ import { startAtmosphere } from "./atmosphere.js";
     params.delete("v");
     params.set("seed", crypto.randomUUID());
     location.search = params.toString();
+  });
+  $("skip-to-end").addEventListener("click", () => {
+    if (state.finished) return;
+    state.startedAt = Date.now() - DURATION;
+    finish("time");
   });
   document.querySelectorAll("[data-close]").forEach((button) => {
     button.addEventListener("click", () => button.closest("dialog").close());

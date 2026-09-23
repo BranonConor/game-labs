@@ -138,6 +138,7 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; }
 .text-link { background: none; border: none; padding: 4px 0; color: #ffcf83; font: 10px "Silkscreen", monospace; white-space: nowrap; text-decoration: none; }
 .dev-link { color: #9dd5c4; }
 .text-link:hover { text-decoration: underline; }
+.dev-link:disabled { opacity: .45; cursor: not-allowed; text-decoration: none; }
 .modal { position: relative; width: min(475px, calc(100% - 26px)); max-height: 90vh; overflow: auto; background: #242b45; border: 1px solid #afb0b1; color: #f7edde; box-shadow: 7px 7px 0 #101426, 0 25px 100px #070a15; padding: 31px; }
 .modal::backdrop { background: #080b19ba; backdrop-filter: blur(5px); }
 .modal-close { position: absolute; top: 14px; right: 19px; color: #e8d6bb; font-size: 26px; background: none; border: 0; }

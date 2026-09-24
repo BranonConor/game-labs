@@ -18,7 +18,11 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .topbar, .edition, .panel-top, .draft-actions, footer { display: flex; align-items: center; justify-content: space-between; }
 .topbar { padding-bottom: 23px; }
 .brand, h1, h2, .overline, .edition, .panel-top, .board-hud, .draft-preview, .action-button, .secondary-button, .points-preview, .word-list, footer, .end-result { font-family: "Silkscreen", monospace; }
+.brand-group { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .brand { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 23px; letter-spacing: -.08em; text-shadow: 2px 3px #605681; white-space: nowrap; }
+.menu-toggle { display: grid; align-content: center; gap: 4px; flex: none; width: 39px; height: 39px; padding: 9px; border: 1px solid #9d8b8b; background: #343047; box-shadow: 3px 3px #0d1020, inset 2px 2px #ffffff30; }
+.menu-toggle span { display: block; height: 2px; background: #ffe0a7; box-shadow: 1px 1px #a0576e; }
+.menu-toggle:hover { background: #50425a; }
 .egg-logo { width: 45px; height: 45px; image-rendering: pixelated; filter: drop-shadow(3px 4px #161426); animation: egg-float 3.4s ease-in-out infinite alternate; }
 .brand-star { color: #ffcf83; margin-left: 6px; font-size: 17px; }
 .header-actions { display: flex; align-items: center; gap: 18px; }
@@ -139,6 +143,28 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; }
 .dev-link { color: #9dd5c4; }
 .text-link:hover { text-decoration: underline; }
 .dev-link:disabled { opacity: .45; cursor: not-allowed; text-decoration: none; }
+.menu-dialog { position: fixed; inset: 0 auto 0 0; width: min(390px, calc(100vw - 22px)); height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; overflow: auto; border: 0; border-right: 2px solid #ffe0a7; background: #20283d; color: #f8ecdb; box-shadow: 9px 0 #0c102090, 24px 0 70px #080b19b8; animation: menu-in .32s cubic-bezier(.2, .85, .28, 1) both; }
+.menu-dialog::backdrop { background: #080b19b3; backdrop-filter: blur(4px); animation: menu-backdrop-in .32s ease both; }
+.menu-dialog.closing { animation: menu-out .22s ease-in both; }
+.menu-dialog.closing::backdrop { animation: menu-backdrop-out .22s ease-in both; }
+.menu-top { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 18px 23px; border-bottom: 1px solid #667081; background: #252b43; color: #a9dbc4; font: 10px "Silkscreen", monospace; }
+.menu-close { width: 34px; height: 34px; border: 1px solid #8a8393; background: #33334d; color: #ffe1b0; font-size: 23px; line-height: 1; }
+.menu-close:hover, .menu-back:hover { background: #4d4259; }
+.menu-screen { padding: 30px 24px 36px; animation: menu-screen-in .23s ease-out both; }
+.menu-hero { position: relative; overflow: hidden; min-height: 195px; padding: 24px 22px; border: 1px solid #9a7c83; background: radial-gradient(circle at 90% 15%, #f4b97366, transparent 42%), repeating-linear-gradient(0deg, transparent 0 9px, #ffffff08 10px), #423850; box-shadow: inset 3px 3px #fff5d033, 4px 4px #12172a; }
+.menu-hero img { position: absolute; top: 19px; right: 20px; width: 65px; image-rendering: pixelated; filter: drop-shadow(4px 5px #342b49); animation: egg-float 3s ease-in-out infinite alternate; }
+.menu-hero h2, .menu-page h2 { margin: 16px 0 9px; color: #ffe2aa; font: 700 25px/1.25 "Silkscreen", monospace; letter-spacing: -.06em; }
+.menu-hero > p:last-child, .menu-page > p:last-child { max-width: 260px; color: #d7d8d5; font: 13px/1.55 "DM Sans", sans-serif; }
+.menu-items { display: grid; gap: 9px; margin-top: 25px; }
+.menu-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 15px 16px; border: 1px solid #737e8c; background: #303c52; box-shadow: 3px 3px #101626, inset 2px 2px #ffffff19; color: #f7e8cf; text-align: left; font: 700 14px "Silkscreen", monospace; transition: transform .16s, background .16s, border-color .16s; }
+.menu-item:hover { transform: translateX(4px); border-color: #ffd48e; background: #4b465d; }
+.menu-item small { display: block; margin-top: 5px; color: #9ed7c6; font: 9px "Silkscreen", monospace; }
+.menu-item > span:last-child { color: #ffd48e; font-size: 17px; }
+.menu-footnote { margin: 23px 0 0; color: #aab9c7; font: 9px/1.5 "Silkscreen", monospace; }
+.menu-page { min-height: 75%; }
+.menu-back { padding: 9px 11px; border: 1px solid #8a8393; background: #33334d; color: #ffe1b0; font: 10px "Silkscreen", monospace; }
+.menu-page img { display: block; width: 86px; margin: 75px 0 25px; image-rendering: pixelated; filter: drop-shadow(5px 6px #111728); }
+.menu-page h2 { margin-top: 13px; }
 .modal { position: relative; width: min(475px, calc(100% - 26px)); max-height: 90vh; overflow: auto; background: #242b45; border: 1px solid #afb0b1; color: #f7edde; box-shadow: 7px 7px 0 #101426, 0 25px 100px #070a15; padding: 31px; }
 .modal::backdrop { background: #080b19ba; backdrop-filter: blur(5px); }
 .modal-close { position: absolute; top: 14px; right: 19px; color: #e8d6bb; font-size: 26px; background: none; border: 0; }
@@ -157,6 +183,11 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; }
 @keyframes finale-frame { 50% { border-color: var(--finale-glow); box-shadow: inset 0 0 0 4px var(--finale-glow), 0 0 30px var(--finale-glow); } }
 @keyframes finale-reveal { from { opacity: 0; } to { opacity: 1; } }
 @keyframes finale-card { from { opacity: 0; transform: scale(.7) translateY(15px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+@keyframes menu-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes menu-out { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes menu-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes menu-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes menu-screen-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 940px) {
   .shell { width: min(650px, calc(100% - 30px)); }
   .game-layout { grid-template-columns: minmax(0, 1fr); }
@@ -167,8 +198,11 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; }
 @media (max-width: 520px) {
   .shell { width: calc(100% - 20px); padding-top: 16px; }
   .topbar { padding-bottom: 14px; }
-  .brand { font-size: 17px; }
-  .egg-logo { width: 33px; height: 33px; }
+  .brand-group { gap: 6px; }
+  .menu-toggle { width: 30px; height: 30px; padding: 6px; gap: 3px; }
+  .brand { gap: 4px; font-size: 15px; }
+  .brand-star { display: none; }
+  .egg-logo { width: 30px; height: 30px; }
   .edition { font-size: 8px; }
   .edition strong { font-size: 9px; }
   .header-actions { gap: 8px; }

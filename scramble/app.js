@@ -36,8 +36,15 @@ import { startAtmosphere } from "./atmosphere.js";
   const $ = (id) => document.getElementById(id);
   const boardElement = $("board");
   const boardWrap = boardElement.parentElement;
+  const menuDialog = $("menu-dialog");
   const feedback = $("feedback");
   const wordEntry = $("word-entry");
+  const menuPages = {
+    scores: "Daily scores and rankings will live here when the leaderboard is ready.",
+    profile: "Your player identity and Scramble history will live here when accounts arrive.",
+    settings: "Game preferences will live here. For now, motion follows your device settings.",
+    logout: "Sign-out will be available with accounts. Your solo run is saved only in this browser.",
+  };
 
   function randomForDay(date) {
     let seed = 2166136261;
@@ -571,6 +578,7 @@ import { startAtmosphere } from "./atmosphere.js";
 
   function finish(reason) {
     if (state.finished) return;
+    if (menuDialog.open) menuDialog.close();
     state.endedAt = Date.now();
     state.endedReason = reason;
     state.finished = true;
@@ -671,6 +679,51 @@ import { startAtmosphere } from "./atmosphere.js";
     checkRemainingMoves();
   });
   $("rules").addEventListener("click", () => $("rules-dialog").showModal());
+  function closeMenu() {
+    if (!menuDialog.open || menuDialog.classList.contains("closing")) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      menuDialog.close();
+      return;
+    }
+    menuDialog.classList.add("closing");
+    window.setTimeout(() => { if (menuDialog.open) menuDialog.close(); }, 220);
+  }
+  $("menu-toggle").addEventListener("click", () => {
+    $("menu-footnote").textContent = state.startedAt && !state.finished
+      ? "THE CLOCK KEEPS TICKING WHILE YOU BROWSE"
+      : "SOLO PROTOTYPE / NO ACCOUNT REQUIRED";
+    menuDialog.showModal();
+  });
+  $("menu-close").addEventListener("click", closeMenu);
+  menuDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeMenu();
+  });
+  menuDialog.addEventListener("click", (event) => {
+    if (event.target === menuDialog) closeMenu();
+  });
+  menuDialog.addEventListener("close", () => {
+    menuDialog.classList.remove("closing");
+    $("menu-home").hidden = false;
+    $("menu-page").hidden = true;
+    if (!document.querySelector("dialog[open]")) $("menu-toggle").focus();
+  });
+  document.querySelectorAll("[data-menu-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const page = button.dataset.menuPage;
+      $("menu-page-title").textContent = page.toUpperCase();
+      $("menu-page-description").textContent = menuPages[page];
+      $("menu-home").hidden = true;
+      $("menu-page").hidden = false;
+      $("menu-back").focus();
+    });
+  });
+  $("menu-back").addEventListener("click", () => {
+    const selected = $("menu-page-title").textContent.toLowerCase();
+    $("menu-page").hidden = true;
+    $("menu-home").hidden = false;
+    menuDialog.querySelector(`[data-menu-page="${selected}"]`).focus();
+  });
   $("reseed").addEventListener("click", () => {
     const params = new URLSearchParams(location.search);
     params.delete("v");

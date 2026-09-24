@@ -10,3 +10,7 @@ export const SCORE_TIERS = [
 export function tierForScore(score) {
   return SCORE_TIERS.find((tier) => tier.max === null || score <= tier.max);
 }
+
+export function tierRange(tier) {
+  return tier.max === null ? `${tier.min}+` : `${tier.min}-${tier.max}`;
+}

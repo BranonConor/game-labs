@@ -1,5 +1,5 @@
 import { startAtmosphere } from "./atmosphere.js";
-import { tierForScore } from "./score-tiers.js";
+import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
 
 (() => {
   "use strict";
@@ -35,6 +35,7 @@ import { tierForScore } from "./score-tiers.js";
   const boardId = practiceSeed ? `${day}:${practiceSeed}` : day;
   const storageKey = `scramble-v6:${boardId}`;
   const $ = (id) => document.getElementById(id);
+  const eggAsset = (tier) => `${import.meta.env.BASE_URL}eggs/${tier.id}.svg`;
   const boardElement = $("board");
   const boardWrap = boardElement.parentElement;
   const menuDialog = $("menu-dialog");
@@ -558,13 +559,12 @@ import { tierForScore } from "./score-tiers.js";
   function showResults() {
     const tier = tierForScore(state.score);
     $("final-score").textContent = state.score;
-    $("tier-egg").src = `${import.meta.env.BASE_URL}eggs/${tier.id}.svg`;
+    $("tier-egg").src = eggAsset(tier);
     $("tier-name").textContent = tier.name.toUpperCase();
-    $("tier-range").textContent = tier.max === null ? `${tier.min}+ PTS` : `${tier.min}-${tier.max} PTS`;
+    $("tier-range").textContent = `${tierRange(tier)} PTS`;
     $("tier-result").style.setProperty("--tier-color", tier.color);
-    $("end-reason").textContent = state.endedReason === "full" ? "BOARD COMPLETE / THE BOARD IS YOURS" : state.endedReason === "stuck" ? "NO WORDS LEFT / THE BOARD IS YOURS" : "TIME'S UP / THE BOARD IS YOURS";
     const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "No valid scoring words remain." : "Time ran out.";
-    $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${outcome} This solo prototype has no global leaderboard yet.`;
+    $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${outcome}`;
     $("draft-heading").textContent = "THE FINAL PLATE";
     $("path-length").textContent = "RUN COMPLETE";
     $("compose-content").hidden = true;
@@ -785,7 +785,7 @@ import { tierForScore } from "./score-tiers.js";
     if (lexiconText && !moveWorker) startMoveWorker(lexiconText);
   });
   $("share").addEventListener("click", async () => {
-    const text = `SCRAMB · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${tierForScore(state.score).name} egg · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}\nSolo prototype · no public leaderboard`;
+    const text = `SCRAMB · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${tierForScore(state.score).name} egg · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}`;
     try {
       await navigator.clipboard.writeText(text);
       $("share-status").textContent = "Result copied!";
@@ -800,6 +800,19 @@ import { tierForScore } from "./score-tiers.js";
   $("date-label").textContent = `${dateLabel} / #${issueNumber}`;
   $("board-kind").textContent = practiceSeed ? "DEV PRACTICE" : "DAILY GRID";
   $("restart").textContent = practiceSeed ? "Restart this practice board" : "Restart today's prototype board";
+  for (const tier of SCORE_TIERS) {
+    const item = document.createElement("li");
+    const image = document.createElement("img");
+    image.src = eggAsset(tier);
+    image.alt = "";
+    const label = document.createElement("span");
+    label.textContent = tier.name;
+    const range = document.createElement("small");
+    range.textContent = tierRange(tier);
+    label.append(range);
+    item.append(image, label);
+    $("tier-guide").append(item);
+  }
   renderProgress();
   void loadDictionary();
   void startAtmosphere($("atmosphere"));

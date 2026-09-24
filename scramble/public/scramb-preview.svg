@@ -1,23 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" shape-rendering="crispEdges">
   <defs>
-    <symbol id="wordmark" viewBox="0 0 40 7">
-      <g transform="translate(0)">
-        <path d="M0 0h5v1H0zM0 1h1v2H0zM0 3h5v1H0zM4 4h1v2H4zM0 6h5v1H0z"/>
-      </g>
-      <g transform="translate(7)">
-        <path d="M1 0h4v1H1zM0 1h1v5H0zM1 6h4v1H1z"/>
-      </g>
-      <g transform="translate(14)">
-        <path d="M0 0h4v1H0zM0 1h1v2H0zM4 1h1v2H4zM0 3h4v1H0zM0 4h1v3H0zM2 4h1v1H2zM3 5h1v1H3zM4 6h1v1H4z"/>
-      </g>
-      <g transform="translate(21)">
-        <path d="M1 0h3v1H1zM0 1h1v6H0zM4 1h1v6H4zM1 3h3v1H1z"/>
-      </g>
-      <g transform="translate(28)">
-        <path d="M0 0h1v7H0zM4 0h1v7H4zM1 1h1v2H1zM3 1h1v2H3zM2 3h1v1H2z"/>
-      </g>
-      <g transform="translate(35)">
-        <path d="M0 0h4v1H0zM0 1h1v2H0zM4 1h1v2H4zM0 3h4v1H0zM0 4h1v2H0zM4 4h1v2H4zM0 6h4v1H0z"/>
+    <symbol id="wordmark" viewBox="0 0 4850 625">
+      <g transform="translate(0 625) scale(1 -1)">
+        <path d="M125 0V125H500V250H250V375H125V500H250V625H750V500H375V375H625V250H750V125H625V0Z"/>
+        <path transform="translate(795)" d="M250 0V125H125V500H250V625H625V500H750V375H500V500H375V125H500V250H750V125H625V0Z"/>
+        <path transform="translate(1590)" d="M125 0V625H625V500H750V375H625V125H750V0H500V125H375V0ZM375 375H500V500H375Z"/>
+        <path transform="translate(2385)" d="M125 0V500H250V625H625V500H750V0H500V250H375V0ZM375 375H500V495H375Z"/>
+        <path transform="translate(3180)" d="M125 0V625H375V500H625V625H875V0H625V250H375V0Z"/>
+        <path transform="translate(4100)" d="M125 0V625H625V500H750V125H625V0ZM375 375H495V500H375ZM375 125H495V250H375Z"/>
       </g>
     </symbol>
     <g id="egg">
@@ -37,8 +27,9 @@
   <path fill="#1b263a" d="M0 0h1200v630H0z"/>
   <path fill="#755066" d="M32 32h1136v6H32zm0 560h1136v6H32zM32 32h6v566h-6zm1130 0h6v566h-6z"/>
   <path fill="#96d9bd" d="M124 212h72v8h-72z"/>
-  <use href="#wordmark" x="132" y="270" width="540" height="94.5" fill="#755066"/>
-  <use href="#wordmark" x="124" y="260" width="540" height="94.5" fill="#ffe9ba"/>
+  <use href="#wordmark" x="119" y="292.5" width="601.4" height="77.5" fill="#605681"/>
+  <use href="#wordmark" x="108" y="276.5" width="601.4" height="77.5" fill="#f5ebd9"/>
   <path fill="#efb789" d="M124 390h340v6H124z"/>
+  <text x="124" y="432" fill="#96d9bd" font-family="Menlo, monospace" font-size="22" font-weight="bold" letter-spacing="2">DAILY WORD GAME</text>
   <use href="#egg" transform="translate(756 145) scale(6)"/>
 </svg>

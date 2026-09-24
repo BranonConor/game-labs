@@ -1,4 +1,5 @@
 import { startAtmosphere } from "./atmosphere.js";
+import { tierForScore } from "./score-tiers.js";
 
 (() => {
   "use strict";
@@ -555,7 +556,12 @@ import { startAtmosphere } from "./atmosphere.js";
   }
 
   function showResults() {
+    const tier = tierForScore(state.score);
     $("final-score").textContent = state.score;
+    $("tier-egg").src = `${import.meta.env.BASE_URL}eggs/${tier.id}.svg`;
+    $("tier-name").textContent = tier.name.toUpperCase();
+    $("tier-range").textContent = tier.max === null ? `${tier.min}+ PTS` : `${tier.min}-${tier.max} PTS`;
+    $("tier-result").style.setProperty("--tier-color", tier.color);
     $("end-reason").textContent = state.endedReason === "full" ? "BOARD COMPLETE / THE BOARD IS YOURS" : state.endedReason === "stuck" ? "NO WORDS LEFT / THE BOARD IS YOURS" : "TIME'S UP / THE BOARD IS YOURS";
     const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "No valid scoring words remain." : "Time ran out.";
     $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${outcome} This solo prototype has no global leaderboard yet.`;
@@ -779,7 +785,7 @@ import { startAtmosphere } from "./atmosphere.js";
     if (lexiconText && !moveWorker) startMoveWorker(lexiconText);
   });
   $("share").addEventListener("click", async () => {
-    const text = `SCRAMB · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}\nSolo prototype · no public leaderboard`;
+    const text = `SCRAMB · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${tierForScore(state.score).name} egg · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}\nSolo prototype · no public leaderboard`;
     try {
       await navigator.clipboard.writeText(text);
       $("share-status").textContent = "Result copied!";

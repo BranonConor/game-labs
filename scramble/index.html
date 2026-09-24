@@ -65,7 +65,14 @@
             <div id="results-content" class="inline-results" aria-live="polite" hidden>
               <p class="overline" id="end-reason"></p>
               <h2>NICE WORK,<br><span>WORDSMITH.</span></h2>
-              <div class="end-result"><strong id="final-score">0</strong><span>POINTS</span></div>
+              <div id="tier-result" class="end-result">
+                <img id="tier-egg" src="./egg.svg" alt="">
+                <div class="tier-details">
+                  <span id="tier-name" class="tier-name"></span>
+                  <div class="tier-score"><strong id="final-score">0</strong><span>POINTS</span></div>
+                  <small id="tier-range"></small>
+                </div>
+              </div>
               <p id="final-summary"></p>
               <button id="share" class="action-button" type="button">COPY RESULT <span aria-hidden="true">↗</span></button>
               <p id="share-status" role="status"></p>

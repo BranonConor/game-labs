@@ -187,7 +187,11 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: 
 .menu-page img { display: block; width: 86px; margin: 75px 0 25px; image-rendering: pixelated; filter: drop-shadow(5px 6px #111728); animation: egg-float 15s ease-in-out -5s infinite; }
 .menu-page h2 { margin-top: 13px; }
 .modal { position: fixed; inset: 0; width: min(475px, calc(100% - 26px)); max-height: 90dvh; margin: auto; overflow: auto; overscroll-behavior: contain; background: #242b45; border: 1px solid #afb0b1; color: #f7edde; box-shadow: 7px 7px 0 #101426, 0 25px 100px #070a15; padding: 31px; }
+.modal[open] { animation: recipe-in .3s cubic-bezier(.2, .85, .3, 1) both; }
 .modal::backdrop { background: #080b19ba; backdrop-filter: blur(5px); }
+.modal[open]::backdrop { animation: menu-backdrop-in .3s ease both; }
+.modal.closing { animation: recipe-out .22s ease-in both; }
+.modal.closing::backdrop { animation: menu-backdrop-out .22s ease-in both; }
 .modal-close { position: absolute; top: 14px; right: 19px; color: #e8d6bb; font-size: 26px; background: none; border: 0; }
 .modal h2 { font: 700 28px/1.2 "Silkscreen", monospace; letter-spacing: -.06em; }
 .modal p:not(.overline) { font-size: 13px; color: #cbd4d4; line-height: 1.7; }
@@ -208,6 +212,8 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: 
 @keyframes panel-arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes share-status-in { from { opacity: 0; transform: translateY(7px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes share-status-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-5px); } }
+@keyframes recipe-in { from { opacity: 0; transform: translateY(14px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes recipe-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(9px) scale(.98); } }
 @keyframes egg-float {
   0%, 36%, 72% { transform: perspective(180px) translate3d(0, 1px, 0) rotateX(0) rotateZ(-1deg) scale(1); filter: drop-shadow(3px 5px 1px #17162b99); }
   18%, 54% { transform: perspective(180px) translate3d(0, -2px, 0) rotateX(0) rotateZ(1deg) scale(1); filter: drop-shadow(4px 7px 2px #17162b88) brightness(1.02); }

@@ -41,6 +41,7 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   const boardElement = $("board");
   const boardWrap = boardElement.parentElement;
   const menuDialog = $("menu-dialog");
+  const rulesDialog = $("rules-dialog");
   const feedback = $("feedback");
   const wordEntry = $("word-entry");
   const menuPages = {
@@ -595,6 +596,7 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   function finish(reason) {
     if (state.finished) return;
     if (menuDialog.open) menuDialog.close();
+    if (rulesDialog.open) rulesDialog.close();
     state.endedAt = Date.now();
     state.endedReason = reason;
     state.finished = true;
@@ -712,12 +714,32 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     tick();
     checkRemainingMoves();
   });
-  $("rules").addEventListener("click", () => $("rules-dialog").showModal());
-  $("rules-dialog").addEventListener("click", (event) => {
-    const dialog = $("rules-dialog");
-    const bounds = dialog.getBoundingClientRect();
-    if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right
-      || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
+  let rulesCloseTimer = null;
+  function closeRules() {
+    if (!rulesDialog.open || rulesDialog.classList.contains("closing")) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      rulesDialog.close();
+      return;
+    }
+    rulesDialog.classList.add("closing");
+    rulesCloseTimer = window.setTimeout(() => {
+      if (rulesDialog.open) rulesDialog.close();
+    }, 220);
+  }
+  $("rules").addEventListener("click", () => rulesDialog.showModal());
+  rulesDialog.addEventListener("click", (event) => {
+    const bounds = rulesDialog.getBoundingClientRect();
+    if (event.target === rulesDialog && (event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom)) closeRules();
+  });
+  rulesDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeRules();
+  });
+  rulesDialog.addEventListener("close", () => {
+    window.clearTimeout(rulesCloseTimer);
+    rulesCloseTimer = null;
+    rulesDialog.classList.remove("closing");
   });
   function closeMenu() {
     if (!menuDialog.open || menuDialog.classList.contains("closing")) return;
@@ -775,9 +797,7 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     state.startedAt = Date.now() - DURATION;
     finish("time");
   });
-  document.querySelectorAll("[data-close]").forEach((button) => {
-    button.addEventListener("click", () => button.closest("dialog").close());
-  });
+  rulesDialog.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", closeRules));
   $("restart").addEventListener("click", () => {
     if (!confirm("Restart today's prototype board and erase this run?")) return;
     window.clearTimeout(shareStatusTimer);

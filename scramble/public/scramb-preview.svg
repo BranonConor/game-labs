@@ -26,10 +26,9 @@
   </defs>
   <path fill="#1b263a" d="M0 0h1200v630H0z"/>
   <path fill="#755066" d="M32 32h1136v6H32zm0 560h1136v6H32zM32 32h6v566h-6zm1130 0h6v566h-6z"/>
-  <path fill="#96d9bd" d="M124 212h72v8h-72z"/>
   <use href="#wordmark" x="119" y="292.5" width="601.4" height="77.5" fill="#605681"/>
   <use href="#wordmark" x="108" y="276.5" width="601.4" height="77.5" fill="#f5ebd9"/>
   <path fill="#efb789" d="M124 390h340v6H124z"/>
-  <text x="124" y="432" fill="#96d9bd" font-family="Menlo, monospace" font-size="22" font-weight="bold" letter-spacing="2">DAILY WORD GAME</text>
+  <text x="124" y="440" fill="#96d9bd" font-family="Menlo, monospace" font-size="28" font-weight="bold" letter-spacing="2">DAILY WORD GAME</text>
   <use href="#egg" transform="translate(756 145) scale(6)"/>
 </svg>

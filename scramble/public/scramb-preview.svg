@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" shape-rendering="crispEdges">
+  <defs>
+    <pattern id="pixels" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path fill="#b2a3b1" opacity=".14" d="M4 4h4v4H4zm28 20h4v4h-4z"/>
+      <path fill="#8ac7b4" opacity=".11" d="M20 36h4v4h-4z"/>
+    </pattern>
+    <symbol id="wordmark" viewBox="0 0 40 7">
+      <g transform="translate(0)">
+        <path d="M0 0h5v1H0zM0 1h1v2H0zM0 3h5v1H0zM4 4h1v2H4zM0 6h5v1H0z"/>
+      </g>
+      <g transform="translate(7)">
+        <path d="M1 0h4v1H1zM0 1h1v5H0zM1 6h4v1H1z"/>
+      </g>
+      <g transform="translate(14)">
+        <path d="M0 0h4v1H0zM0 1h1v2H0zM4 1h1v2H4zM0 3h4v1H0zM0 4h1v3H0zM2 4h1v1H2zM3 5h1v1H3zM4 6h1v1H4z"/>
+      </g>
+      <g transform="translate(21)">
+        <path d="M1 0h3v1H1zM0 1h1v6H0zM4 1h1v6H4zM1 3h3v1H1z"/>
+      </g>
+      <g transform="translate(28)">
+        <path d="M0 0h1v7H0zM4 0h1v7H4zM1 1h1v2H1zM3 1h1v2H3zM2 3h1v1H2z"/>
+      </g>
+      <g transform="translate(35)">
+        <path d="M0 0h4v1H0zM0 1h1v2H0zM4 1h1v2H4zM0 3h4v1H0zM0 4h1v2H0zM4 4h1v2H4zM0 6h4v1H0z"/>
+      </g>
+    </symbol>
+    <g id="egg">
+      <path fill="#79505a" d="M20 4h24v4h8v4h4v8h4v24h-4v8h-8v4H16v-4H8v-8H4V24h4v-8h4v-8h8z"/>
+      <path fill="#f6e2ad" d="M20 8h24v4h8v8h4v24h-8v8H16v-4H8V24h4v-8h8z"/>
+      <path fill="#fff3d6" d="M20 8h16v4h8v4h8v8h4v12h-4v8h-8v4H20v-4h-8v-8H8V24h4v-8h8z"/>
+      <path fill="#fffaf0" d="M20 12h12v4h12v4h4v8h4v8h-4v8h-8v4H20v-4h-8V28h4V20h4z"/>
+      <path fill="#d7aa72" d="M24 20h16v4h8v8h4v8h-8v8H20v-4h-4V32h4v-8h4z"/>
+      <path fill="#ffcb67" d="M24 20h16v4h4v4h4v12h-4v4H20v-4h-4v-8h4v-8h4z"/>
+      <path fill="#f7a84b" d="M24 24h16v4h4v12h-4v4H24v-4h-4V28h4z"/>
+      <path fill="#ffe18a" d="M24 24h8v4h4v8h-4v4h-8v-4h-4v-8h4z"/>
+      <path fill="#fff0ba" d="M24 24h8v4h-8z"/>
+      <path fill="#ed8d45" d="M36 36h8v4h-8z"/>
+      <path fill="#fff9e7" d="M12 24h4v8h-4zm32-4h4v8h-4zM20 44h8v4h-8z"/>
+    </g>
+  </defs>
+  <path fill="#080e1f" d="M0 0h1200v630H0z"/>
+  <path fill="#20283d" d="M24 18h1152v594H24z"/>
+  <path fill="url(#pixels)" d="M24 18h1152v594H24z"/>
+  <path fill="#a77e83" d="M24 18h1152v8H24zm0 586h1152v8H24zM24 18h8v594h-8zm1144 0h8v594h-8z"/>
+  <path fill="#fff0bf" d="M44 38h1112v4H44zm0 554h1112v4H44z"/>
+  <path fill="#3b3552" d="M52 54h620v520H52z"/>
+  <path fill="#1b263a" d="M60 62h604v504H60z"/>
+  <path fill="#e99f7d" d="M78 80h128v8H78zm0 8h8v20h-8z"/>
+  <text x="104" y="134" fill="#96d9bd" font-family="Menlo, monospace" font-size="24" font-weight="bold" letter-spacing="5">WORDPLAY / OVER EASY</text>
+  <use href="#wordmark" x="112" y="180" width="480" height="84" fill="#755066"/>
+  <use href="#wordmark" x="104" y="170" width="480" height="84" fill="#ffe9ba"/>
+  <path fill="#efb789" d="M104 280h480v8H104z"/>
+  <text x="104" y="350" fill="#f0ddd0" font-family="Menlo, monospace" font-size="30" font-weight="bold" letter-spacing="2">MAKE WORDS.</text>
+  <text x="104" y="393" fill="#f0ddd0" font-family="Menlo, monospace" font-size="30" font-weight="bold" letter-spacing="2">FILL THE BOARD.</text>
+  <path fill="#6a5d73" d="M104 425h520v2H104z"/>
+  <path fill="#83586c" d="M112 452h74v74h-74zm90 0h74v74h-74zm90 0h74v74h-74z"/>
+  <path fill="#fff0c5" d="M116 456h66v66h-66zm90 0h66v66h-66zm90 0h66v66h-66z"/>
+  <path fill="#ebd0a5" d="M116 504h66v18h-66zm90 0h66v18h-66zm90 0h66v18h-66z"/>
+  <text x="127" y="497" fill="#403447" font-family="Menlo, monospace" font-size="40" font-weight="bold">Q</text>
+  <text x="217" y="497" fill="#403447" font-family="Menlo, monospace" font-size="40" font-weight="bold">A</text>
+  <text x="303" y="495" fill="#91446b" font-family="Menlo, monospace" font-size="30" font-weight="bold">×2</text>
+  <text x="157" y="517" fill="#745469" font-family="Menlo, monospace" font-size="15" font-weight="bold">10</text>
+  <text x="257" y="517" fill="#745469" font-family="Menlo, monospace" font-size="15" font-weight="bold">1</text>
+  <text x="390" y="496" fill="#93cdb6" font-family="Menlo, monospace" font-size="22" font-weight="bold" letter-spacing="2">DAILY WORD GAME</text>
+  <path fill="#382f4b" d="M758 78h320v24h48v48h24v308h-24v48h-48v24H758v-24h-48v-48h-24V150h24v-48h48z"/>
+  <path fill="#6f5266" d="M766 86h304v24h48v48h24v292h-24v48h-48v24H766v-24h-48v-48h-24V158h24v-48h48z"/>
+  <path fill="#393f56" d="M774 94h288v24h48v48h24v276h-24v48h-48v24H774v-24h-48v-48h-24V166h24v-48h48z"/>
+  <path fill="#564963" d="M734 162h368v284H734z"/>
+  <path fill="#fff2bd" d="M774 118h56v8h-56zm-48 48h8v56h-8zm376 220h8v56h-8z"/>
+  <path fill="#ffc77d" d="M846 114h128v8H846zm-96 340h208v8H750z"/>
+  <path fill="#f78bb3" d="M1086 154h16v16h-16zm16-16h16v16h-16zm0 32h16v16h-16z"/>
+  <path fill="#a6e7c1" d="M736 404h12v12h-12zm12-12h12v12h-12zm12 12h12v12h-12z"/>
+  <path fill="#0c1329" opacity=".38" d="M800 464h248v16H800zm24 16h200v16H824z"/>
+  <use href="#egg" transform="translate(752 120) scale(5.6)"/>
+  <path fill="#fff1bd" d="M1086 76h12v12h-12zm0 24h12v12h-12zm-12-12h12v12h-12zm24 0h12v12h-12z"/>
+  <path fill="#a1d9bd" d="M724 488h8v8h-8zm-8 8h8v8h-8z"/>
+</svg>

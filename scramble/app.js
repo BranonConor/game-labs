@@ -44,6 +44,8 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   const rulesDialog = $("rules-dialog");
   const feedback = $("feedback");
   const wordEntry = $("word-entry");
+  const mobileKeyboard = $("mobile-keyboard");
+  const mobileEntryMode = $("mobile-entry-mode");
   const menuPages = {
     scores: "Daily scores and rankings will live here when the leaderboard is ready.",
     profile: "Your player identity and Scramb history will live here when accounts arrive.",
@@ -418,6 +420,19 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     const result = path.length ? verdict() : null;
     $("submit").disabled = !result?.word || state.finished;
     $("clear").disabled = !path.length || state.finished;
+    const blanks = path.filter((index) => !letterAt(index)).length;
+    $("mobile-entry-hint").textContent = !path.length ? "SELECT A PATH ON THE GRID"
+      : path.length < 4 ? "CHOOSE 4+ TILES"
+      : !blanks ? "INCLUDE AN EMPTY TILE"
+      : `${draft.length}/${blanks} LETTERS FILLED`;
+    $("mobile-word-announcement").textContent = path.length
+      ? `Selected word: ${[...preview.children].map((slot) => slot.textContent === "·" ? "blank" : slot.textContent).join(" ")}`
+      : "";
+    for (const key of mobileKeyboard.querySelectorAll("[data-key]")) {
+      key.disabled = key.dataset.key === "Backspace"
+        ? !draft.length || state.finished
+        : wordEntry.disabled || draft.length >= blanks;
+    }
     const readyEffects = path.filter((index) => effectTiles.has(index) && !state.spentEffects.includes(index));
     $("points-preview").textContent = result?.word
       ? `+${result.points} PTS = (${result.letterPoints} LETTERS + ${result.bonus} NEW${result.boost ? ` + ${result.boost} BOOST` : ""})${result.multiplier > 1 ? " ×2" : ""}`
@@ -434,6 +449,7 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     $("filled-count").textContent = `${filled}/64 FILLED`;
     $("skip-to-end").disabled = state.finished;
     document.body.classList.toggle("run-active", Boolean(state.startedAt && !state.finished));
+    document.body.classList.toggle("run-finished", state.finished);
     $("start-overlay").hidden = Boolean(state.startedAt);
     boardElement.classList.toggle("covered", !state.startedAt);
     boardElement.classList.toggle("run-finished", state.finished);
@@ -679,6 +695,21 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     draft = [...wordEntry.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, blanks)];
     renderBoard();
     renderDraft();
+  });
+  mobileKeyboard.addEventListener("click", (event) => {
+    const key = event.target.closest("[data-key]");
+    if (!key || key.disabled || state.finished) return;
+    if (key.dataset.key === "Backspace") draft.pop();
+    else draft.push(key.dataset.key);
+    renderBoard();
+    renderDraft();
+  });
+  mobileEntryMode.addEventListener("click", () => {
+    const nativeInput = document.body.classList.toggle("native-input-mode");
+    mobileEntryMode.setAttribute("aria-pressed", String(nativeInput));
+    mobileEntryMode.textContent = nativeInput ? "GAME KEYS" : "PHONE KEYBOARD";
+    if (nativeInput && !wordEntry.disabled) wordEntry.focus();
+    else wordEntry.blur();
   });
   document.addEventListener("keydown", (event) => {
     if (!state.startedAt || state.finished || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || document.querySelector("dialog[open]")) return;

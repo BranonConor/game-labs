@@ -65,11 +65,23 @@
 
         <aside class="sidebar">
           <section class="draft-panel" aria-labelledby="draft-heading">
-            <div class="panel-top"><span id="draft-heading">CURRENT WORD</span><span id="path-length">NO PATH</span></div>
+            <div class="panel-top"><span id="draft-heading">CURRENT WORD</span><span class="mobile-keyboard-title">KEYBOARD</span><span class="mobile-results-title">RESULTS</span><span id="path-length">NO PATH</span></div>
             <div id="compose-content">
+              <div class="mobile-entry-bar"><span id="mobile-entry-hint" aria-live="polite">SELECT A PATH ON THE GRID</span><span id="mobile-word-announcement" class="mobile-word-announcement" aria-live="polite"></span><button id="mobile-entry-mode" type="button" aria-pressed="false">PHONE KEYBOARD</button></div>
               <div class="word-compose">
                 <div id="draft-preview" class="draft-preview" aria-live="polite"><span class="preview-placeholder">SELECT A PATH ON THE GRID</span></div>
                 <input id="word-entry" class="word-entry" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" aria-label="Type missing letters for the selected word" aria-describedby="feedback" disabled>
+              </div>
+              <div id="mobile-keyboard" class="mobile-keyboard" role="group" aria-label="Letter keyboard">
+                <div class="keyboard-row">
+                  <button type="button" data-key="Q">Q</button><button type="button" data-key="W">W</button><button type="button" data-key="E">E</button><button type="button" data-key="R">R</button><button type="button" data-key="T">T</button><button type="button" data-key="Y">Y</button><button type="button" data-key="U">U</button><button type="button" data-key="I">I</button><button type="button" data-key="O">O</button><button type="button" data-key="P">P</button>
+                </div>
+                <div class="keyboard-row">
+                  <button type="button" data-key="A">A</button><button type="button" data-key="S">S</button><button type="button" data-key="D">D</button><button type="button" data-key="F">F</button><button type="button" data-key="G">G</button><button type="button" data-key="H">H</button><button type="button" data-key="J">J</button><button type="button" data-key="K">K</button><button type="button" data-key="L">L</button>
+                </div>
+                <div class="keyboard-row">
+                  <button type="button" data-key="Z">Z</button><button type="button" data-key="X">X</button><button type="button" data-key="C">C</button><button type="button" data-key="V">V</button><button type="button" data-key="B">B</button><button type="button" data-key="N">N</button><button type="button" data-key="M">M</button><button type="button" data-key="Backspace" class="keyboard-backspace" aria-label="Delete last letter">⌫</button>
+                </div>
               </div>
               <div class="draft-actions"><button id="submit" class="action-button" type="button" disabled>LOCK IN WORD <span aria-hidden="true">↵</span></button><button id="clear" class="secondary-button" type="button" disabled>ESC / CLEAR</button></div>
               <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
@@ -126,7 +138,7 @@
       <button class="modal-close" type="button" data-close aria-label="Close">×</button>
       <p class="overline">THE RECIPE</p><h2 id="rules-title">Make words.<br>Fill the board.</h2>
       <p><strong>Pick a path.</strong>&nbsp;Drag or tap through tiles next to each other. You can go all directions except for diagonally. Always include an existing letter in your selection.</p>
-      <p><strong>Fill the gaps.</strong>&nbsp;Type letters into the empty tiles to make a word; letters already on the board fill themselves in. Press&nbsp;<strong>ENTER</strong>&nbsp;to submit, or&nbsp;<strong>ESC</strong>&nbsp;to clear the word/path. On phones, tap the word preview to open the keyboard. With a keyboard, use arrow keys and Space to choose tiles.</p>
+      <p><strong>Fill the gaps.</strong>&nbsp;Type letters into the empty tiles to make a word; letters already on the board fill themselves in. Press&nbsp;<strong>ENTER</strong>&nbsp;to submit, or&nbsp;<strong>ESC</strong>&nbsp;to clear the word/path. On phones, use the game keys and tap LOCK IN WORD or ESC / CLEAR; tap PHONE KEYBOARD to use your device keyboard. With a keyboard, use arrow keys and Space to choose tiles.</p>
       <p><strong>Fill the board.</strong>&nbsp;Tiles in a submitted word can't be used again. Make more words and try to fill the board entirely (you get a lil' bonus if you do). The game ends if the 4 minutes runs out, if the board is fully complette, or if no scorable word remains.</p>
       <p><strong>Score big.</strong>&nbsp;Letters have different values. Each letter you add earns its value plus 2 points. Some starting letters give a one-time&nbsp;<strong>+5</strong>&nbsp;or&nbsp;<strong>×2</strong>&nbsp;bonus. Fill all 64 tiles for another&nbsp;<strong>+50</strong>.</p>
       <div class="recipe-tiers">

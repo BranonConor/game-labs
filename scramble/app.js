@@ -766,7 +766,6 @@ import { startAtmosphere } from "./atmosphere.js";
   const issueNumber = String(Math.floor(Date.parse(`${day}T00:00:00Z`) / 86400000) - 20500).padStart(3, "0");
   $("date-label").textContent = `${dateLabel} / #${issueNumber}`;
   $("board-kind").textContent = practiceSeed ? "DEV PRACTICE" : "DAILY GRID";
-  $("board-footer").textContent = practiceSeed ? "RESEEDED PRACTICE BOARD · LOCAL SOLO PROTOTYPE · NO LEADERBOARD YET" : "SHARED DAILY BOARD · LOCAL SOLO PROTOTYPE · NO LEADERBOARD YET";
   $("restart").textContent = practiceSeed ? "Restart this practice board" : "Restart today's prototype board";
   renderProgress();
   void loadDictionary();

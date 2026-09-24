@@ -138,7 +138,7 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .word-list .empty-note { font: 12px "DM Sans", sans-serif; color: #a5bac0; }
 .word-list .earned { color: #ffce8c; }
 footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; }
-.footer-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px 18px; }
+.footer-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 10px 18px; }
 .text-link { background: none; border: none; padding: 4px 0; color: #ffcf83; font: 10px "Silkscreen", monospace; white-space: nowrap; text-decoration: none; }
 .dev-link { color: #9dd5c4; }
 .text-link:hover { text-decoration: underline; }

@@ -1,7 +1,8 @@
 import { startAtmosphere } from "./atmosphere.js";
+import { createGoogleAuth, googleAuthError } from "./auth.js";
 import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
 
-(() => {
+export function mountGame(authConfigured) {
   "use strict";
 
   const SIZE = 8;
@@ -37,7 +38,7 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   const boardId = practiceSeed ? `${day}:${practiceSeed}` : day;
   const storageKey = `scramble-v6:${boardId}`;
   const $ = (id) => document.getElementById(id);
-  const eggAsset = (tier) => `${import.meta.env.BASE_URL}eggs/${tier.id}.svg`;
+  const eggAsset = (tier) => `/eggs/${tier.id}.svg`;
   const boardElement = $("board");
   const boardWrap = boardElement.parentElement;
   const menuDialog = $("menu-dialog");
@@ -47,9 +48,8 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   const mobileKeyboard = $("mobile-keyboard");
   const menuPages = {
     scores: "Daily scores and rankings will live here when the leaderboard is ready.",
-    profile: "Your player identity and Scramb history will live here when accounts arrive.",
+    profile: "Sign in with Google from the menu. Your run stays saved on this device.",
     settings: "Game preferences will live here. For now, motion follows your device settings.",
-    logout: "Sign-out will be available with accounts. Your solo run is saved only in this browser.",
   };
 
   function randomForDay(date) {
@@ -205,7 +205,7 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     startButton.disabled = true;
     startButton.firstChild.textContent = "LOADING WORDS... ";
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}lexicon.txt`);
+      const response = await fetch("/lexicon.txt");
       if (!response.ok) throw new Error(`Dictionary request failed: HTTP ${response.status}`);
       const text = await response.text();
       const loaded = new Set(text.trim().toUpperCase().split(/\s+/));
@@ -801,10 +801,71 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     menuDialog.classList.add("closing");
     window.setTimeout(() => { if (menuDialog.open) menuDialog.close(); }, 220);
   }
+  const signInButton = $("google-signin");
+  const signOutButton = $("menu-logout");
+  const accountStatus = $("account-status");
+  let googleAuth = null;
+  let accountError = null;
+  function updateAccount(user) {
+    if (user) accountError = null;
+    signInButton.hidden = Boolean(user);
+    signInButton.disabled = !googleAuth;
+    signOutButton.hidden = !user;
+    $("profile-label").textContent = user ? "GOOGLE ACCOUNT" : "GUEST MODE";
+    accountStatus.textContent = accountError || (user
+      ? `SIGNED IN AS ${user.displayName || user.email || "GOOGLE PLAYER"}`
+      : "PLAYING AS A GUEST / YOUR RUN STAYS ON THIS DEVICE");
+    menuPages.profile = user
+      ? `Signed in as ${user.email || user.displayName || "a Google player"}. Your game progress is still saved on this device, not synced to your account.`
+      : "Sign in with Google from the menu. Your run stays saved on this device.";
+    if ($("menu-page-title").textContent === "PROFILE") $("menu-page-description").textContent = menuPages.profile;
+  }
+  function showAuthError(error) {
+    accountError = googleAuthError(error);
+    accountStatus.textContent = accountError;
+    signInButton.disabled = !googleAuth;
+  }
+  try {
+    googleAuth = createGoogleAuth(updateAccount, showAuthError, authConfigured);
+    if (!googleAuth) {
+      accountStatus.textContent = "GOOGLE SIGN-IN NEEDS SETUP / SOLO PLAY STILL WORKS";
+      signInButton.textContent = "GOOGLE SIGN-IN NOT CONFIGURED";
+    }
+    const authError = new URLSearchParams(location.search).get("error");
+    if (authError) {
+      showAuthError(new Error(`OAuth error: ${authError}`));
+      menuDialog.showModal();
+    }
+  } catch (error) {
+    showAuthError(error);
+  }
+  signInButton.addEventListener("click", async () => {
+    if (!googleAuth) return;
+    accountError = null;
+    signInButton.disabled = true;
+    accountStatus.textContent = "OPENING GOOGLE SIGN-IN...";
+    try {
+      await googleAuth.signIn();
+    } catch (error) {
+      showAuthError(error);
+    }
+  });
+  signOutButton.addEventListener("click", async () => {
+    accountError = null;
+    signOutButton.disabled = true;
+    accountStatus.textContent = "SIGNING OUT...";
+    try {
+      await googleAuth.signOut();
+    } catch (error) {
+      showAuthError(error);
+    } finally {
+      signOutButton.disabled = false;
+    }
+  });
   $("menu-toggle").addEventListener("click", () => {
     $("menu-footnote").textContent = state.startedAt && !state.finished
       ? "THE CLOCK KEEPS TICKING WHILE YOU BROWSE"
-      : "SOLO PROTOTYPE / NO ACCOUNT REQUIRED";
+      : "YOUR RUN STAYS ON THIS DEVICE";
     menuDialog.showModal();
   });
   $("menu-close").addEventListener("click", closeMenu);
@@ -924,4 +985,4 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   }
   window.setInterval(tick, 250);
   window.addEventListener("resize", () => { if (state.words.length) renderBoard(); });
-})();
+}

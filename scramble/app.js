@@ -29,6 +29,8 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   let moveWorkerReady = false;
   let moveCheckId = 0;
   let inspectedRoute = null;
+  let shareStatusTimer = null;
+  let shareExitTimer = null;
   const day = new Date().toISOString().slice(0, 10);
   const requestedSeed = new URLSearchParams(location.search).get("seed");
   const practiceSeed = requestedSeed && /^[\w-]{1,64}$/.test(requestedSeed) ? requestedSeed : null;
@@ -711,6 +713,12 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     checkRemainingMoves();
   });
   $("rules").addEventListener("click", () => $("rules-dialog").showModal());
+  $("rules-dialog").addEventListener("click", (event) => {
+    const dialog = $("rules-dialog");
+    const bounds = dialog.getBoundingClientRect();
+    if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
+  });
   function closeMenu() {
     if (!menuDialog.open || menuDialog.classList.contains("closing")) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -772,6 +780,8 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   });
   $("restart").addEventListener("click", () => {
     if (!confirm("Restart today's prototype board and erase this run?")) return;
+    window.clearTimeout(shareStatusTimer);
+    window.clearTimeout(shareExitTimer);
     state = freshState();
     path = [];
     draft = [];
@@ -780,18 +790,35 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     $("compose-content").hidden = false;
     $("draft-heading").textContent = "CURRENT WORD";
     $("share-status").textContent = "";
+    $("share-status").className = "";
     renderProgress();
     tick();
     if (lexiconText && !moveWorker) startMoveWorker(lexiconText);
   });
+  function showShareStatus(text, error = false) {
+    window.clearTimeout(shareStatusTimer);
+    window.clearTimeout(shareExitTimer);
+    const status = $("share-status");
+    status.textContent = text;
+    status.classList.remove("leaving");
+    status.classList.add("entering");
+    status.classList.toggle("error", error);
+    shareStatusTimer = window.setTimeout(() => {
+      status.classList.replace("entering", "leaving");
+      shareExitTimer = window.setTimeout(() => {
+        status.textContent = "";
+        status.classList.remove("leaving", "error");
+      }, 240);
+    }, 3000);
+  }
   $("share").addEventListener("click", async () => {
     const text = `SCRAMB · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${tierForScore(state.score).name} egg · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}`;
     try {
       await navigator.clipboard.writeText(text);
-      $("share-status").textContent = "Result copied!";
+      showShareStatus("Result copied!");
     } catch (error) {
       console.warn("Could not copy result:", error);
-      $("share-status").textContent = "Clipboard unavailable in this browser context.";
+      showShareStatus("Clipboard unavailable in this browser context.", true);
     }
   });
 

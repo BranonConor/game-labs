@@ -395,6 +395,7 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
 
   function renderDraft() {
     const preview = $("draft-preview");
+    const flyout = $("selection-preview");
     preview.replaceChildren();
     wordEntry.disabled = path.length < 4 || state.finished || !dictionary;
     wordEntry.value = draft.join("");
@@ -414,6 +415,12 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
         slot.textContent = existing || inserted || "·";
         preview.append(slot);
       });
+    }
+    flyout.hidden = !path.length || state.finished;
+    if (!flyout.hidden) {
+      flyout.style.setProperty("--slot-count", Math.min(path.length, 8));
+      $("selection-letters").replaceChildren(...[...preview.children].map((slot) => slot.cloneNode(true)));
+      positionSelectionPreview();
     }
     if ($("results-content").hidden) $("path-length").textContent = path.length ? `${path.length} TILES` : "NO PATH";
     const result = path.length ? verdict() : null;
@@ -437,6 +444,19 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     if (result?.word) message(`${result.word} fits. Press Enter to lock it in.`, "good");
     else if (result) message(result.reason, result.error ? "error" : "");
   }
+
+  function positionSelectionPreview() {
+    const flyout = $("selection-preview");
+    if (flyout.hidden || !flyout.offsetWidth) return;
+    const tile = boardElement.children[path.at(-1)];
+    const frame = boardWrap.getBoundingClientRect();
+    const anchor = tile.getBoundingClientRect();
+    flyout.style.left = `${Math.max(8, Math.min(anchor.left - frame.left + anchor.width / 2 - flyout.offsetWidth / 2, boardWrap.clientWidth - flyout.offsetWidth - 8))}px`;
+    const above = anchor.top - frame.top - flyout.offsetHeight - 10;
+    flyout.style.top = `${above >= 8 ? above : anchor.bottom - frame.top + 10}px`;
+  }
+
+  window.addEventListener("resize", positionSelectionPreview);
 
   function renderProgress() {
     inspectedRoute = null;
@@ -725,7 +745,7 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     }
   });
   for (const id of ["submit", "mobile-submit"]) $(id).addEventListener("click", submitWord);
-  for (const id of ["clear", "mobile-clear"]) $(id).addEventListener("click", () => { clearPath(); message("Path and unsubmitted letters cleared."); });
+  for (const id of ["clear", "mobile-clear", "selection-clear"]) $(id).addEventListener("click", () => { clearPath(); message("Path and unsubmitted letters cleared."); });
   $("start-button").addEventListener("click", () => {
     if (!dictionary) { void loadDictionary(); return; }
     if (state.startedAt) return;
@@ -747,7 +767,17 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
       if (rulesDialog.open) rulesDialog.close();
     }, 220);
   }
-  $("rules").addEventListener("click", () => rulesDialog.showModal());
+  function alignRulesContent() {
+    const content = rulesDialog.querySelector(".modal-content");
+    content.style.setProperty("--scrollbar-width", `${content.offsetWidth - content.clientWidth}px`);
+  }
+  $("rules").addEventListener("click", () => {
+    rulesDialog.showModal();
+    alignRulesContent();
+  });
+  window.addEventListener("resize", () => {
+    if (rulesDialog.open) alignRulesContent();
+  });
   rulesDialog.addEventListener("click", (event) => {
     const bounds = rulesDialog.getBoundingClientRect();
     if (event.target === rulesDialog && (event.clientX < bounds.left || event.clientX > bounds.right

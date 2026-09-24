@@ -48,6 +48,13 @@
           </div>
           <div class="board-wrap">
             <div id="board" class="board covered" role="group" aria-label="Eight by eight letter grid"></div>
+            <div id="selection-preview" class="selection-preview" hidden>
+              <div class="selection-preview-header">
+                <span aria-hidden="true">CURRENT WORD</span>
+                <button id="selection-clear" class="selection-clear" type="button" aria-label="Clear selected path">×</button>
+              </div>
+              <div id="selection-letters" class="selection-letters" aria-hidden="true"></div>
+            </div>
             <div id="start-overlay" class="start-overlay">
               <img class="overlay-egg" src="./egg.svg" alt="">
               <h2>READY TO<br><span>SCRAMB?</span></h2>
@@ -83,10 +90,10 @@
                   <button type="button" data-key="Z">Z</button><button type="button" data-key="X">X</button><button type="button" data-key="C">C</button><button type="button" data-key="V">V</button><button type="button" data-key="B">B</button><button type="button" data-key="N">N</button><button type="button" data-key="M">M</button><button type="button" data-key="Backspace" class="keyboard-backspace" aria-label="Delete last letter">⌫</button>
                 </div>
                 <div class="keyboard-row keyboard-actions">
-                  <button id="mobile-clear" type="button" aria-label="Clear selected path" disabled>CLEAR</button><button id="mobile-submit" type="button" aria-label="Submit word" disabled>ENTER <span aria-hidden="true">↵</span></button>
+                  <button id="mobile-clear" type="button" aria-label="Clear selected path" disabled><span class="hotkey-icon" aria-hidden="true">ESC</span> CLEAR</button><button id="mobile-submit" type="button" aria-label="Submit word" disabled><span class="hotkey-icon" aria-hidden="true">↵</span> ENTER</button>
                 </div>
               </div>
-              <div class="draft-actions"><button id="submit" class="action-button" type="button" disabled>LOCK IN WORD <span aria-hidden="true">↵</span></button><button id="clear" class="secondary-button" type="button" disabled>ESC / CLEAR</button></div>
+              <div class="draft-actions"><button id="clear" class="secondary-button" type="button" disabled><span class="hotkey-icon" aria-hidden="true">ESC</span> CLEAR</button><button id="submit" class="action-button" type="button" disabled><span class="hotkey-icon" aria-hidden="true">↵</span> LOCK IN WORD</button></div>
               <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
               <div id="points-preview" class="points-preview"></div>
             </div>
@@ -138,18 +145,24 @@
     </dialog>
 
     <dialog id="rules-dialog" class="modal" aria-labelledby="rules-title">
-      <button class="modal-close" type="button" data-close aria-label="Close">×</button>
-      <p class="overline">THE RECIPE</p><h2 id="rules-title">Make words.<br>Fill the board.</h2>
-      <p><strong>Pick a path.</strong>&nbsp;Drag or tap through tiles next to each other. You can go all directions except for diagonally. Always include an existing letter in your selection.</p>
-      <p><strong>Fill the gaps.</strong>&nbsp;Type letters into the empty tiles to make a word; letters already on the board fill themselves in. Press&nbsp;<strong>ENTER</strong>&nbsp;to submit, or&nbsp;<strong>ESC</strong>&nbsp;to clear the word/path. On phones, use the game keys and tap ENTER or CLEAR. With a keyboard, use arrow keys and Space to choose tiles.</p>
-      <p><strong>Fill the board.</strong>&nbsp;Tiles in a submitted word can't be used again. Make more words and try to fill the board entirely (you get a lil' bonus if you do). The game ends if the 4 minutes runs out, if the board is fully complette, or if no scorable word remains.</p>
-      <p><strong>Score big.</strong>&nbsp;Letters have different values. Each letter you add earns its value plus 2 points. Some starting letters give a one-time&nbsp;<strong>+5</strong>&nbsp;or&nbsp;<strong>×2</strong>&nbsp;bonus. Fill all 64 tiles for another&nbsp;<strong>+50</strong>.</p>
-      <div class="recipe-tiers">
-        <p class="overline">EGG TIERS / SCORE BANDS</p>
-        <ul id="tier-guide" class="tier-guide" aria-label="Egg score tiers"></ul>
-        <small>Cosmetic score bands; we'll tune them as we learn.</small>
+      <div class="modal-header">
+        <button class="modal-close" type="button" data-close aria-label="Close">×</button>
+        <p class="overline">THE RECIPE</p><h2 id="rules-title">Make words.<br>Fill the board.</h2>
       </div>
-      <button class="action-button" type="button" data-close>GOT IT <span aria-hidden="true">↗</span></button>
+      <div class="modal-content">
+        <p><strong>Pick a path.</strong>&nbsp;Drag or tap through tiles next to each other. You can go all directions except for diagonally. Always include an existing letter in your selection.</p>
+        <p><strong>Fill the gaps.</strong>&nbsp;Type letters into the empty tiles to make a word; letters already on the board fill themselves in. Press&nbsp;<strong>ENTER</strong>&nbsp;to submit, or&nbsp;<strong>ESC</strong>&nbsp;to clear the word/path. On phones, use the game keys and tap ENTER or CLEAR. With a keyboard, use arrow keys and Space to choose tiles.</p>
+        <p><strong>Fill the board.</strong>&nbsp;Tiles in a submitted word can't be used again. Make more words and try to fill the board entirely (you get a lil' bonus if you do). The game ends if the 4 minutes runs out, if the board is fully complette, or if no scorable word remains.</p>
+        <p><strong>Score big.</strong>&nbsp;Letters have different values. Each letter you add earns its value plus 2 points. Some starting letters give a one-time&nbsp;<strong>+5</strong>&nbsp;or&nbsp;<strong>×2</strong>&nbsp;bonus. Fill all 64 tiles for another&nbsp;<strong>+50</strong>.</p>
+        <div class="recipe-tiers">
+          <p class="overline">EGG TIERS / SCORE BANDS</p>
+          <ul id="tier-guide" class="tier-guide" aria-label="Egg score tiers"></ul>
+          <small>Cosmetic score bands; we'll tune them as we learn.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="action-button" type="button" data-close>GOT IT <span aria-hidden="true">↗</span></button>
+      </div>
     </dialog>
 
   </body>

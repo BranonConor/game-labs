@@ -109,7 +109,7 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .word-compose:focus-within .draft-preview { outline: 2px solid #ffe297; outline-offset: -3px; }
 .word-entry { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; opacity: 0; font-size: 16px; cursor: text; }
 .word-entry:disabled { cursor: default; }
-.mobile-entry-bar, .mobile-keyboard, .mobile-keyboard-title, .mobile-results-title { display: none; }
+.mobile-keyboard, .mobile-keyboard-title, .mobile-results-title { display: none; }
 .draft-preview { min-height: 69px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; border: 1px solid #656b80; border-bottom: 0; background: #131b30; padding: 8px; }
 .draft-preview .preview-placeholder { color: #8f9cae; font-size: 10px; text-align: center; }
 .draft-letter { flex: 0 0 calc(12.5% - 4px); min-width: 0; height: 43px; display: grid; place-items: center; border: 1px solid #7b8992; background: #314355; color: #e7e9d8; font-size: clamp(11px, 1.5vw, 18px); }
@@ -249,14 +249,9 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: 
   .draft-panel #draft-heading { display: none; }
   .mobile-keyboard-title, .run-finished .mobile-results-title { display: inline; }
   .run-finished .mobile-keyboard-title, body:not(.run-finished) .notes-panel { display: none; }
-  .mobile-entry-bar { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 10px; color: #9ad4c4; font: 9px/1.3 "Silkscreen", monospace; }
   .mobile-word-announcement { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .mobile-entry-bar button { flex: none; padding: 7px; border: 1px solid #69788b; background: #303c52; color: #ffdfac; font: 8px "Silkscreen", monospace; }
-  .mobile-entry-bar button:active { background: #50425a; }
   .word-compose { display: none; }
-  .native-input-mode .word-compose { display: block; margin-top: 9px; }
   .mobile-keyboard { display: grid; gap: 4px; margin-top: 10px; }
-  .native-input-mode .mobile-keyboard { display: none; }
   .keyboard-row { display: flex; gap: 3px; }
   .keyboard-row:nth-child(2) { padding-inline: 8px; }
   .keyboard-row:nth-child(3) { padding-inline: 12px; }
@@ -264,8 +259,10 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: 
   .keyboard-row button:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 2px 2px #ffffff20; background: #53697a; }
   .keyboard-row button:disabled { opacity: .45; cursor: default; }
   .keyboard-row .keyboard-backspace { flex: 1.6; color: #ffcf83; font-size: 20px; }
-  .draft-actions { margin-top: 10px; }
-  .draft-actions .action-button { flex: 1; }
+  .keyboard-actions { margin-top: 3px; }
+  .keyboard-actions button { height: 43px; color: #ffcf83; font-size: 12px; }
+  .keyboard-actions #mobile-submit { flex: 1.5; background: #f9cb80; border-color: #ffe9b7; color: #28253a; }
+  .draft-actions { display: none; }
 }
 @media (max-width: 520px) {
   .shell { width: calc(100% - 20px); padding-top: 16px; }

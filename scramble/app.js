@@ -45,7 +45,6 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
   const feedback = $("feedback");
   const wordEntry = $("word-entry");
   const mobileKeyboard = $("mobile-keyboard");
-  const mobileEntryMode = $("mobile-entry-mode");
   const menuPages = {
     scores: "Daily scores and rankings will live here when the leaderboard is ready.",
     profile: "Your player identity and Scramb history will live here when accounts arrive.",
@@ -419,12 +418,10 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     if ($("results-content").hidden) $("path-length").textContent = path.length ? `${path.length} TILES` : "NO PATH";
     const result = path.length ? verdict() : null;
     $("submit").disabled = !result?.word || state.finished;
+    $("mobile-submit").disabled = $("submit").disabled;
     $("clear").disabled = !path.length || state.finished;
+    $("mobile-clear").disabled = $("clear").disabled;
     const blanks = path.filter((index) => !letterAt(index)).length;
-    $("mobile-entry-hint").textContent = !path.length ? "SELECT A PATH ON THE GRID"
-      : path.length < 4 ? "CHOOSE 4+ TILES"
-      : !blanks ? "INCLUDE AN EMPTY TILE"
-      : `${draft.length}/${blanks} LETTERS FILLED`;
     $("mobile-word-announcement").textContent = path.length
       ? `Selected word: ${[...preview.children].map((slot) => slot.textContent === "·" ? "blank" : slot.textContent).join(" ")}`
       : "";
@@ -704,13 +701,6 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
     renderBoard();
     renderDraft();
   });
-  mobileEntryMode.addEventListener("click", () => {
-    const nativeInput = document.body.classList.toggle("native-input-mode");
-    mobileEntryMode.setAttribute("aria-pressed", String(nativeInput));
-    mobileEntryMode.textContent = nativeInput ? "GAME KEYS" : "PHONE KEYBOARD";
-    if (nativeInput && !wordEntry.disabled) wordEntry.focus();
-    else wordEntry.blur();
-  });
   document.addEventListener("keydown", (event) => {
     if (!state.startedAt || state.finished || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || document.querySelector("dialog[open]")) return;
     if (event.key === "Escape") {
@@ -734,8 +724,8 @@ import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
       } else message("The path is full. Press Enter to submit or Backspace to revise.");
     }
   });
-  $("submit").addEventListener("click", submitWord);
-  $("clear").addEventListener("click", () => { clearPath(); message("Path and unsubmitted letters cleared."); });
+  for (const id of ["submit", "mobile-submit"]) $(id).addEventListener("click", submitWord);
+  for (const id of ["clear", "mobile-clear"]) $(id).addEventListener("click", () => { clearPath(); message("Path and unsubmitted letters cleared."); });
   $("start-button").addEventListener("click", () => {
     if (!dictionary) { void loadDictionary(); return; }
     if (state.startedAt) return;

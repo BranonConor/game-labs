@@ -51,15 +51,26 @@
         </section>
 
         <aside class="sidebar">
-          <section class="draft-panel" aria-label="Current word">
-            <div class="panel-top"><span>CURRENT WORD</span><span id="path-length">NO PATH</span></div>
-            <div class="word-compose">
-              <div id="draft-preview" class="draft-preview" aria-live="polite"><span class="preview-placeholder">SELECT A PATH ON THE GRID</span></div>
-              <input id="word-entry" class="word-entry" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" aria-label="Type missing letters for the selected word" aria-describedby="feedback" disabled>
+          <section class="draft-panel" aria-labelledby="draft-heading">
+            <div class="panel-top"><span id="draft-heading">CURRENT WORD</span><span id="path-length">NO PATH</span></div>
+            <div id="compose-content">
+              <div class="word-compose">
+                <div id="draft-preview" class="draft-preview" aria-live="polite"><span class="preview-placeholder">SELECT A PATH ON THE GRID</span></div>
+                <input id="word-entry" class="word-entry" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16" aria-label="Type missing letters for the selected word" aria-describedby="feedback" disabled>
+              </div>
+              <div class="draft-actions"><button id="submit" class="action-button" type="button" disabled>LOCK IN WORD <span aria-hidden="true">↵</span></button><button id="clear" class="secondary-button" type="button" disabled>ESC / CLEAR</button></div>
+              <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+              <div id="points-preview" class="points-preview"></div>
             </div>
-            <div class="draft-actions"><button id="submit" class="action-button" type="button" disabled>LOCK IN WORD <span aria-hidden="true">↵</span></button><button id="clear" class="secondary-button" type="button" disabled>ESC / CLEAR</button></div>
-            <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-            <div id="points-preview" class="points-preview"></div>
+            <div id="results-content" class="inline-results" aria-live="polite" hidden>
+              <p class="overline" id="end-reason"></p>
+              <h2>NICE WORK,<br><span>WORDSMITH.</span></h2>
+              <div class="end-result"><strong id="final-score">0</strong><span>POINTS</span></div>
+              <p id="final-summary"></p>
+              <button id="share" class="action-button" type="button">COPY RESULT <span aria-hidden="true">↗</span></button>
+              <p id="share-status" role="status"></p>
+              <button id="restart" class="text-link" type="button">Restart today's prototype board</button>
+            </div>
           </section>
 
           <section class="notes-panel" aria-label="Submitted words">
@@ -102,14 +113,5 @@
       <button class="action-button" type="button" data-close>GOT IT <span aria-hidden="true">↗</span></button>
     </dialog>
 
-    <dialog id="end-dialog" class="modal">
-      <button class="modal-close" type="button" data-close aria-label="Close">×</button>
-      <p class="overline" id="end-reason">THE BOARD IS YOURS</p><h2>NICE WORK,<br><span>WORDSMITH.</span></h2>
-      <div class="end-result"><strong id="final-score">0</strong><span>POINTS</span></div>
-      <p id="final-summary"></p>
-      <button id="share" class="action-button" type="button">COPY RESULT <span aria-hidden="true">↗</span></button>
-      <p id="share-status" role="status"></p>
-      <button id="restart" class="text-link" type="button">Restart today's prototype board</button>
-    </dialog>
   </body>
 </html>

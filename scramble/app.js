@@ -302,12 +302,14 @@ import { startAtmosphere } from "./atmosphere.js";
         tile.style.setProperty("--route-color", color.light);
         tile.style.setProperty("--route-deep", color.deep);
       }
-      tile.disabled = !state.startedAt || state.finished || !dictionary;
-      tile.setAttribute("aria-label", state.startedAt
+      tile.disabled = !state.startedAt || (!state.finished && !dictionary);
+      tile.setAttribute("aria-label", state.finished
+        ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${lastRoute ? `, part of ${lastRoute.word}, ${lastRoute.points} points` : ""}`
+        : state.startedAt
         ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${seed ? ", starting letter" : played ? ", locked letter" : draftLetter ? ", unsubmitted letter" : ""}${effect ? `, ${effect === "double" ? "double score" : "five bonus points"} effect ${spent ? "spent" : "ready"}` : ""}${claimed.has(index) ? ", claimed by a submitted word, unavailable" : ""}${isSelected ? ", selected" : ""}`
         : "Hidden tile. Start the clock to reveal the board.");
       tile.setAttribute("aria-pressed", isSelected ? "true" : "false");
-      tile.setAttribute("aria-disabled", claimed.has(index) ? "true" : "false");
+      tile.setAttribute("aria-disabled", !state.finished && claimed.has(index) ? "true" : "false");
       const face = document.createElement("span");
       face.textContent = letter || "";
       tile.append(face);
@@ -352,7 +354,7 @@ import { startAtmosphere } from "./atmosphere.js";
       });
       boardElement.append(svg);
     }
-    if (focusedIndex >= 0 && state.startedAt && !state.finished) boardElement.children[focusedIndex].focus();
+    if (focusedIndex >= 0 && state.startedAt) boardElement.children[focusedIndex].focus();
     if (inspectedRoute !== null) {
       const index = inspectedRoute;
       inspectedRoute = null;
@@ -407,7 +409,7 @@ import { startAtmosphere } from "./atmosphere.js";
         preview.append(slot);
       });
     }
-    $("path-length").textContent = path.length ? `${path.length} TILES` : "NO PATH";
+    if ($("results-content").hidden) $("path-length").textContent = path.length ? `${path.length} TILES` : "NO PATH";
     const result = path.length ? verdict() : null;
     $("submit").disabled = !result?.word || state.finished;
     $("clear").disabled = !path.length || state.finished;
@@ -429,6 +431,7 @@ import { startAtmosphere } from "./atmosphere.js";
     document.body.classList.toggle("run-active", Boolean(state.startedAt && !state.finished));
     $("start-overlay").hidden = Boolean(state.startedAt);
     boardElement.classList.toggle("covered", !state.startedAt);
+    boardElement.classList.toggle("run-finished", state.finished);
     const list = $("word-list");
     list.classList.remove("inspecting");
     list.replaceChildren();
@@ -556,7 +559,10 @@ import { startAtmosphere } from "./atmosphere.js";
     $("end-reason").textContent = state.endedReason === "full" ? "BOARD COMPLETE / THE BOARD IS YOURS" : state.endedReason === "stuck" ? "NO WORDS LEFT / THE BOARD IS YOURS" : "TIME'S UP / THE BOARD IS YOURS";
     const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "No valid scoring words remain." : "Time ran out.";
     $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${outcome} This solo prototype has no global leaderboard yet.`;
-    if (!$("end-dialog").open) $("end-dialog").showModal();
+    $("draft-heading").textContent = "THE FINAL PLATE";
+    $("path-length").textContent = "RUN COMPLETE";
+    $("compose-content").hidden = true;
+    $("results-content").hidden = false;
   }
 
   function playFinale(reason) {
@@ -623,6 +629,24 @@ import { startAtmosphere } from "./atmosphere.js";
     if (event.detail !== 0) return;
     const tile = event.target.closest(".tile");
     if (tile) beginSelection(Number(tile.dataset.index));
+  });
+  function inspectBoardTile(tile) {
+    if (!state.finished || !tile || !boardElement.contains(tile)) return;
+    const routeIndex = state.words.findIndex((entry) => entry.path.includes(Number(tile.dataset.index)));
+    inspectScramble(routeIndex === -1 ? null : routeIndex);
+  }
+  boardElement.addEventListener("pointerover", (event) => {
+    const tile = event.target.closest(".tile");
+    if (tile && !tile.contains(event.relatedTarget)) inspectBoardTile(tile);
+  });
+  boardElement.addEventListener("pointerleave", () => {
+    if (state.finished) inspectScramble(null);
+  });
+  boardElement.addEventListener("focusin", (event) => {
+    inspectBoardTile(event.target.closest(".tile"));
+  });
+  boardElement.addEventListener("focusout", (event) => {
+    if (state.finished && !boardElement.contains(event.relatedTarget)) inspectScramble(null);
   });
   boardElement.addEventListener("keydown", (event) => {
     if (!event.target.matches(".tile")) return;
@@ -746,7 +770,10 @@ import { startAtmosphere } from "./atmosphere.js";
     path = [];
     draft = [];
     save();
-    $("end-dialog").close();
+    $("results-content").hidden = true;
+    $("compose-content").hidden = false;
+    $("draft-heading").textContent = "CURRENT WORD";
+    $("share-status").textContent = "";
     renderProgress();
     tick();
     if (lexiconText && !moveWorker) startMoveWorker(lexiconText);

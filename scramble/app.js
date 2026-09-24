@@ -41,7 +41,7 @@ import { startAtmosphere } from "./atmosphere.js";
   const wordEntry = $("word-entry");
   const menuPages = {
     scores: "Daily scores and rankings will live here when the leaderboard is ready.",
-    profile: "Your player identity and Scramble history will live here when accounts arrive.",
+    profile: "Your player identity and Scramb history will live here when accounts arrive.",
     settings: "Game preferences will live here. For now, motion follows your device settings.",
     logout: "Sign-out will be available with accounts. Your solo run is saved only in this browser.",
   };
@@ -181,7 +181,7 @@ import { startAtmosphere } from "./atmosphere.js";
         }
       };
       worker.onerror = (error) => {
-        console.error("Could not check for remaining Scramble moves:", error);
+        console.error("Could not check for remaining Scramb moves:", error);
         worker.terminate();
         moveWorker = null;
         moveWorkerReady = false;
@@ -189,7 +189,7 @@ import { startAtmosphere } from "./atmosphere.js";
       };
       worker.postMessage({ type: "init", words });
     } catch (error) {
-      console.error("Could not start Scramble's move checker:", error);
+      console.error("Could not start Scramb's move checker:", error);
       if (!state.finished) message("Could not check remaining moves; the timer will still end this run.", "error");
     }
   }
@@ -212,7 +212,7 @@ import { startAtmosphere } from "./atmosphere.js";
       if (!state.finished) startMoveWorker(text);
       if (feedback.textContent === "Dictionary unavailable. Check your connection and retry loading.") message("");
     } catch (error) {
-      console.error("Could not load Scramble's dictionary:", error);
+      console.error("Could not load Scramb's dictionary:", error);
       startButton.firstChild.textContent = "RETRY WORD LIST ";
       startButton.disabled = false;
       message("Dictionary unavailable. Check your connection and retry loading.", "error");
@@ -438,7 +438,9 @@ import { startAtmosphere } from "./atmosphere.js";
       empty.textContent = "Nothing inked in yet. The board is yours.";
       list.append(empty);
     }
-    for (const [index, entry] of state.words.entries()) {
+    const rankedWords = state.words.map((entry, index) => ({ entry, index }))
+      .sort((a, b) => b.entry.points - a.entry.points || a.index - b.index);
+    for (const { entry, index } of rankedWords) {
       const item = document.createElement("li");
       item.dataset.wordIndex = index;
       item.tabIndex = 0;
@@ -457,7 +459,7 @@ import { startAtmosphere } from "./atmosphere.js";
       word.append(chip, document.createTextNode(entry.word));
       earned.textContent = `+${entry.points}`;
       item.append(word, earned);
-      list.prepend(item);
+      list.append(item);
     }
     $("notes-count").textContent = `${state.words.length} FOUND`;
     renderBoard();
@@ -750,7 +752,7 @@ import { startAtmosphere } from "./atmosphere.js";
     if (lexiconText && !moveWorker) startMoveWorker(lexiconText);
   });
   $("share").addEventListener("click", async () => {
-    const text = `SCRAMBLE · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}\nSolo prototype · no public leaderboard`;
+    const text = `SCRAMB · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}\nSolo prototype · no public leaderboard`;
     try {
       await navigator.clipboard.writeText(text);
       $("share-status").textContent = "Result copied!";

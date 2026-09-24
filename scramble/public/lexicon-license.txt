@@ -1,4 +1,4 @@
-Scramble prototype lexicon
+Scramb prototype lexicon
 
 Source: Letterpress English word list by atebits
 https://github.com/atebits/Words/blob/f4976d6a6d34beb431dec8d4b443a138f4dc8bee/Words/en.txt

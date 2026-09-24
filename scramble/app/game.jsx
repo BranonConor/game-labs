@@ -118,7 +118,7 @@ export default function Game({ authConfigured }) {
       <dialog id="menu-dialog" className="menu-dialog" aria-label="Scramb menu">
         <div className="menu-top"><span>SCRAMB / MENU</span><button id="menu-close" className="menu-close" type="button" aria-label="Close menu">×</button></div>
         <div id="menu-home" className="menu-screen">
-          <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-drip drip-left" /><span className="menu-drip drip-middle" /><span className="menu-drip drip-right" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p>More ways to play together are on the way.</p></div>
+          <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p>More ways to play together are on the way.</p></div>
           <section className="menu-account" aria-label="Google account">
             <p id="account-status" role="status" aria-live="polite">CHECKING SIGN-IN...</p>
             <button id="google-signin" className="action-button" type="button" disabled>CONTINUE WITH GOOGLE <span aria-hidden="true">↗</span></button>

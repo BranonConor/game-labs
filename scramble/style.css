@@ -181,13 +181,7 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: 
 .menu-egg { position: absolute; top: 19px; right: 20px; width: 65px; height: 84px; }
 .menu-egg img { position: relative; z-index: 2; display: block; width: 65px; image-rendering: pixelated; filter: drop-shadow(4px 5px #342b49); }
 .menu-dialog[open] .menu-egg img { animation: egg-float 16s ease-in-out -7s infinite; }
-.menu-drip, .menu-splash { position: absolute; z-index: 1; background: #ffcb67; }
-.menu-drip { transform-origin: center top; filter: drop-shadow(2px 2px #603b4d); }
-.drip-left { --drip-sway: -3px; top: 49px; left: 20px; width: 6px; height: 7px; box-shadow: 0 7px #f7a84b, -3px 12px #ffcb67, -3px 18px #f7a84b; }
-.drip-middle { --drip-sway: 3px; top: 45px; left: 31px; width: 8px; height: 8px; box-shadow: 0 8px #f7a84b, 4px 14px #ffcb67, 4px 22px #f7a84b; }
-.drip-right { --drip-sway: 0px; top: 50px; left: 44px; width: 6px; height: 7px; box-shadow: 0 7px #f7a84b, 0 14px #ffcb67, 0 20px #f7a84b; }
-.menu-dialog[open] .menu-drip { animation: yolk-flow 16s steps(5, end) -7s infinite; }
-.menu-splash { top: 61px; left: 29px; width: 5px; height: 5px; box-shadow: -23px -4px #ffcb67, -17px 4px #f7a84b, 20px -7px #ffcb67, 25px 3px #f7a84b; opacity: 0; }
+.menu-splash { position: absolute; z-index: 1; top: 61px; left: 29px; width: 5px; height: 5px; background: #ffcb67; box-shadow: -23px -4px #ffcb67, -17px 4px #f7a84b, 20px -7px #ffcb67, 25px 3px #f7a84b; opacity: 0; }
 .menu-dialog[open] .menu-splash { animation: yolk-splash 16s steps(3, end) -7s infinite; }
 .menu-hero h2, .menu-page h2 { margin: 16px 0 9px; color: #ffe2aa; font: 700 25px/1.25 "Silkscreen", monospace; letter-spacing: -.06em; }
 .menu-hero > p:last-child, .menu-page > p:last-child { max-width: 260px; color: #d7d8d5; font: 13px/1.55 "DM Sans", sans-serif; }
@@ -256,15 +250,6 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: 
 @keyframes menu-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes menu-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes menu-screen-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes yolk-flow {
-  0%, 20% { opacity: 1; transform: translateY(0) scaleY(.8); }
-  32%, 42% { opacity: 1; transform: translate(var(--drip-sway), 4px) scaleY(1); }
-  56%, 70% { opacity: 1; transform: translateY(1px) scaleY(.9); }
-  75% { opacity: 1; transform: translateY(5px) scaleY(1); }
-  79%, 85% { opacity: 0; transform: translateY(25px) scaleY(.4); }
-  89%, 93% { opacity: 0; transform: translateY(0) scaleY(.2); }
-  97%, 100% { opacity: 1; transform: translateY(0) scaleY(.8); }
-}
 @keyframes yolk-splash {
   0%, 86% { opacity: 0; transform: translateY(0); }
   88%, 90% { opacity: .8; transform: translateY(-4px); }

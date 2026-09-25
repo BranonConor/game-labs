@@ -151,18 +151,30 @@ export default function Game({ authConfigured }) {
               <p id="menu-page-description" />
             </div>
             <div id="scores-content" className="scores-content" hidden>
-              <p className="overline">YOUR PLACE IN THE GRID</p>
-              <h2 id="scores-title">SCORES</h2>
+              <div className="scores-heading"><div><p className="overline">YOUR PLACE IN THE GRID</p><h2 id="scores-title">SCORES</h2></div><span id="scores-date" className="scores-date" /></div>
               <section className="scores-card" aria-labelledby="scores-today-title">
-                <div className="scores-card-top"><span id="scores-today-title" className="overline">TODAY'S GRID</span><span id="scores-phase">LIVE</span></div>
-                <div className="scores-feature"><strong id="scores-score">—</strong><span>VERIFIED POINTS</span></div>
-                <div className="scores-detail"><span id="scores-rank">No ranked run yet</span><span id="scores-percentile" /></div>
-                <p id="scores-note" className="scores-note">Sign in before starting to join today's ranking.</p>
-                <div id="scores-distribution" className="scores-distribution" role="img" aria-label="Today's score distribution" hidden />
+                <div className="scores-card-top"><span id="scores-today-title" className="overline">TODAY'S GRID</span><span id="scores-phase" className="scores-phase">LIVE</span></div>
+                <div id="scores-today-empty" className="scores-today-empty">
+                  <img src="/egg.svg" alt="" />
+                  <div><strong id="scores-empty-title">THE GRID IS WAITING</strong><p id="scores-empty-copy">Sign in and finish today's grid to join the ranking.</p></div>
+                </div>
+                <div id="scores-today-result" hidden>
+                  <div className="scores-result-grid">
+                    <div className="scores-feature"><span>YOUR SCORE</span><strong id="scores-score">—</strong><small>POINTS</small></div>
+                    <div className="scores-placement"><span>YOUR PLACE</span><strong id="scores-rank">Run in progress</strong><span id="scores-percentile" /></div>
+                  </div>
+                  <p id="scores-note" className="scores-note" />
+                  <div id="scores-chart" className="scores-chart" hidden>
+                    <span className="overline">TODAY'S SCORE SPREAD</span>
+                    <div id="scores-distribution" className="scores-distribution" role="img" aria-label="Today's score distribution" />
+                    <div className="scores-chart-axis"><span>0 PTS</span><span>450+ PTS</span></div>
+                  </div>
+                </div>
               </section>
               <section className="scores-history" aria-labelledby="scores-history-title">
-                <h3 id="scores-history-title">PAST GRIDS</h3>
-                <ol id="scores-history-list"><li className="scores-empty"><img src="/egg.svg" alt="" /><span><strong>A FRESH START</strong><small>Only verified daily runs appear here. Earlier synced results stay in Profile.</small></span></li></ol>
+                <div className="scores-history-top"><h3 id="scores-history-title">PAST GRIDS</h3><span>YOUR DAILY RECORD</span></div>
+                <div id="scores-history-headings" className="scores-history-headings" hidden><span>DATE</span><span>POINTS</span><span>YOUR PLACE</span></div>
+                <ol id="scores-history-list"><li className="scores-empty"><img src="/egg.svg" alt="" /><span><strong>NO RANKED DAYS YET</strong><small>Finished daily scores and placements will appear here. Earlier synced runs stay in Profile.</small></span></li></ol>
                 <button id="scores-more" className="menu-back scores-more" type="button" hidden>LOAD MORE ↓</button>
               </section>
               <p id="scores-status" className="scores-status" role="status" aria-live="polite" hidden />

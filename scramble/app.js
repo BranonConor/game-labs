@@ -1201,8 +1201,13 @@ export function mountGame(authConfigured) {
     const status = $("scores-status");
     status.hidden = true;
     if (!append && !refresh) {
-      $("scores-history-list").replaceChildren();
-      $("scores-note").textContent = "Loading today's comparison...";
+      $("scores-today-empty").hidden = false;
+      $("scores-today-result").hidden = true;
+      $("scores-empty-title").textContent = "CHECKING THE GRID";
+      $("scores-empty-copy").textContent = "Loading today's comparison...";
+      showEmptyScores("CHECKING YOUR RECORD", "Loading completed daily grids...");
+      $("scores-history-headings").hidden = true;
+      $("scores-more").hidden = true;
       scoresCursor = null;
     }
     try {
@@ -1213,19 +1218,25 @@ export function mountGame(authConfigured) {
       if (!response.ok) throw new Error(result.error || `Scores request failed: HTTP ${response.status}`);
       if (generation !== scoresGeneration || !accountUser) return;
       const today = result.today;
+      $("scores-date").textContent = scoreDate(day).toUpperCase() + " UTC";
       $("scores-phase").textContent = today.final ? "FINAL" : "LIVE";
+      $("scores-today-empty").hidden = today.score != null;
+      $("scores-today-result").hidden = today.score == null;
       $("scores-score").textContent = today.score == null ? "—" : today.score.toLocaleString();
       $("scores-rank").textContent = today.rank == null
         ? today.score == null ? "No ranked result yet" : "Run in progress · rank after completion"
         : `${today.tied ? "Tied " : ""}#${today.rank} of ${today.total} today`;
       $("scores-percentile").textContent = today.percentile == null ? "" : `AROUND THE ${displayPercentile(today.percentile)}TH PERCENTILE`;
-      $("scores-note").textContent = today.note || (today.score == null
+      const note = today.note || (today.score == null
         ? state.startedAt && rankedMode === "unranked" && !practiceSeed
           ? "This run isn't server-verified, so it stays in Profile rather than today's ranking."
           : "Start today's grid to join the ranking."
         : today.rank == null ? "Your score becomes comparable when the run ends."
           : today.percentile == null ? `Percentiles start at 30 completed players; ${today.total} so far.`
             : today.final ? "This comparison is final." : "Live comparison: your place may move as more people finish.");
+      $("scores-note").textContent = note;
+      $("scores-empty-title").textContent = "THE GRID IS WAITING";
+      $("scores-empty-copy").textContent = note;
       const chart = $("scores-distribution");
       chart.replaceChildren();
       if (today.total > 0 && today.distribution?.length) {
@@ -1238,15 +1249,16 @@ export function mountGame(authConfigured) {
           chart.append(bar);
         }
         chart.setAttribute("aria-label", `Score distribution for ${today.total} players today`);
-        chart.hidden = false;
-      } else chart.hidden = true;
+        $("scores-chart").hidden = false;
+      } else $("scores-chart").hidden = true;
       if (!refresh) {
         const list = $("scores-history-list");
         if (!append) list.replaceChildren();
         for (const run of result.history) list.append(renderScoreRow(run));
         if (!list.children.length) {
-          showEmptyScores("A FRESH START", "Only verified daily runs appear here. Earlier synced results stay in Profile.");
+          showEmptyScores("NO RANKED DAYS YET", "Finished daily scores and placements will appear here. Earlier synced runs stay in Profile.");
         }
+        $("scores-history-headings").hidden = !list.querySelector("li:not(.scores-empty)");
         scoresCursor = result.nextCursor;
         $("scores-more").hidden = !scoresCursor;
       }
@@ -1255,7 +1267,13 @@ export function mountGame(authConfigured) {
       console.error("Could not load scores:", error);
       status.textContent = "Could not load scores. Close and reopen Scores to retry.";
       status.hidden = false;
-      $("scores-note").textContent = "Scores are temporarily unavailable.";
+      if (!append && !refresh) {
+        $("scores-today-empty").hidden = false;
+        $("scores-today-result").hidden = true;
+        $("scores-empty-title").textContent = "SCORES UNAVAILABLE";
+        $("scores-empty-copy").textContent = "Today's comparison could not be loaded.";
+        showEmptyScores("RECORD UNAVAILABLE", "Your completed grids could not be loaded.");
+      }
     } finally {
       if (generation === scoresGeneration) scoresLoading = false;
     }
@@ -1314,9 +1332,15 @@ export function mountGame(authConfigured) {
       $("scores-score").textContent = "—";
       $("scores-rank").textContent = "No ranked result yet";
       $("scores-percentile").textContent = "";
-      $("scores-note").textContent = "Sign in before starting a daily grid to join the ranking.";
-      $("scores-distribution").hidden = true;
-      showEmptyScores("YOUR NEXT CHAPTER", "Sign in and play a daily grid to start your score history.");
+      $("scores-date").textContent = scoreDate(day).toUpperCase() + " UTC";
+      $("scores-phase").textContent = "LIVE";
+      $("scores-today-empty").hidden = false;
+      $("scores-today-result").hidden = true;
+      $("scores-empty-title").textContent = "THE GRID IS WAITING";
+      $("scores-empty-copy").textContent = "Sign in before starting a daily grid to join the ranking.";
+      $("scores-chart").hidden = true;
+      $("scores-history-headings").hidden = true;
+      showEmptyScores("NO RANKED DAYS YET", "Sign in and finish a daily grid to start your score history.");
       $("scores-more").hidden = true;
     } else if (!menuPage.hidden && !$("scores-content").hidden) {
       void loadScores();

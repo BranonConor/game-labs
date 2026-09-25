@@ -82,7 +82,7 @@ export default function Game({ authConfigured }) {
                     <button type="button" data-key="Z">Z</button><button type="button" data-key="X">X</button><button type="button" data-key="C">C</button><button type="button" data-key="V">V</button><button type="button" data-key="B">B</button><button type="button" data-key="N">N</button><button type="button" data-key="M">M</button><button type="button" data-key="Backspace" className="keyboard-backspace" aria-label="Delete last letter">⌫</button>
                   </div>
                   <div className="keyboard-row keyboard-actions">
-                    <button id="mobile-clear" type="button" aria-label="Clear selected path" disabled><span className="hotkey-icon" aria-hidden="true">ESC</span> CLEAR</button><button id="mobile-submit" type="button" aria-label="Submit word" disabled><span className="hotkey-icon" aria-hidden="true">↵</span> ENTER</button>
+                    <button id="mobile-clear" className="secondary-button" type="button" aria-label="Clear selected path" disabled><span className="hotkey-icon" aria-hidden="true">ESC</span> CLEAR</button><button id="mobile-submit" className="action-button" type="button" aria-label="Submit word" disabled><span className="hotkey-icon" aria-hidden="true">↵</span> ENTER</button>
                   </div>
                 </div>
                 <div className="draft-actions"><button id="clear" className="secondary-button" type="button" disabled><span className="hotkey-icon" aria-hidden="true">ESC</span> CLEAR</button><button id="submit" className="action-button" type="button" disabled><span className="hotkey-icon" aria-hidden="true">↵</span> LOCK IN WORD</button></div>
@@ -112,7 +112,7 @@ export default function Game({ authConfigured }) {
             </section>
           </aside>
         </div>
-        <footer><div className="footer-actions"><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="reseed" className="text-link dev-link" type="button">DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button">DEV / SKIP TO END ↠</button></div><span className="footer-credit">a <a href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev</a> creation</span></footer>
+        <footer><div className="footer-actions"><span className="footer-credit">a <a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev</a> creation</span><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="reseed" className="text-link dev-link" type="button">DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button">DEV / SKIP TO END ↠</button></div></footer>
       </main>
 
       <dialog id="menu-dialog" className="menu-dialog" aria-label="Scramb menu">
@@ -134,7 +134,7 @@ export default function Game({ authConfigured }) {
             </nav>
             <p id="account-status" className="menu-account-error" role="alert" hidden />
             <p id="sync-status" className="menu-account-error" role="alert" hidden />
-            <p id="menu-footnote" className="menu-footnote">GOOD LUCK OUT THERE</p>
+            <p id="menu-footnote" className="menu-footnote" hidden>THE CLOCK KEEPS TICKING WHILE YOU BROWSE</p>
           </div>
           <section id="menu-page" className="menu-screen menu-page" aria-labelledby="menu-page-title" hidden>
             <button id="menu-back" className="menu-back" type="button">← BACK TO MENU</button>

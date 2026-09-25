@@ -1069,9 +1069,7 @@ export function mountGame(authConfigured) {
   }
   profileSignOutButton.addEventListener("click", signOutAccount);
   $("menu-toggle").addEventListener("click", () => {
-    $("menu-footnote").textContent = state.startedAt && !state.finished
-      ? "THE CLOCK KEEPS TICKING WHILE YOU BROWSE"
-      : "GOOD LUCK OUT THERE";
+    $("menu-footnote").hidden = !state.startedAt || state.finished;
     menuContent.scrollTop = 0;
     menuDialog.showModal();
   });

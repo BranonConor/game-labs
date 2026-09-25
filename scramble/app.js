@@ -4,7 +4,7 @@ import { DURATION_MS, FULL_BOARD_BONUS, generateBoard, SIZE, VALUES } from "./ra
 import { validRunState } from "./run-state.js";
 import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
 import { formatShareResult } from "./share-result.js";
-import { tutorialExample } from "./tutorial-example.js";
+import { tutorialExamples } from "./tutorial-example.js";
 
 export function mountGame(authConfigured) {
   "use strict";
@@ -53,7 +53,8 @@ export function mountGame(authConfigured) {
     return rowDistance + colDistance === 1;
   }
   const { fixed, initialFilled, effectTiles } = generateBoard(boardId);
-  const example = tutorialExample(fixed, effectTiles);
+  const examples = tutorialExamples(fixed, effectTiles);
+  const example = examples[0];
   const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], spentEffects: [], score: 0, fullBoardBonusAwarded: false });
   let state = freshState();
   let activeUserId = null;
@@ -1019,13 +1020,38 @@ export function mountGame(authConfigured) {
     ["PICK A PATH", "Start with a letter already on the grid. Drag or tap through neighboring tiles—no diagonals."],
     ["FILL THE GAPS", `${example.word[0]} is already on the board. Type only the missing letters: ${[...example.letters].join(", ")}.`],
     ["SUBMIT WORD", `Submit ${example.word} to claim those tiles. The new letters earn ${example.points} points${example.path.some((tile) => effectTiles.has(tile)) ? ", including the bonus tile" : ""}.`],
-    ["KEEP GOING", "Claimed tiles can't be reused. Keep making words until time runs out, the board fills, or no moves remain. A full board earns 50 bonus points."],
+    ["KEEP GOING", "Find more words on unused tiles. Keep going until time runs out, the board fills, or no moves remain. Fill the board for 50 bonus points."],
   ];
   let tutorialStep = 0;
   let tutorialTimer = null;
+  let tutorialMoveTimers = [];
+  function clearTutorialMoveTimers() {
+    tutorialMoveTimers.forEach((timer) => window.clearTimeout(timer));
+    tutorialMoveTimers = [];
+  }
+  function showTutorialMove(move) {
+    move.path.forEach((tileIndex, position) => {
+      const tile = demoBoard.children[tileIndex];
+      tile.classList.add("demo-route", "demo-added");
+      tile.style.setProperty("--trace-delay", `${position * .18}s`);
+      if (position) {
+        tile.classList.add("demo-fill", "played");
+        tile.style.setProperty("--letter-delay", `${position * .18}s`);
+        tile.firstElementChild.textContent = move.word[position];
+      }
+    });
+    const showPoints = () => {
+      if (!tutorialDialog.open || tutorialStep !== tutorialSteps.length - 1) return;
+      $("tutorial-demo-word").textContent = move.word;
+      $("tutorial-demo-points").textContent = `+${move.points} PTS`;
+    };
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) showPoints();
+    else tutorialMoveTimers.push(window.setTimeout(showPoints, 750));
+  }
   function showTutorialStep(index, autoplay = false) {
     window.clearTimeout(tutorialTimer);
     tutorialTimer = null;
+    clearTutorialMoveTimers();
     tutorialStep = index;
     tutorialDialog.dataset.step = String(index + 1);
     $("tutorial-progress").textContent = `STEP ${index + 1} / ${tutorialSteps.length}`;
@@ -1034,12 +1060,30 @@ export function mountGame(authConfigured) {
     $("tutorial-prev").disabled = index === 0;
     $("tutorial-next").firstChild.textContent = index === tutorialSteps.length - 1 ? "GOT IT " : "NEXT STEP ";
     $("tutorial-next").lastElementChild.textContent = index === tutorialSteps.length - 1 ? "✓" : "↗";
+    for (const move of examples.slice(1)) {
+      for (const tileIndex of move.path) {
+        const tile = demoBoard.children[tileIndex];
+        tile.classList.remove("demo-route", "demo-added", "demo-fill", "played");
+        tile.firstElementChild.textContent = fixed[tileIndex] || "";
+      }
+    }
+    $("tutorial-demo-word").textContent = example.word;
+    $("tutorial-demo-points").textContent = `+${example.points} PTS`;
     example.path.forEach((tileIndex, position) => {
       const tile = demoBoard.children[tileIndex];
       tile.firstElementChild.textContent = position && index > 0 ? example.word[position] : fixed[tileIndex] || "";
       tile.classList.toggle("draft", position > 0 && index === 1);
       tile.classList.toggle("played", position > 0 && index >= 2);
     });
+    if (index === tutorialSteps.length - 1) {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        examples.slice(1).forEach(showTutorialMove);
+      } else {
+        examples.slice(1).forEach((move, moveIndex) => {
+          tutorialMoveTimers.push(window.setTimeout(() => showTutorialMove(move), 850 + moveIndex * 2200));
+        });
+      }
+    }
     if (autoplay && index < tutorialSteps.length - 1) {
       tutorialTimer = window.setTimeout(() => {
         if (tutorialDialog.open) showTutorialStep(index + 1, true);
@@ -1072,6 +1116,7 @@ export function mountGame(authConfigured) {
   tutorialDialog.addEventListener("close", () => {
     window.clearTimeout(tutorialTimer);
     tutorialTimer = null;
+    clearTutorialMoveTimers();
   });
   window.addEventListener("resize", () => {
     if (rulesDialog.open) alignRulesContent();

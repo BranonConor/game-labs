@@ -7,7 +7,7 @@ fetch a package, use `npm ci --registry=https://registry.npmjs.org/`.
 The page markup lives in `app/game.jsx`; the existing game
 controller is initialized on the client from `app.js`. Images and the word list
 are served from `public/`.
-The start screen offers an animated tutorial demonstrating a legal word on the
+The start screen offers an animated tutorial demonstrating three legal words on the
 current grid without starting the clock; the
 header help button reopens it during play. Reduced-motion users can step
 through it manually. The last step closes with Got It; the tutorial also

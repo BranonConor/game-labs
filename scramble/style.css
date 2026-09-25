@@ -286,8 +286,10 @@ footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 12px 0 23px; 
 .tutorial-dialog:not([data-step="1"]) .demo-route { outline: 2px solid #ffcf83; outline-offset: -2px; }
 .tutorial-dialog[data-step="2"] .demo-fill .demo-letter { animation: tutorial-letter .5s var(--letter-delay) both; }
 .tutorial-dialog[data-step="4"] .demo-route { outline-color: #a9dbc4; }
-.tutorial-stamp { position: absolute; right: 5px; bottom: -13px; padding: 6px 8px; border: 1px solid #ffcf83; background: #293247; color: #ffe2aa; opacity: 0; font: 11px "Silkscreen", monospace; box-shadow: 3px 3px #101626; }
-.tutorial-stamp span { color: #a9dbc4; }
+.tutorial-dialog[data-step="4"] .demo-added { animation: tutorial-trace .45s var(--trace-delay) both; }
+.tutorial-dialog[data-step="4"] .demo-added.demo-fill .demo-letter { animation: tutorial-letter .45s var(--letter-delay) both; }
+.tutorial-stamp { position: absolute; z-index: 6; right: 5px; bottom: -13px; padding: 6px 8px; border: 1px solid #ffcf83; background: #293247; color: #ffe2aa; opacity: 0; font: 11px "Silkscreen", monospace; box-shadow: 3px 3px #101626; pointer-events: none; }
+.tutorial-stamp #tutorial-demo-points { color: #a9dbc4; }
 .tutorial-dialog[data-step="3"] .tutorial-stamp, .tutorial-dialog[data-step="4"] .tutorial-stamp { opacity: 1; animation: tutorial-letter .35s both; }
 .tutorial-tooltip { align-self: center; }
 .tutorial-tooltip h3 { margin: 12px 0; color: #ffe2aa; font: 18px/1.3 "Silkscreen", monospace; }

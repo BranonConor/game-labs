@@ -51,7 +51,7 @@ export default function Game({ authConfigured }) {
                 <img className="overlay-egg" src="/egg.svg" alt="" />
                 <h2>READY TO<br /><span>SCRAMB?</span></h2>
                 <button id="start-button" className="action-button" type="button" disabled>LOADING WORDS... <span aria-hidden="true">↗</span></button>
-                <button id="tutorial-start" className="text-link tutorial-start" type="button" aria-haspopup="dialog" aria-controls="tutorial-dialog">WATCH HOW TO PLAY ↗</button>
+                <button id="tutorial-start" className="text-link dev-link tutorial-start" type="button" aria-haspopup="dialog" aria-controls="tutorial-dialog">WATCH HOW TO PLAY ▶</button>
               </div>
               <div id="finale" className="board-finale" role="status" hidden>
                 <div className="finale-card">
@@ -103,7 +103,6 @@ export default function Game({ authConfigured }) {
                 <p id="final-summary" />
                 <button id="share" className="action-button" type="button">COPY RESULT <img className="copy-icon" src="/copy.svg" alt="" /></button>
                 <p id="share-status" role="status" />
-                <button id="restart" className="text-link" type="button">Restart today's prototype board</button>
               </div>
             </section>
 
@@ -120,7 +119,7 @@ export default function Game({ authConfigured }) {
         <div className="menu-top"><span>SCRAMB / MENU</span><button id="menu-close" className="menu-close" type="button" aria-label="Close menu">×</button></div>
         <div id="menu-content" className="menu-content">
           <div id="menu-home" className="menu-screen">
-            <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p><a href="https://branon.dev" target="_blank" rel="noopener noreferrer">Loving the game? Come tell me about it! <span>branon.dev</span></a></p></div>
+            <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p>Loving the game? Come tell me about it! <a href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev ↗</a></p></div>
             <nav className="menu-items" aria-label="Menu pages">
               <button id="account-nav" className="menu-item menu-account-item" type="button" data-menu-page="profile" disabled>
                 <span className="menu-account-copy"><span id="account-nav-title">CHECKING ACCOUNT...</span><small id="account-nav-detail">ONE MOMENT</small></span>
@@ -203,13 +202,8 @@ export default function Game({ authConfigured }) {
           <h2 id="tutorial-title">HOW TO SCRAMB</h2>
         </div>
         <div className="tutorial-content">
-          <div className="tutorial-demo" aria-hidden="true">
-            {Array.from({ length: 16 }, (_, index) => (
-              <span key={index} className={`${index === 5 ? "demo-fixed demo-route" : [6, 7, 11].includes(index) ? "demo-route demo-fill" : ""}`}>
-                {[5, 6, 7, 11].includes(index) ? ({ 5: "C", 6: "A", 7: "T", 11: "S" })[index] : ""}
-              </span>
-            ))}
-            <div className="tutorial-stamp">CATS <span>+9 PTS</span></div>
+          <div className="tutorial-demo board" aria-hidden="true">
+            <div className="tutorial-stamp"><span id="tutorial-demo-word" /> <span id="tutorial-demo-points" /></div>
           </div>
           <div className="tutorial-tooltip" aria-live="polite">
             <span id="tutorial-progress" className="overline">STEP 1 / 4</span>

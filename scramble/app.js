@@ -3,6 +3,8 @@ import { createGoogleAuth, googleAuthError } from "./auth.js";
 import { DURATION_MS, FULL_BOARD_BONUS, generateBoard, SIZE, VALUES } from "./ranked-board.js";
 import { validRunState } from "./run-state.js";
 import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
+import { formatShareResult } from "./share-result.js";
+import { tutorialExample } from "./tutorial-example.js";
 
 export function mountGame(authConfigured) {
   "use strict";
@@ -51,6 +53,7 @@ export function mountGame(authConfigured) {
     return rowDistance + colDistance === 1;
   }
   const { fixed, initialFilled, effectTiles } = generateBoard(boardId);
+  const example = tutorialExample(fixed, effectTiles);
   const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], spentEffects: [], score: 0, fullBoardBonusAwarded: false });
   let state = freshState();
   let activeUserId = null;
@@ -578,9 +581,6 @@ export function mountGame(authConfigured) {
     $("board-kind").textContent = practiceSeed ? "DEV PRACTICE"
       : rankedMode === "replay" ? "UNRANKED PRACTICE"
         : activeUserId && rankedMode === "unranked" && !rankedAttemptExists ? "UNRANKED GRID" : "DAILY GRID";
-    $("restart").textContent = practiceSeed || rankedMode === "replay"
-      ? "Restart this practice board" : rankedAttemptExists
-        ? "Practice this board (unranked)" : "Restart today's prototype board";
     boardElement.classList.remove("inspecting");
     const filled = initialFilled + Object.keys(state.played).length;
     $("score").textContent = String(state.score).padStart(4, "0");
@@ -982,10 +982,43 @@ export function mountGame(authConfigured) {
     const content = rulesDialog.querySelector(".modal-content");
     content.style.setProperty("--scrollbar-width", `${content.offsetWidth - content.clientWidth}px`);
   }
+  const demoBoard = $("tutorial-demo");
+  const stamp = demoBoard.querySelector(".tutorial-stamp");
+  for (let index = 0; index < SIZE * SIZE; index++) {
+    const tile = document.createElement("span");
+    const effect = effectTiles.get(index);
+    tile.className = `tile${fixed[index] ? " fixed" : ""}${effect ? ` effect-${effect}` : ""}`;
+    const letter = document.createElement("span");
+    letter.className = "demo-letter";
+    letter.textContent = fixed[index] || "";
+    tile.append(letter);
+    if (fixed[index]) {
+      const value = document.createElement("span");
+      value.className = "value";
+      value.textContent = VALUES[fixed[index]];
+      tile.append(value);
+    }
+    const position = example.path.indexOf(index);
+    if (position !== -1) {
+      tile.classList.add("demo-route");
+      if (position) {
+        tile.classList.add("demo-fill");
+        tile.style.setProperty("--letter-delay", `${(position - 1) * .26}s`);
+      }
+      tile.style.setProperty("--trace-delay", `${position * .27}s`);
+      const order = document.createElement("span");
+      order.className = "path-order";
+      order.textContent = position + 1;
+      tile.append(order);
+    }
+    demoBoard.insertBefore(tile, stamp);
+  }
+  $("tutorial-demo-word").textContent = example.word;
+  $("tutorial-demo-points").textContent = `+${example.points} PTS`;
   const tutorialSteps = [
     ["PICK A PATH", "Start with a letter already on the grid. Drag or tap through neighboring tiles—no diagonals."],
-    ["FILL THE GAPS", "C is already on the board. Type only the missing letters: A, T, then S."],
-    ["SUBMIT WORD", "Submit CATS to claim those tiles. The three new letters earn 9 points here."],
+    ["FILL THE GAPS", `${example.word[0]} is already on the board. Type only the missing letters: ${[...example.letters].join(", ")}.`],
+    ["SUBMIT WORD", `Submit ${example.word} to claim those tiles. The new letters earn ${example.points} points${example.path.some((tile) => effectTiles.has(tile)) ? ", including the bonus tile" : ""}.`],
     ["KEEP GOING", "Claimed tiles can't be reused. Keep making words until time runs out, the board fills, or no moves remain. A full board earns 50 bonus points."],
   ];
   let tutorialStep = 0;
@@ -999,7 +1032,14 @@ export function mountGame(authConfigured) {
     $("tutorial-step-title").textContent = tutorialSteps[index][0];
     $("tutorial-step-copy").textContent = tutorialSteps[index][1];
     $("tutorial-prev").disabled = index === 0;
-    $("tutorial-next").firstChild.textContent = index === tutorialSteps.length - 1 ? "REPLAY DEMO " : "NEXT STEP ";
+    $("tutorial-next").firstChild.textContent = index === tutorialSteps.length - 1 ? "GOT IT " : "NEXT STEP ";
+    $("tutorial-next").lastElementChild.textContent = index === tutorialSteps.length - 1 ? "✓" : "↗";
+    example.path.forEach((tileIndex, position) => {
+      const tile = demoBoard.children[tileIndex];
+      tile.firstElementChild.textContent = position && index > 0 ? example.word[position] : fixed[tileIndex] || "";
+      tile.classList.toggle("draft", position > 0 && index === 1);
+      tile.classList.toggle("played", position > 0 && index >= 2);
+    });
     if (autoplay && index < tutorialSteps.length - 1) {
       tutorialTimer = window.setTimeout(() => {
         if (tutorialDialog.open) showTutorialStep(index + 1, true);
@@ -1016,8 +1056,8 @@ export function mountGame(authConfigured) {
   $("tutorial-close").addEventListener("click", () => tutorialDialog.close());
   $("tutorial-prev").addEventListener("click", () => showTutorialStep(tutorialStep - 1));
   $("tutorial-next").addEventListener("click", () => {
-    showTutorialStep((tutorialStep + 1) % tutorialSteps.length, tutorialStep === tutorialSteps.length - 1
-      && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (tutorialStep === tutorialSteps.length - 1) tutorialDialog.close();
+    else showTutorialStep(tutorialStep + 1);
   });
   $("tutorial-rules").addEventListener("click", () => {
     tutorialDialog.close();
@@ -1398,30 +1438,6 @@ export function mountGame(authConfigured) {
     finish("time");
   });
   rulesDialog.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", closeRules));
-  $("restart").addEventListener("click", () => {
-    if (!syncReady) return;
-    if (!confirm(rankedAttemptExists && !practiceSeed
-      ? "Restart this board as unranked practice? Your first ranked attempt will still count."
-      : "Restart today's prototype board and erase this run?")) return;
-    if (rankedAttemptExists && activeUserId && !practiceSeed) {
-      rankedMode = "replay";
-      storageKey = `${guestStorageKey}:replay:user:${activeUserId}`;
-    }
-    window.clearTimeout(shareStatusTimer);
-    window.clearTimeout(shareExitTimer);
-    state = freshState();
-    path = [];
-    draft = [];
-    save();
-    $("results-content").hidden = true;
-    $("compose-content").hidden = false;
-    $("draft-heading").textContent = "CURRENT WORD";
-    $("share-status").textContent = "";
-    $("share-status").className = "";
-    renderProgress();
-    tick();
-    if (lexiconText && !moveWorker) startMoveWorker(lexiconText);
-  });
   function showShareStatus(text, error = false) {
     window.clearTimeout(shareStatusTimer);
     window.clearTimeout(shareExitTimer);
@@ -1439,7 +1455,13 @@ export function mountGame(authConfigured) {
     }, 3000);
   }
   $("share").addEventListener("click", async () => {
-    const text = `SCRAMB · ${day}${practiceSeed || rankedMode === "replay" ? " · practice board" : ""}\n${state.score} points · ${tierForScore(state.score).name} egg · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}`;
+    const text = formatShareResult({
+      day,
+      practice: Boolean(practiceSeed) || rankedMode === "replay",
+      score: state.score,
+      words: state.words,
+      tilesFilled: initialFilled + Object.keys(state.played).length,
+    });
     try {
       await navigator.clipboard.writeText(text);
       showShareStatus("Result copied!");

@@ -4,13 +4,15 @@ This is a Next.js App Router application. From this directory, run `npm ci` and
 `npm run dev`, then open `http://127.0.0.1:3000`. If a registry proxy cannot
 fetch a package, use `npm ci --registry=https://registry.npmjs.org/`.
 
-The board, keyboard/touch controls, dialogs, and animations retain their
-original behavior. The page markup lives in `app/game.jsx`; the existing game
+The page markup lives in `app/game.jsx`; the existing game
 controller is initialized on the client from `app.js`. Images and the word list
 are served from `public/`.
-The start screen offers an animated tutorial without starting the clock; the
+The start screen offers an animated tutorial demonstrating a legal word on the
+current grid without starting the clock; the
 header help button reopens it during play. Reduced-motion users can step
-through it manually. The tutorial links to the full written recipe.
+through it manually. The last step closes with Got It; the tutorial also
+links to the full written recipe. Copy Result shares the score, run stats, and
+up to three highest-scoring words without including a tile diagram.
 
 ## Google sign-in
 

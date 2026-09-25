@@ -118,7 +118,7 @@ export default function Game({ authConfigured, adminTools }) {
             </section>
           </aside>
         </div>
-        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a>{adminTools && <><button id="reseed" className="text-link dev-link" type="button" hidden>DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button" hidden>DEV / SKIP TO END ↠</button></>}</div></footer>
+        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="terms-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="terms-dialog">TERMS ↗</button><button id="privacy-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="privacy-dialog">PRIVACY ↗</button>{adminTools && <><button id="reseed" className="text-link dev-link" type="button" hidden>DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button" hidden>DEV / SKIP TO END ↠</button></>}</div></footer>
       </main>
 
       <dialog id="menu-dialog" className="menu-dialog" aria-label="Scramb menu">
@@ -255,6 +255,46 @@ export default function Game({ authConfigured, adminTools }) {
         <div className="modal-footer">
           <button className="action-button" type="button" data-close="">GOT IT <span aria-hidden="true">↗</span></button>
         </div>
+      </dialog>
+      <dialog id="terms-dialog" className="modal policy-dialog" aria-labelledby="terms-title">
+        <div className="modal-header">
+          <button className="modal-close" type="button" data-close="" aria-label="Close terms">×</button>
+          <p className="overline">LAST UPDATED SEPTEMBER 24, 2026</p>
+          <h2 id="terms-title">TERMS OF USE</h2>
+        </div>
+        <div className="modal-content policy-content">
+          <p>Scramb is a free daily word game by the creator of <a href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev ↗</a>. By using the game, you agree to these terms. If you do not agree, please do not use it.</p>
+          <h3>PLAY &amp; FAIRNESS</h3>
+          <p>Signed-in players may make one ranked attempt per UTC day. Guest and practice games are not ranked. Rankings may change while a day's results are live and are for fun, not prizes. Please do not use bots, exploits, or another person's account to manipulate results. We may remove fraudulent results or restrict access to protect the game.</p>
+          <h3>AVAILABILITY &amp; CONTENT</h3>
+          <p>Scramb may change, pause, or end without notice. The game, artwork, and interface are provided for personal, noncommercial use; third-party content remains subject to its own licenses. You may share your own results using the in-game sharing tool.</p>
+          <h3>DISCLAIMERS</h3>
+          <p>The game is provided "as is" without a guarantee that it will always be available, error-free, or preserve every result. To the extent permitted by law, the creator is not liable for losses arising from its use. Nothing here limits rights that cannot legally be limited.</p>
+          <h3>CHANGES &amp; CONTACT</h3>
+          <p>We may update these terms as the game evolves; the date above will change when we do. Continued use after an update means you accept the revised terms. For questions, reach us through <a href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev ↗</a>.</p>
+        </div>
+        <div className="modal-footer"><button className="action-button" type="button" data-close="">GOT IT <span aria-hidden="true">↗</span></button></div>
+      </dialog>
+      <dialog id="privacy-dialog" className="modal policy-dialog" aria-labelledby="privacy-title">
+        <div className="modal-header">
+          <button className="modal-close" type="button" data-close="" aria-label="Close privacy policy">×</button>
+          <p className="overline">LAST UPDATED SEPTEMBER 24, 2026</p>
+          <h2 id="privacy-title">PRIVACY POLICY</h2>
+        </div>
+        <div className="modal-content policy-content">
+          <p>Scramb is a game by the creator of <a href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev ↗</a>. This policy explains the data used to run the game.</p>
+          <h3>WHAT WE COLLECT</h3>
+          <p>If you sign in with Google, we receive your Google account ID, name, email address, and profile image. We store your saved game progress, submitted words, scores, and daily attempts with your account ID. Guest progress stays in your browser's local storage; signed-in progress may also be cached there.</p>
+          <h3>HOW WE USE IT</h3>
+          <p>We use this data to sign you in, sync your runs across devices, verify ranked scores, and show your own history and aggregate daily comparisons. Other players do not receive your account identity or individual word history through the Scores page.</p>
+          <h3>COOKIES &amp; SERVICE PROVIDERS</h3>
+          <p>Sign-in uses session cookies. The production site also uses Google Analytics, which may use cookies or similar technologies to measure visits and usage. Google provides sign-in and analytics, Vercel hosts the site, and Neon stores signed-in runs. Those services may process technical data under their own privacy terms.</p>
+          <h3>RETENTION &amp; YOUR CHOICES</h3>
+          <p>We keep account-linked runs and rankings to provide your history and daily comparisons; there is no automatic deletion schedule. You can clear guest data in your browser settings and sign out at any time. To ask about access to or deletion of account-linked data, reach us through <a href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev ↗</a>. Removing a score may change historical comparisons.</p>
+          <h3>SECURITY &amp; CHANGES</h3>
+          <p>We use the safeguards provided by our hosting and sign-in services, but no online service is completely secure. Scramb is not directed to children under 13. We may update this policy as the game changes and will revise the date above.</p>
+        </div>
+        <div className="modal-footer"><button className="action-button" type="button" data-close="">GOT IT <span aria-hidden="true">↗</span></button></div>
       </dialog>
     </>
   );

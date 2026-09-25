@@ -39,6 +39,9 @@ export function mountGame(authConfigured) {
   const boardWrap = boardElement.parentElement;
   const menuDialog = $("menu-dialog");
   const rulesDialog = $("rules-dialog");
+  const termsDialog = $("terms-dialog");
+  const privacyDialog = $("privacy-dialog");
+  const textDialogs = [rulesDialog, termsDialog, privacyDialog];
   const tutorialDialog = $("tutorial-dialog");
   const feedback = $("feedback");
   const wordEntry = $("word-entry");
@@ -807,6 +810,8 @@ export function mountGame(authConfigured) {
     if (!syncReady || state.finished) return;
     if (menuDialog.open) menuDialog.close();
     if (rulesDialog.open) rulesDialog.close();
+    if (termsDialog.open) termsDialog.close();
+    if (privacyDialog.open) privacyDialog.close();
     if (tutorialDialog.open) tutorialDialog.close();
     state.endedAt = Date.now();
     state.endedReason = reason;
@@ -968,21 +973,43 @@ export function mountGame(authConfigured) {
     tick();
     checkRemainingMoves();
   });
-  let rulesCloseTimer = null;
-  function closeRules() {
-    if (!rulesDialog.open || rulesDialog.classList.contains("closing")) return;
+  const textDialogTimers = new WeakMap();
+  function closeTextDialog(dialog) {
+    if (!dialog.open || dialog.classList.contains("closing")) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      rulesDialog.close();
+      dialog.close();
       return;
     }
-    rulesDialog.classList.add("closing");
-    rulesCloseTimer = window.setTimeout(() => {
-      if (rulesDialog.open) rulesDialog.close();
-    }, 220);
+    dialog.classList.add("closing");
+    textDialogTimers.set(dialog, window.setTimeout(() => {
+      if (dialog.open) dialog.close();
+    }, 220));
   }
-  function alignRulesContent() {
-    const content = rulesDialog.querySelector(".modal-content");
+  function alignTextDialogContent(dialog) {
+    const content = dialog.querySelector(".modal-content");
     content.style.setProperty("--scrollbar-width", `${content.offsetWidth - content.clientWidth}px`);
+  }
+  function openTextDialog(dialog) {
+    dialog.showModal();
+    alignTextDialogContent(dialog);
+  }
+  function setupTextDialog(dialog) {
+    dialog.querySelectorAll("[data-close]").forEach((button) =>
+      button.addEventListener("click", () => closeTextDialog(dialog)));
+    dialog.addEventListener("click", (event) => {
+      const bounds = dialog.getBoundingClientRect();
+      if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right
+        || event.clientY < bounds.top || event.clientY > bounds.bottom)) closeTextDialog(dialog);
+    });
+    dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      closeTextDialog(dialog);
+    });
+    dialog.addEventListener("close", () => {
+      window.clearTimeout(textDialogTimers.get(dialog));
+      textDialogTimers.delete(dialog);
+      dialog.classList.remove("closing");
+    });
   }
   const demoBoard = $("tutorial-demo");
   const stamp = demoBoard.querySelector(".tutorial-stamp");
@@ -1106,8 +1133,7 @@ export function mountGame(authConfigured) {
   });
   $("tutorial-rules").addEventListener("click", () => {
     tutorialDialog.close();
-    rulesDialog.showModal();
-    alignRulesContent();
+    openTextDialog(rulesDialog);
   });
   tutorialDialog.addEventListener("click", (event) => {
     const bounds = tutorialDialog.getBoundingClientRect();
@@ -1120,22 +1146,11 @@ export function mountGame(authConfigured) {
     clearTutorialMoveTimers();
   });
   window.addEventListener("resize", () => {
-    if (rulesDialog.open) alignRulesContent();
+    for (const dialog of textDialogs) if (dialog.open) alignTextDialogContent(dialog);
   });
-  rulesDialog.addEventListener("click", (event) => {
-    const bounds = rulesDialog.getBoundingClientRect();
-    if (event.target === rulesDialog && (event.clientX < bounds.left || event.clientX > bounds.right
-      || event.clientY < bounds.top || event.clientY > bounds.bottom)) closeRules();
-  });
-  rulesDialog.addEventListener("cancel", (event) => {
-    event.preventDefault();
-    closeRules();
-  });
-  rulesDialog.addEventListener("close", () => {
-    window.clearTimeout(rulesCloseTimer);
-    rulesCloseTimer = null;
-    rulesDialog.classList.remove("closing");
-  });
+  for (const dialog of textDialogs) setupTextDialog(dialog);
+  $("terms-link").addEventListener("click", () => openTextDialog(termsDialog));
+  $("privacy-link").addEventListener("click", () => openTextDialog(privacyDialog));
   function closeMenu() {
     if (!menuDialog.open || menuDialog.classList.contains("closing")) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -1538,7 +1553,6 @@ export function mountGame(authConfigured) {
     state.startedAt = Date.now() - DURATION;
     finish("time");
   });
-  rulesDialog.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", closeRules));
   function showShareStatus(text, error = false) {
     window.clearTimeout(shareStatusTimer);
     window.clearTimeout(shareExitTimer);

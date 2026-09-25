@@ -13,6 +13,8 @@ header help button reopens it during play. Reduced-motion users can step
 through it manually. The last step closes with Got It; the tutorial also
 links to the full written recipe. Copy Result shares the score, run stats, and
 up to three highest-scoring words without including a tile diagram.
+The footer includes Terms of Use and Privacy Policy links that open
+scrollable dialogs alongside the existing game rules dialog.
 
 ## Google sign-in
 

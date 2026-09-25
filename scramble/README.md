@@ -8,6 +8,9 @@ The board, keyboard/touch controls, dialogs, and animations retain their
 original behavior. The page markup lives in `app/game.jsx`; the existing game
 controller is initialized on the client from `app.js`. Images and the word list
 are served from `public/`.
+The start screen offers an animated tutorial without starting the clock; the
+header help button reopens it during play. Reduced-motion users can step
+through it manually. The tutorial links to the full written recipe.
 
 ## Google sign-in
 
@@ -57,6 +60,74 @@ server write wins if two devices edit the same board. Failed saves remain
 cached locally and are retried on the next save or sign-in. Saved snapshots
 are user-provided and **not validated as authoritative scores**; do not use
 them for public leaderboards without server-side move and scoring validation.
+
+## Isolated ranked runs
+
+Ranked play is a separate, server-authoritative API, independent of untrusted
+saved snapshots. Guests and practice/seed boards cannot enter ranked results. A signed-in
+account gets exactly one attempt per UTC date, including attempts abandoned
+without pressing Finish. `ranked_runs` stores the first server start timestamp,
+server-verified moves and score, and one row per account and daily board. The
+four-minute clock starts on the server; only words arriving before its deadline
+can score. Results for a UTC board freeze four minutes after that day ends.
+
+`POST /api/ranked` accepts JSON:
+
+- `{ "action": "start", "boardId": "YYYY-MM-DD" }` starts today's UTC board
+  or returns the existing attempt. Response includes top-level `boardId`,
+  `startedAt`, `deadline`, `endedAt`, `score`, `sequence`, `moves`, `played`,
+  and `finished` for recovery on another device. Each move includes `path`,
+  `letters` (newly typed letters), `word`, `points`, and a deterministic
+  cosmetic `color`.
+- `{ "action": "word", "boardId": "YYYY-MM-DD", "sequence": 0,
+  "path": [0, 1, 2, 3], "letters": "ABC" }` submits the uppercase letters for
+  *only the empty tiles* in path order. `sequence` is the current run's
+  sequence, not the next value. Response includes `score`, `sequence`,
+  `finished`, `endedAt`, and the verified `move`.
+- `{ "action": "finish", "boardId": "YYYY-MM-DD" }`
+  ends the attempt early (or returns the already-completed score).
+  Response includes `score`, `finished: true`, `sequence`, and `endedAt`.
+
+The start response and GET `run` also include `completed` and `endedReason`.
+Each successful word increments `sequence`; retrying a stale word gets HTTP
+409 rather than scoring twice. Finish is atomic and idempotent without a
+sequence. Invalid words return 422; words after timeout return 410. All
+other failures have non-2xx status and an `error`, never a success-shaped
+fallback. The server independently regenerates the daily board, validates
+adjacent unclaimed tiles and dictionary membership against
+`public/lexicon.txt`, then computes tile values, effects, bonuses, and a
+full-board award. Client-supplied scores, timers, and snapshots are ignored.
+
+`GET /api/ranked?boardId=YYYY-MM-DD&cursor=YYYY-MM-DD` returns
+`{ "today": ..., "attempt": ..., "run": ..., "history": [...], "nextCursor": ... }`.
+Both query parameters are optional: `boardId` defaults to today's UTC board;
+history contains only completed results strictly before `boardId` (past grids).
+`cursor` is an additional exclusive date for paging, newest first, 20
+per page. `today` has `score` (null without an attempt), `rank` (null until
+completed), `tied`, `total`, `percentile`, `final` (the comparison is frozen),
+`eligible`, and `distribution`; `attempt` has the authoritative `boardId`,
+`startedAt`, `deadline`, `score`, `sequence`, `moves`, `played`, `spentEffects`,
+`fullBoardBonusAwarded`, `endedAt`, `finished`, and `endedReason`, or is null
+if no ranked attempt exists. `run` is an alias of `attempt` for clients using
+the initial API. Signed-in ranked clients must hydrate from `attempt`, never
+overwrite it with a `game_runs` client snapshot. Timestamps are ISO strings.
+`distribution` always contains ten `{score, count}` buckets for completed
+attempts: score boundaries 0, 50, …, 400 represent 50-point ranges, and
+450 represents all scores of 450 or higher. History entries have `boardId`,
+`score`, `rank`, `tied`, `total`, `percentile`, and `final`. Rank is
+competition-style (ties share a rank); percentile is the empirical midpoint
+of tied scores (percentage of lower scores plus half of tied scores).
+Percentile is null until at least 30 completed/expired attempts exist for the
+board. Before freeze, comparison values may change as more attempts complete;
+the verified raw score does not. Responses never contain other players' IDs.
+These checks validate game rules, not the human origin of requests; deployment
+should also apply abuse/rate limits appropriate to its traffic.
+The Scores menu widens on that page and shows a live daily comparison and
+paginated past results. One ranked row per signed-in player and UTC board is
+kept rather than a new row for every score update. Saved results from before
+ranked verification began are not retrospectively ranked. If move histories
+eventually outgrow the database budget, an archival policy can remove old move
+details after a review window while retaining dates and final scores.
 
 ## Analytics
 

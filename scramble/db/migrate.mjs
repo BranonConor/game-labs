@@ -15,7 +15,9 @@ if (!process.env.DATABASE_URL) {
 } else {
   try {
     const sql = neon(process.env.DATABASE_URL);
-    await sql.query(readFileSync(new URL("./schema.sql", import.meta.url), "utf8"));
+    const statements = readFileSync(new URL("./schema.sql", import.meta.url), "utf8")
+      .split(/;\s*(?:\r?\n|$)/).map((statement) => statement.trim()).filter(Boolean);
+    for (const statement of statements) await sql.query(statement);
     console.log("Scramb run storage schema is ready.");
   } catch (error) {
     console.error("Could not prepare Scramb run storage:", error.message.replace(/postgres(?:ql)?:\/\/\S+/g, "[redacted connection URL]"));

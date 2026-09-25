@@ -32,6 +32,7 @@ test("accepts fresh, in-progress, and finished run snapshots", () => {
   };
   assert.equal(validRunState(inProgress), true);
   assert.equal(validRunState({ ...inProgress, finished: true, endedAt: Date.now(), endedReason: "time" }), true);
+  assert.equal(validRunState({ ...inProgress, finished: true, endedAt: Date.now(), endedReason: "finish" }), true);
 });
 
 test("rejects malformed states and out-of-range values", () => {

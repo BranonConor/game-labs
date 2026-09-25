@@ -15,7 +15,7 @@ export function validRunState(state) {
   if (typeof state.finished !== "boolean" || typeof state.fullBoardBonusAwarded !== "boolean") return false;
   if (!Number.isSafeInteger(state.score) || state.score < 0 || state.score > 100000) return false;
   if (state.finished !== Boolean(state.endedAt)) return false;
-  if (state.endedReason != null && !["time", "stuck", "full"].includes(state.endedReason)) return false;
+  if (state.endedReason != null && !["time", "stuck", "full", "finish"].includes(state.endedReason)) return false;
   if (!state.played || typeof state.played !== "object" || Array.isArray(state.played)) return false;
   if (Object.entries(state.played).some(([tile, letter]) => !validTile(Number(tile)) || !validLetter(letter))) return false;
   if (!Array.isArray(state.spentEffects) || state.spentEffects.length > 64 || state.spentEffects.some((tile) => !validTile(tile))) return false;

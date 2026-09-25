@@ -1,16 +1,14 @@
 import { startAtmosphere } from "./atmosphere.js";
 import { createGoogleAuth, googleAuthError } from "./auth.js";
+import { DURATION_MS, FULL_BOARD_BONUS, generateBoard, SIZE, VALUES } from "./ranked-board.js";
 import { validRunState } from "./run-state.js";
 import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
 
 export function mountGame(authConfigured) {
   "use strict";
 
-  const SIZE = 8;
-  const DURATION = 4 * 60 * 1000;
-  const FULL_BOARD_BONUS = 50;
+  const DURATION = DURATION_MS;
   const FINALE_DURATION = 2100;
-  const VALUES = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
   const ROUTE_COLORS = [
     { light: "#ffac6d", deep: "#a45148" },
     { light: "#f77eb5", deep: "#943f83" },
@@ -18,12 +16,6 @@ export function mountGame(authConfigured) {
     { light: "#af98ff", deep: "#6550a2" },
     { light: "#7bcdec", deep: "#387aa8" },
     { light: "#ffe477", deep: "#a77d40" }
-  ];
-  const SEED_WORDS = [
-    "GARDEN", "MARKET", "WINTER", "SUMMER", "SHADOW", "FLOWER", "SILVER", "SPIRIT",
-    "NATURE", "SCHOOL", "RABBIT", "PEPPER", "POCKET", "TRAVEL", "BRING", "STARE",
-    "CRANE", "LIGHT", "SCORE", "CLOUD", "MOUSE", "WATER", "STONE", "SWEET",
-    "GHOST", "GRAPE", "SMILE", "PLANT", "FRUIT", "GREEN", "BREAD", "QUICK", "ZEBRA"
   ];
   let dictionary = null;
   let lexiconText = null;
@@ -45,83 +37,27 @@ export function mountGame(authConfigured) {
   const boardWrap = boardElement.parentElement;
   const menuDialog = $("menu-dialog");
   const rulesDialog = $("rules-dialog");
+  const tutorialDialog = $("tutorial-dialog");
   const feedback = $("feedback");
   const wordEntry = $("word-entry");
   const mobileKeyboard = $("mobile-keyboard");
   const menuPages = {
-    scores: "Daily scores and rankings will live here when the leaderboard is ready.",
     settings: "Game preferences will live here. For now, motion follows your device settings.",
   };
-
-  function randomForDay(date) {
-    let seed = 2166136261;
-    for (const char of date) seed = Math.imul(seed ^ char.charCodeAt(0), 16777619);
-    return () => {
-      seed ^= seed << 13;
-      seed ^= seed >>> 17;
-      seed ^= seed << 5;
-      return (seed >>> 0) / 4294967296;
-    };
-  }
-
-  const random = randomForDay(boardId);
-  function shuffle(items) {
-    for (let i = items.length - 1; i > 0; i--) {
-      const j = Math.floor(random() * (i + 1));
-      [items[i], items[j]] = [items[j], items[i]];
-    }
-    return items;
-  }
 
   function adjacent(from, to) {
     const rowDistance = Math.abs(Math.floor(from / SIZE) - Math.floor(to / SIZE));
     const colDistance = Math.abs(from % SIZE - to % SIZE);
     return rowDistance + colDistance === 1;
   }
-
-  function hiddenWordPath(length, occupied) {
-    function extend(path) {
-      if (path.length === length) return [...path];
-      const last = path.at(-1);
-      const options = shuffle(Array.from({ length: SIZE * SIZE }, (_, index) => index)
-        .filter((index) => !occupied.has(index) && !path.includes(index) && adjacent(last, index)));
-      for (const option of options) {
-        path.push(option);
-        const found = extend(path);
-        if (found) return found;
-        path.pop();
-      }
-      return null;
-    }
-    for (const index of shuffle(Array.from({ length: SIZE * SIZE }, (_, position) => position))) {
-      if (occupied.has(index)) continue;
-      const found = extend([index]);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  const choices = [...SEED_WORDS];
-  shuffle(choices);
-  const fixed = Array(SIZE * SIZE).fill(null);
-  const occupied = new Set();
-  for (const word of choices.slice(0, 7)) {
-    const route = hiddenWordPath(word.length, occupied);
-    if (!route) continue;
-    route.forEach((index) => occupied.add(index));
-    const positions = shuffle([...word].map((_, index) => index));
-    for (const position of positions.slice(0, word.length >= 7 ? 3 : 2)) {
-      fixed[route[position]] = word[position];
-    }
-  }
-  const initialFilled = fixed.filter(Boolean).length;
-  const effectTiles = new Map();
-  const specialTiles = shuffle(fixed.flatMap((letter, index) => letter ? [index] : []));
-  effectTiles.set(specialTiles[0], "double");
-  specialTiles.slice(1, 3).forEach((index) => effectTiles.set(index, "boost"));
+  const { fixed, initialFilled, effectTiles } = generateBoard(boardId);
   const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], spentEffects: [], score: 0, fullBoardBonusAwarded: false });
   let state = freshState();
   let activeUserId = null;
+  let rankedMode = "unranked";
+  let rankedAttemptExists = false;
+  let rankedSequence = 0;
+  let rankedPending = false;
   let syncReady = !authConfigured;
   let syncGeneration = 0;
   let saveSequence = 0;
@@ -174,6 +110,26 @@ export function mountGame(authConfigured) {
     if (!response.ok) throw new Error(result.error || `Run request failed: HTTP ${response.status}`);
     return result;
   }
+  async function requestRanked(action, input = {}) {
+    const response = await fetch("/api/ranked", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, boardId: day, ...input }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      const error = new Error(result.error || `Ranked request failed: HTTP ${response.status}`);
+      error.code = result.code;
+      throw error;
+    }
+    return result;
+  }
+  async function readRankedAttempt() {
+    const response = await fetch(`/api/ranked?boardId=${day}`, { cache: "no-store" });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `Ranked run request failed: HTTP ${response.status}`);
+    return result.attempt;
+  }
 
   function save() {
     const snapshot = structuredClone(state);
@@ -181,12 +137,13 @@ export function mountGame(authConfigured) {
     const key = storageKey;
     const sequence = ++saveSequence;
     try {
-      localStorage.setItem(key, JSON.stringify(userId ? { state: snapshot, pending: true } : snapshot));
+      localStorage.setItem(key, JSON.stringify(userId && rankedMode !== "replay"
+        ? { state: snapshot, pending: true } : snapshot));
     } catch (error) {
       console.warn("Could not save today's run:", error);
       message("Browser storage is unavailable; keep this tab open to preserve your run.", "error");
     }
-    if (userId && syncReady) {
+    if (userId && syncReady && rankedMode !== "replay") {
       saveQueue = saveQueue.then(async () => {
         if (userId !== activeUserId) return;
         await requestRun("PUT", snapshot);
@@ -216,13 +173,33 @@ export function mountGame(authConfigured) {
     else if (lexiconText) startMoveWorker(lexiconText);
     if (!state.startedAt && dictionary) $("start-button").disabled = false;
   }
+  function applyRankedRun(run) {
+    rankedMode = run.finished ? "unranked" : "active";
+    rankedAttemptExists = true;
+    rankedSequence = run.sequence;
+    applyLoadedRun({
+      startedAt: Date.parse(run.startedAt),
+      endedAt: run.endedAt ? Date.parse(run.endedAt) : null,
+      endedReason: run.endedReason,
+      finished: run.finished,
+      played: run.played,
+      words: run.moves.map(({ word, points, path, color }) => ({ word, points, path, color })),
+      spentEffects: run.spentEffects,
+      score: run.score,
+      fullBoardBonusAwarded: run.fullBoardBonusAwarded,
+    });
+  }
 
   async function syncForUser(user) {
     const generation = ++syncGeneration;
+    rankedPending = false;
     syncReady = false;
     $("start-button").disabled = true;
     if (!user) {
       activeUserId = null;
+      rankedMode = "unranked";
+      rankedAttemptExists = false;
+      rankedSequence = 0;
       storageKey = guestStorageKey;
       syncReady = true;
       clearSyncError();
@@ -240,6 +217,8 @@ export function mountGame(authConfigured) {
       const remote = await requestRun("GET");
       if (generation !== syncGeneration) return;
       if (remote.state && !validRunState(remote.state)) throw new Error("Saved run has an invalid format.");
+      const ranked = practiceSeed ? null : await readRankedAttempt();
+      if (generation !== syncGeneration) return;
       activeUserId = user.id;
       storageKey = key;
       const nextState = cached.pending
@@ -247,8 +226,18 @@ export function mountGame(authConfigured) {
         : remote.state || (cached.state.startedAt ? cached.state : readLocal(guestStorageKey).state);
       syncReady = true;
       clearSyncError();
-      applyLoadedRun(nextState);
-      if (cached.pending || (!remote.state && nextState.startedAt)) save();
+      rankedMode = practiceSeed || nextState.startedAt ? "unranked" : "ready";
+      rankedAttemptExists = Boolean(ranked);
+      rankedSequence = 0;
+      const replayKey = `${guestStorageKey}:replay:user:${user.id}`;
+      const replay = ranked ? readLocal(replayKey).state : null;
+      if (ranked && replay?.startedAt) {
+        rankedMode = "replay";
+        storageKey = replayKey;
+        applyLoadedRun(replay);
+      } else if (ranked) applyRankedRun(ranked);
+      else applyLoadedRun(nextState);
+      if (!replay?.startedAt && (ranked || cached.pending || (!remote.state && nextState.startedAt))) save();
       else {
         try {
           localStorage.setItem(key, JSON.stringify({ state: nextState, pending: false }));
@@ -260,9 +249,12 @@ export function mountGame(authConfigured) {
       if (generation !== syncGeneration) return;
       activeUserId = user.id;
       storageKey = key;
+      rankedMode = "unranked";
+      rankedAttemptExists = false;
       syncReady = true;
       applyLoadedRun(cached.state.startedAt ? cached.state : readLocal(guestStorageKey).state);
       syncError(error);
+      message("Ranked play is unavailable. Your local run can still be played.", "error");
     }
   }
 
@@ -431,7 +423,7 @@ export function mountGame(authConfigured) {
         tile.style.setProperty("--route-color", color.light);
         tile.style.setProperty("--route-deep", color.deep);
       }
-      tile.disabled = !syncReady || !state.startedAt || (!state.finished && !dictionary);
+      tile.disabled = !syncReady || rankedPending || !state.startedAt || (!state.finished && !dictionary);
       tile.setAttribute("aria-label", state.finished
         ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${lastRoute ? `, part of ${lastRoute.word}, ${lastRoute.points} points` : ""}`
         : state.startedAt
@@ -520,7 +512,7 @@ export function mountGame(authConfigured) {
     const preview = $("draft-preview");
     const flyout = $("selection-preview");
     preview.replaceChildren();
-    wordEntry.disabled = !syncReady || path.length < 4 || state.finished || !dictionary;
+    wordEntry.disabled = !syncReady || rankedPending || path.length < 4 || state.finished || !dictionary;
     wordEntry.value = draft.join("");
     if (!path.length) {
       const placeholder = document.createElement("span");
@@ -547,9 +539,9 @@ export function mountGame(authConfigured) {
     }
     if ($("results-content").hidden) $("path-length").textContent = path.length ? `${path.length} TILES` : "NO PATH";
     const result = path.length ? verdict() : null;
-    $("submit").disabled = !syncReady || !result?.word || state.finished;
+    $("submit").disabled = !syncReady || rankedPending || !result?.word || state.finished;
     $("mobile-submit").disabled = $("submit").disabled;
-    $("clear").disabled = !syncReady || !path.length || state.finished;
+    $("clear").disabled = !syncReady || rankedPending || !path.length || state.finished;
     $("mobile-clear").disabled = $("clear").disabled;
     const blanks = path.filter((index) => !letterAt(index)).length;
     $("mobile-word-announcement").textContent = path.length
@@ -583,6 +575,12 @@ export function mountGame(authConfigured) {
 
   function renderProgress() {
     inspectedRoute = null;
+    $("board-kind").textContent = practiceSeed ? "DEV PRACTICE"
+      : rankedMode === "replay" ? "UNRANKED PRACTICE"
+        : activeUserId && rankedMode === "unranked" && !rankedAttemptExists ? "UNRANKED GRID" : "DAILY GRID";
+    $("restart").textContent = practiceSeed || rankedMode === "replay"
+      ? "Restart this practice board" : rankedAttemptExists
+        ? "Practice this board (unranked)" : "Restart today's prototype board";
     boardElement.classList.remove("inspecting");
     const filled = initialFilled + Object.keys(state.played).length;
     $("score").textContent = String(state.score).padStart(4, "0");
@@ -601,7 +599,7 @@ export function mountGame(authConfigured) {
     if (!state.words.length) {
       const empty = document.createElement("li");
       empty.className = "empty-note";
-      empty.textContent = "Nothing inked in yet. The board is yours.";
+      empty.textContent = "No words yet";
       list.append(empty);
     }
     const rankedWords = state.words.map((entry, index) => ({ entry, index }))
@@ -637,10 +635,11 @@ export function mountGame(authConfigured) {
     const seconds = Math.ceil(ms / 1000);
     $("timer").textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
     $("timer").classList.toggle("urgent", ms < 30000 && Boolean(state.startedAt && !state.finished));
-    if (syncReady && state.startedAt && !state.finished && ms <= 0) finish("time");
+    if (syncReady && !rankedPending && state.startedAt && !state.finished && ms <= 0) finish("time");
   }
 
   function clearPath() {
+    if (rankedPending) return;
     path = [];
     draft = [];
     renderBoard();
@@ -648,6 +647,7 @@ export function mountGame(authConfigured) {
   }
 
   function extendPath(index, interpolate = false) {
+    if (rankedPending) return;
     const last = path.at(-1);
     if (index === last) return;
     const claimed = claimedTiles();
@@ -675,7 +675,7 @@ export function mountGame(authConfigured) {
   }
 
   function beginSelection(index) {
-    if (!syncReady || !state.startedAt || state.finished) return;
+    if (!syncReady || rankedPending || !state.startedAt || state.finished) return;
     if (claimedTiles().has(index)) {
       message("Tiles in submitted words cannot be used again.", "error");
       return;
@@ -689,24 +689,71 @@ export function mountGame(authConfigured) {
     }
   }
 
-  function submitWord() {
-    if (!syncReady || !state.startedAt || state.finished) return;
+  async function submitWord() {
+    if (!syncReady || rankedPending || !state.startedAt || state.finished) return;
     if (remaining() <= 0) { finish("time"); return; }
     const result = verdict();
     if (!result.word) {
       message(result.reason, result.error ? "error" : "");
       return;
     }
+    let rankedResult = null;
+    if (rankedMode === "active") {
+      const generation = syncGeneration;
+      rankedPending = true;
+      renderBoard();
+      renderDraft();
+      try {
+        rankedResult = await requestRanked("word", {
+          sequence: rankedSequence,
+          path: [...path],
+          letters: draft.join(""),
+        });
+        if (generation !== syncGeneration) return;
+        rankedSequence = rankedResult.sequence;
+        if (rankedResult.move.word !== result.word || rankedResult.move.points !== result.points) {
+          throw new Error("The server scored this word differently. Reload to sync your run.");
+        }
+      } catch (error) {
+        if (generation !== syncGeneration) return;
+        console.error("Could not verify ranked word:", error);
+        rankedPending = false;
+        if (["STALE_SEQUENCE", "FINISHED"].includes(error.code)) {
+          try {
+            const latest = await readRankedAttempt();
+            if (generation !== syncGeneration) return;
+            if (latest) {
+              applyRankedRun(latest);
+              save();
+              message("This run changed on another device. Your verified progress is up to date.");
+              return;
+            }
+          } catch (reloadError) {
+            console.error("Could not refresh ranked run:", reloadError);
+          }
+        }
+        renderBoard();
+        renderDraft();
+        if (error.code === "EXPIRED") finish("time");
+        message(error.code === "EXPIRED"
+          ? "Time ran out before the word reached the server."
+          : `${error.message} Retry or reload to sync your ranked run.`, "error");
+        return;
+      }
+      rankedPending = false;
+      renderBoard();
+      renderDraft();
+    }
     let typed = 0;
     for (const index of path) {
       if (!letterAt(index)) state.played[index] = draft[typed++];
     }
     const lastColor = state.words.at(-1)?.color;
-    let color = crypto.getRandomValues(new Uint32Array(1))[0] % ROUTE_COLORS.length;
+    let color = rankedResult ? rankedResult.move.color : crypto.getRandomValues(new Uint32Array(1))[0] % ROUTE_COLORS.length;
     if (color === lastColor) color = (color + 1) % ROUTE_COLORS.length;
     state.spentEffects.push(...result.triggered);
     state.words.push({ word: result.word, points: result.points, path: [...path], color });
-    state.score += result.points;
+    state.score = rankedResult ? rankedResult.score : state.score + result.points;
     const label = `${result.word} locked in for ${result.points} points.`;
     path = [];
     draft = [];
@@ -714,7 +761,10 @@ export function mountGame(authConfigured) {
     renderProgress();
     message(label, "good");
     if (initialFilled + Object.keys(state.played).length === SIZE * SIZE) finish("full");
-    else checkRemainingMoves();
+    else {
+      checkRemainingMoves();
+      if (remaining() <= 0) finish("time");
+    }
   }
 
   function showResults() {
@@ -724,7 +774,7 @@ export function mountGame(authConfigured) {
     $("tier-name").textContent = tier.name.toUpperCase();
     $("tier-range").textContent = `${tierRange(tier)} PTS`;
     $("tier-result").style.setProperty("--tier-color", tier.color);
-    const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "No valid scoring words remain." : "Time ran out.";
+    const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "No valid scoring words remain." : state.endedReason === "finish" ? "Run complete." : "Time ran out.";
     $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${outcome}`;
     $("draft-heading").textContent = "THE FINAL PLATE";
     $("path-length").textContent = "RUN COMPLETE";
@@ -755,13 +805,22 @@ export function mountGame(authConfigured) {
     if (!syncReady || state.finished) return;
     if (menuDialog.open) menuDialog.close();
     if (rulesDialog.open) rulesDialog.close();
+    if (tutorialDialog.open) tutorialDialog.close();
     state.endedAt = Date.now();
     state.endedReason = reason;
     state.finished = true;
-    if (reason === "full") {
+    if (reason === "full" && rankedMode !== "active") {
       state.score += FULL_BOARD_BONUS;
       state.fullBoardBonusAwarded = true;
     }
+    if (reason === "full") state.fullBoardBonusAwarded = true;
+    if (rankedMode === "active" && reason === "stuck") {
+      void requestRanked("finish").catch((error) => {
+        console.error("Could not finish ranked run:", error);
+        message("Your ranked result could not be finalized. Reopen Scores to check it.", "error");
+      });
+    }
+    rankedMode = "unranked";
     moveWorker?.terminate();
     moveWorker = null;
     moveWorkerReady = false;
@@ -775,7 +834,7 @@ export function mountGame(authConfigured) {
 
   boardElement.addEventListener("pointerdown", (event) => {
     const tile = event.target.closest(".tile");
-    if (!tile || !state.startedAt || state.finished) return;
+    if (!tile || rankedPending || !state.startedAt || state.finished) return;
     event.preventDefault();
     if (claimedTiles().has(Number(tile.dataset.index))) {
       message("Tiles in submitted words cannot be used again.", "error");
@@ -833,6 +892,7 @@ export function mountGame(authConfigured) {
     boardElement.children[next].focus();
   });
   wordEntry.addEventListener("input", () => {
+    if (rankedPending) return;
     const blanks = path.filter((index) => !letterAt(index)).length;
     draft = [...wordEntry.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, blanks)];
     renderBoard();
@@ -840,14 +900,14 @@ export function mountGame(authConfigured) {
   });
   mobileKeyboard.addEventListener("click", (event) => {
     const key = event.target.closest("[data-key]");
-    if (!key || key.disabled || state.finished) return;
+    if (!key || key.disabled || rankedPending || state.finished) return;
     if (key.dataset.key === "Backspace") draft.pop();
     else draft.push(key.dataset.key);
     renderBoard();
     renderDraft();
   });
   document.addEventListener("keydown", (event) => {
-    if (!state.startedAt || state.finished || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || document.querySelector("dialog[open]")) return;
+    if (!state.startedAt || rankedPending || state.finished || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || document.querySelector("dialog[open]")) return;
     if (event.key === "Escape") {
       if (path.length) { event.preventDefault(); clearPath(); message("Path and unsubmitted letters cleared."); }
     } else if (event.key === "Enter" && path.length && (!event.target.matches("button") || event.target.id === "submit")) {
@@ -870,12 +930,37 @@ export function mountGame(authConfigured) {
     }
   });
   for (const id of ["submit", "mobile-submit"]) $(id).addEventListener("click", submitWord);
-  for (const id of ["clear", "mobile-clear", "selection-clear"]) $(id).addEventListener("click", () => { clearPath(); message("Path and unsubmitted letters cleared."); });
-  $("start-button").addEventListener("click", () => {
+  for (const id of ["clear", "mobile-clear", "selection-clear"]) $(id).addEventListener("click", () => {
+    if (rankedPending) return;
+    clearPath();
+    message("Path and unsubmitted letters cleared.");
+  });
+  $("start-button").addEventListener("click", async () => {
     if (!dictionary) { void loadDictionary(); return; }
     if (!syncReady) return;
     if (state.startedAt) return;
-    state.startedAt = Date.now();
+    if (day !== new Date().toISOString().slice(0, 10)) {
+      message("A new daily grid is ready. Refresh to start today's run.", "error");
+      return;
+    }
+    if (rankedMode === "ready") {
+      const button = $("start-button");
+      button.disabled = true;
+      const generation = syncGeneration;
+      try {
+        const run = await requestRanked("start");
+        if (generation !== syncGeneration) return;
+        applyRankedRun(run);
+      } catch (error) {
+        if (generation !== syncGeneration) return;
+        console.error("Could not start ranked run:", error);
+        message("Could not start a ranked run. Try again before the day ends.", "error");
+        button.disabled = false;
+        return;
+      }
+    } else {
+      state.startedAt = Date.now();
+    }
     save();
     renderProgress();
     tick();
@@ -897,9 +982,56 @@ export function mountGame(authConfigured) {
     const content = rulesDialog.querySelector(".modal-content");
     content.style.setProperty("--scrollbar-width", `${content.offsetWidth - content.clientWidth}px`);
   }
-  $("rules").addEventListener("click", () => {
+  const tutorialSteps = [
+    ["PICK A PATH", "Start with a letter already on the grid. Drag or tap through neighboring tiles—no diagonals."],
+    ["FILL THE GAPS", "C is already on the board. Type only the missing letters: A, T, then S."],
+    ["SUBMIT WORD", "Submit CATS to claim those tiles. The three new letters earn 9 points here."],
+    ["KEEP GOING", "Claimed tiles can't be reused. Keep making words until time runs out, the board fills, or no moves remain. A full board earns 50 bonus points."],
+  ];
+  let tutorialStep = 0;
+  let tutorialTimer = null;
+  function showTutorialStep(index, autoplay = false) {
+    window.clearTimeout(tutorialTimer);
+    tutorialTimer = null;
+    tutorialStep = index;
+    tutorialDialog.dataset.step = String(index + 1);
+    $("tutorial-progress").textContent = `STEP ${index + 1} / ${tutorialSteps.length}`;
+    $("tutorial-step-title").textContent = tutorialSteps[index][0];
+    $("tutorial-step-copy").textContent = tutorialSteps[index][1];
+    $("tutorial-prev").disabled = index === 0;
+    $("tutorial-next").firstChild.textContent = index === tutorialSteps.length - 1 ? "REPLAY DEMO " : "NEXT STEP ";
+    if (autoplay && index < tutorialSteps.length - 1) {
+      tutorialTimer = window.setTimeout(() => {
+        if (tutorialDialog.open) showTutorialStep(index + 1, true);
+      }, 6500);
+    }
+  }
+  function showTutorial() {
+    $("tutorial-clock").hidden = !state.startedAt || state.finished;
+    tutorialDialog.showModal();
+    showTutorialStep(0, !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+  $("rules").addEventListener("click", showTutorial);
+  $("tutorial-start").addEventListener("click", showTutorial);
+  $("tutorial-close").addEventListener("click", () => tutorialDialog.close());
+  $("tutorial-prev").addEventListener("click", () => showTutorialStep(tutorialStep - 1));
+  $("tutorial-next").addEventListener("click", () => {
+    showTutorialStep((tutorialStep + 1) % tutorialSteps.length, tutorialStep === tutorialSteps.length - 1
+      && !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  });
+  $("tutorial-rules").addEventListener("click", () => {
+    tutorialDialog.close();
     rulesDialog.showModal();
     alignRulesContent();
+  });
+  tutorialDialog.addEventListener("click", (event) => {
+    const bounds = tutorialDialog.getBoundingClientRect();
+    if (event.target === tutorialDialog && (event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom)) tutorialDialog.close();
+  });
+  tutorialDialog.addEventListener("close", () => {
+    window.clearTimeout(tutorialTimer);
+    tutorialTimer = null;
   });
   window.addEventListener("resize", () => {
     if (rulesDialog.open) alignRulesContent();
@@ -938,7 +1070,116 @@ export function mountGame(authConfigured) {
   let googleAuth = null;
   let accountUser = null;
   let historyGeneration = 0;
+  let scoresGeneration = 0;
+  let scoresCursor = null;
+  let scoresLoading = false;
   let accountError = null;
+  function scoreDate(board) {
+    return new Intl.DateTimeFormat("en", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })
+      .format(new Date(`${board}T12:00:00Z`));
+  }
+  function displayPercentile(value) {
+    return Math.min(99, Math.round(value / 5) * 5);
+  }
+  function renderScoreRow(run) {
+    const item = document.createElement("li");
+    const date = document.createElement("span");
+    date.textContent = scoreDate(run.boardId);
+    const points = document.createElement("span");
+    points.textContent = `${run.score.toLocaleString()} PTS`;
+    const placing = document.createElement("span");
+    placing.textContent = run.total
+      ? `${run.tied ? "TIED " : ""}#${run.rank} / ${run.total}${run.percentile == null ? "" : ` · ~${displayPercentile(run.percentile)}TH`}`
+      : "NO COMPARISON";
+    item.append(date, points, placing);
+    return item;
+  }
+  function showEmptyScores(title, description) {
+    const empty = document.createElement("li");
+    empty.className = "scores-empty";
+    const egg = document.createElement("img");
+    egg.src = "/egg.svg";
+    egg.alt = "";
+    const copy = document.createElement("span");
+    const heading = document.createElement("strong");
+    heading.textContent = title;
+    const detail = document.createElement("small");
+    detail.textContent = description;
+    copy.append(heading, detail);
+    empty.append(egg, copy);
+    $("scores-history-list").replaceChildren(empty);
+  }
+  async function loadScores(append = false, refresh = false) {
+    if (!accountUser || scoresLoading) return;
+    scoresLoading = true;
+    const generation = scoresGeneration;
+    const status = $("scores-status");
+    status.hidden = true;
+    if (!append && !refresh) {
+      $("scores-history-list").replaceChildren();
+      $("scores-note").textContent = "Loading today's comparison...";
+      scoresCursor = null;
+    }
+    try {
+      const params = new URLSearchParams({ boardId: day });
+      if (append && scoresCursor) params.set("cursor", scoresCursor);
+      const response = await fetch(`/api/ranked?${params}`, { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `Scores request failed: HTTP ${response.status}`);
+      if (generation !== scoresGeneration || !accountUser) return;
+      const today = result.today;
+      $("scores-phase").textContent = today.final ? "FINAL" : "LIVE";
+      $("scores-score").textContent = today.score == null ? "—" : today.score.toLocaleString();
+      $("scores-rank").textContent = today.rank == null
+        ? today.score == null ? "No ranked result yet" : "Run in progress · rank after completion"
+        : `${today.tied ? "Tied " : ""}#${today.rank} of ${today.total} today`;
+      $("scores-percentile").textContent = today.percentile == null ? "" : `AROUND THE ${displayPercentile(today.percentile)}TH PERCENTILE`;
+      $("scores-note").textContent = today.note || (today.score == null
+        ? state.startedAt && rankedMode === "unranked" && !practiceSeed
+          ? "This run isn't server-verified, so it stays in Profile rather than today's ranking."
+          : "Start today's grid to join the ranking."
+        : today.rank == null ? "Your score becomes comparable when the run ends."
+          : today.percentile == null ? `Percentiles start at 30 completed players; ${today.total} so far.`
+            : today.final ? "This comparison is final." : "Live comparison: your place may move as more people finish.");
+      const chart = $("scores-distribution");
+      chart.replaceChildren();
+      if (today.total > 0 && today.distribution?.length) {
+        const max = Math.max(...today.distribution.map((bucket) => bucket.count));
+        for (const bucket of today.distribution) {
+          const bar = document.createElement("span");
+          bar.style.height = `${bucket.count ? Math.max(4, bucket.count / max * 100) : 0}%`;
+          bar.classList.toggle("mine", today.score != null
+            && Math.min(Math.floor(today.score / 50), 9) * 50 === bucket.score);
+          chart.append(bar);
+        }
+        chart.setAttribute("aria-label", `Score distribution for ${today.total} players today`);
+        chart.hidden = false;
+      } else chart.hidden = true;
+      if (!refresh) {
+        const list = $("scores-history-list");
+        if (!append) list.replaceChildren();
+        for (const run of result.history) list.append(renderScoreRow(run));
+        if (!list.children.length) {
+          showEmptyScores("A FRESH START", "Only verified daily runs appear here. Earlier synced results stay in Profile.");
+        }
+        scoresCursor = result.nextCursor;
+        $("scores-more").hidden = !scoresCursor;
+      }
+    } catch (error) {
+      if (generation !== scoresGeneration) return;
+      console.error("Could not load scores:", error);
+      status.textContent = "Could not load scores. Close and reopen Scores to retry.";
+      status.hidden = false;
+      $("scores-note").textContent = "Scores are temporarily unavailable.";
+    } finally {
+      if (generation === scoresGeneration) scoresLoading = false;
+    }
+  }
+  $("scores-more").addEventListener("click", () => { void loadScores(true); });
+  window.setInterval(() => {
+    if (menuDialog.open && menuDialog.dataset.page === "scores" && accountUser
+      && $("scores-phase").textContent !== "FINAL") void loadScores(false, true);
+  }, 30000);
   async function loadHistory() {
     const generation = ++historyGeneration;
     const list = $("profile-history-list");
@@ -981,7 +1222,20 @@ export function mountGame(authConfigured) {
   }
   function updateAccount(user) {
     accountUser = user;
-    if (!user) historyGeneration++;
+    scoresGeneration++;
+    scoresLoading = false;
+    if (!user) {
+      historyGeneration++;
+      $("scores-score").textContent = "—";
+      $("scores-rank").textContent = "No ranked result yet";
+      $("scores-percentile").textContent = "";
+      $("scores-note").textContent = "Sign in before starting a daily grid to join the ranking.";
+      $("scores-distribution").hidden = true;
+      showEmptyScores("YOUR NEXT CHAPTER", "Sign in and play a daily grid to start your score history.");
+      $("scores-more").hidden = true;
+    } else if (!menuPage.hidden && !$("scores-content").hidden) {
+      void loadScores();
+    }
     void syncForUser(user);
     if (user) accountError = null;
     accountNav.disabled = !googleAuth;
@@ -1083,6 +1337,9 @@ export function mountGame(authConfigured) {
   });
   menuDialog.addEventListener("close", () => {
     menuDialog.classList.remove("closing");
+    menuDialog.removeAttribute("data-page");
+    scoresGeneration++;
+    scoresLoading = false;
     $("menu-home").hidden = false;
     menuPage.hidden = true;
     if (!document.querySelector("dialog[open]")) $("menu-toggle").focus();
@@ -1095,13 +1352,20 @@ export function mountGame(authConfigured) {
         return;
       }
       const isProfile = page === "profile";
-      $("menu-page-generic").hidden = isProfile;
+      const isScores = page === "scores";
+      $("menu-page-generic").hidden = isProfile || isScores;
       $("profile-content").hidden = !isProfile;
-      menuPage.setAttribute("aria-labelledby", isProfile ? "profile-title" : "menu-page-title");
+      $("scores-content").hidden = !isScores;
+      menuDialog.dataset.page = isScores ? "scores" : page;
+      menuPage.setAttribute("aria-labelledby", isProfile ? "profile-title" : isScores ? "scores-title" : "menu-page-title");
       if (isProfile) {
         $("profile-score").textContent = state.score.toLocaleString();
         $("profile-words").textContent = String(state.words.length);
         void loadHistory();
+      } else if (isScores) {
+        scoresGeneration++;
+        scoresLoading = false;
+        if (accountUser) void loadScores();
       } else {
         $("menu-page-title").textContent = page.toUpperCase();
         $("menu-page-description").textContent = menuPages[page];
@@ -1113,7 +1377,10 @@ export function mountGame(authConfigured) {
     });
   });
   $("menu-back").addEventListener("click", () => {
-    const selected = $("profile-content").hidden ? $("menu-page-title").textContent.toLowerCase() : "profile";
+    const selected = menuDialog.dataset.page;
+    scoresGeneration++;
+    scoresLoading = false;
+    menuDialog.removeAttribute("data-page");
     menuPage.hidden = true;
     $("menu-home").hidden = false;
     menuContent.scrollTop = 0;
@@ -1133,7 +1400,13 @@ export function mountGame(authConfigured) {
   rulesDialog.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", closeRules));
   $("restart").addEventListener("click", () => {
     if (!syncReady) return;
-    if (!confirm("Restart today's prototype board and erase this run?")) return;
+    if (!confirm(rankedAttemptExists && !practiceSeed
+      ? "Restart this board as unranked practice? Your first ranked attempt will still count."
+      : "Restart today's prototype board and erase this run?")) return;
+    if (rankedAttemptExists && activeUserId && !practiceSeed) {
+      rankedMode = "replay";
+      storageKey = `${guestStorageKey}:replay:user:${activeUserId}`;
+    }
     window.clearTimeout(shareStatusTimer);
     window.clearTimeout(shareExitTimer);
     state = freshState();
@@ -1166,7 +1439,7 @@ export function mountGame(authConfigured) {
     }, 3000);
   }
   $("share").addEventListener("click", async () => {
-    const text = `SCRAMB · ${day}${practiceSeed ? " · practice board" : ""}\n${state.score} points · ${tierForScore(state.score).name} egg · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}`;
+    const text = `SCRAMB · ${day}${practiceSeed || rankedMode === "replay" ? " · practice board" : ""}\n${state.score} points · ${tierForScore(state.score).name} egg · ${state.words.length} words · ${initialFilled + Object.keys(state.played).length}/64 tiles${state.endedReason === "full" ? ` · +${FULL_BOARD_BONUS} full-board bonus` : ""}\n${Array.from({ length: SIZE }, (_, row) => Array.from({ length: SIZE }, (_, col) => state.played[row * SIZE + col] ? "■" : fixed[row * SIZE + col] ? "▫" : "·").join("")).join("\n")}`;
     try {
       await navigator.clipboard.writeText(text);
       showShareStatus("Result copied!");
@@ -1179,8 +1452,6 @@ export function mountGame(authConfigured) {
   const dateLabel = new Intl.DateTimeFormat("en", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }).format(new Date(`${day}T12:00:00Z`));
   const issueNumber = String(Math.floor(Date.parse(`${day}T00:00:00Z`) / 86400000) - 20500).padStart(3, "0");
   $("date-label").textContent = `${dateLabel} / #${issueNumber}`;
-  $("board-kind").textContent = practiceSeed ? "DEV PRACTICE" : "DAILY GRID";
-  $("restart").textContent = practiceSeed ? "Restart this practice board" : "Restart today's prototype board";
   for (const tier of SCORE_TIERS) {
     const item = document.createElement("li");
     const image = document.createElement("img");

@@ -27,7 +27,7 @@ export default function Game({ authConfigured }) {
           </div>
           <div className="header-actions">
             <div className="edition"><span id="board-kind">DAILY GRID</span><strong id="date-label" /></div>
-            <button id="rules" className="help-button" type="button" aria-label="How to play"><span className="help-label">HOW TO PLAY</span><span className="help-icon" aria-hidden="true">?</span></button>
+            <button id="rules" className="help-button" type="button" aria-label="How to play tutorial" aria-haspopup="dialog" aria-controls="tutorial-dialog"><span className="help-label">HOW TO PLAY</span><span className="help-icon" aria-hidden="true">?</span></button>
           </div>
         </header>
 
@@ -51,6 +51,7 @@ export default function Game({ authConfigured }) {
                 <img className="overlay-egg" src="/egg.svg" alt="" />
                 <h2>READY TO<br /><span>SCRAMB?</span></h2>
                 <button id="start-button" className="action-button" type="button" disabled>LOADING WORDS... <span aria-hidden="true">↗</span></button>
+                <button id="tutorial-start" className="text-link tutorial-start" type="button" aria-haspopup="dialog" aria-controls="tutorial-dialog">WATCH HOW TO PLAY ↗</button>
               </div>
               <div id="finale" className="board-finale" role="status" hidden>
                 <div className="finale-card">
@@ -85,7 +86,7 @@ export default function Game({ authConfigured }) {
                     <button id="mobile-clear" className="secondary-button" type="button" aria-label="Clear selected path" disabled><span className="hotkey-icon" aria-hidden="true">ESC</span> CLEAR</button><button id="mobile-submit" className="action-button" type="button" aria-label="Submit word" disabled><span className="hotkey-icon" aria-hidden="true">↵</span> ENTER</button>
                   </div>
                 </div>
-                <div className="draft-actions"><button id="clear" className="secondary-button" type="button" disabled><span className="hotkey-icon" aria-hidden="true">ESC</span> CLEAR</button><button id="submit" className="action-button" type="button" disabled><span className="hotkey-icon" aria-hidden="true">↵</span> LOCK IN WORD</button></div>
+                <div className="draft-actions"><button id="clear" className="secondary-button" type="button" disabled><span className="hotkey-icon" aria-hidden="true">ESC</span> CLEAR</button><button id="submit" className="action-button" type="button" disabled><span className="hotkey-icon" aria-hidden="true">↵</span> SUBMIT WORD</button></div>
                 <p id="feedback" className="feedback" role="status" aria-live="polite" />
                 <div id="points-preview" className="points-preview" />
               </div>
@@ -108,7 +109,7 @@ export default function Game({ authConfigured }) {
 
             <section className="notes-panel" aria-label="Submitted words">
               <div className="panel-top"><span>SCRAMBLES</span><span id="notes-count">0 FOUND</span></div>
-              <ol id="word-list" className="word-list"><li className="empty-note">Nothing inked in yet. The board is yours.</li></ol>
+              <ol id="word-list" className="word-list"><li className="empty-note">No words yet</li></ol>
             </section>
           </aside>
         </div>
@@ -129,7 +130,7 @@ export default function Game({ authConfigured }) {
                   <span id="account-nav-fallback">?</span>
                 </span>
               </button>
-              <button className="menu-item" type="button" data-menu-page="scores"><span>SCORES<small>COMING SOON</small></span><span aria-hidden="true">↗</span></button>
+              <button className="menu-item" type="button" data-menu-page="scores"><span>SCORES<small>TODAY &amp; HISTORY</small></span><span aria-hidden="true">↗</span></button>
               <button className="menu-item" type="button" data-menu-page="settings"><span>SETTINGS<small>COMING SOON</small></span><span aria-hidden="true">↗</span></button>
             </nav>
             <p id="account-status" className="menu-account-error" role="alert" hidden />
@@ -143,6 +144,23 @@ export default function Game({ authConfigured }) {
               <p className="overline">COMING SOON</p>
               <h2 id="menu-page-title" />
               <p id="menu-page-description" />
+            </div>
+            <div id="scores-content" className="scores-content" hidden>
+              <p className="overline">YOUR PLACE IN THE GRID</p>
+              <h2 id="scores-title">SCORES</h2>
+              <section className="scores-card" aria-labelledby="scores-today-title">
+                <div className="scores-card-top"><span id="scores-today-title" className="overline">TODAY'S GRID</span><span id="scores-phase">LIVE</span></div>
+                <div className="scores-feature"><strong id="scores-score">—</strong><span>VERIFIED POINTS</span></div>
+                <div className="scores-detail"><span id="scores-rank">No ranked run yet</span><span id="scores-percentile" /></div>
+                <p id="scores-note" className="scores-note">Sign in before starting to join today's ranking.</p>
+                <div id="scores-distribution" className="scores-distribution" role="img" aria-label="Today's score distribution" hidden />
+              </section>
+              <section className="scores-history" aria-labelledby="scores-history-title">
+                <h3 id="scores-history-title">PAST GRIDS</h3>
+                <ol id="scores-history-list"><li className="scores-empty"><img src="/egg.svg" alt="" /><span><strong>A FRESH START</strong><small>Only verified daily runs appear here. Earlier synced results stay in Profile.</small></span></li></ol>
+                <button id="scores-more" className="menu-back scores-more" type="button" hidden>LOAD MORE ↓</button>
+              </section>
+              <p id="scores-status" className="scores-status" role="status" aria-live="polite" hidden />
             </div>
             <div id="profile-content" className="profile-content" hidden>
               <p className="overline">YOUR ACCOUNT</p>
@@ -178,6 +196,34 @@ export default function Game({ authConfigured }) {
         </div>
       </dialog>
 
+      <dialog id="tutorial-dialog" className="modal tutorial-dialog" aria-labelledby="tutorial-title" data-step="1">
+        <div className="modal-header">
+          <button id="tutorial-close" className="modal-close" type="button" aria-label="Close tutorial">×</button>
+          <p className="overline">A QUICK PRACTICE ROUND</p>
+          <h2 id="tutorial-title">HOW TO SCRAMB</h2>
+        </div>
+        <div className="tutorial-content">
+          <div className="tutorial-demo" aria-hidden="true">
+            {Array.from({ length: 16 }, (_, index) => (
+              <span key={index} className={`${index === 5 ? "demo-fixed demo-route" : [6, 7, 11].includes(index) ? "demo-route demo-fill" : ""}`}>
+                {[5, 6, 7, 11].includes(index) ? ({ 5: "C", 6: "A", 7: "T", 11: "S" })[index] : ""}
+              </span>
+            ))}
+            <div className="tutorial-stamp">CATS <span>+9 PTS</span></div>
+          </div>
+          <div className="tutorial-tooltip" aria-live="polite">
+            <span id="tutorial-progress" className="overline">STEP 1 / 4</span>
+            <h3 id="tutorial-step-title">PICK A PATH</h3>
+            <p id="tutorial-step-copy">Start with a letter already on the grid. Drag or tap through neighboring tiles—no diagonals.</p>
+          </div>
+          <p id="tutorial-clock" className="tutorial-clock" hidden>The clock keeps ticking while you watch.</p>
+          <div className="tutorial-controls">
+            <button id="tutorial-prev" className="menu-back" type="button" disabled>← BACK</button>
+            <button id="tutorial-next" className="action-button" type="button">NEXT STEP <span aria-hidden="true">↗</span></button>
+          </div>
+          <button id="tutorial-rules" className="text-link" type="button">READ THE FULL RULES ↗</button>
+        </div>
+      </dialog>
       <dialog id="rules-dialog" className="modal" aria-labelledby="rules-title">
         <div className="modal-header">
           <button className="modal-close" type="button" data-close="" aria-label="Close">×</button>

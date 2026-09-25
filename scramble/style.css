@@ -19,6 +19,7 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .shell { position: relative; z-index: 1; width: min(1220px, calc(100% - 42px)); margin: auto; padding: 14px 0 22px; }
 .topbar, .edition, .panel-top, .draft-actions, footer { display: flex; align-items: center; justify-content: space-between; }
 .topbar { padding-bottom: 12px; animation: panel-arrive .32s ease-out both; }
+.game-error { margin: 0 0 14px; padding: 12px 14px; border: 1px solid #cf8e8e; background: #493746; color: #ffe0cf; font: 11px/1.5 "Silkscreen", monospace; }
 .brand, h1, h2, .overline, .edition, .panel-top, .board-hud, .draft-preview, .action-button, .secondary-button, .points-preview, .word-list, footer, .end-result { font-family: "Silkscreen", monospace; }
 .brand-group { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .brand { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 23px; letter-spacing: -.08em; text-shadow: 2px 3px #605681; white-space: nowrap; }

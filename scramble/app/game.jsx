@@ -9,7 +9,12 @@ export default function Game({ authConfigured }) {
       if (mounted) mountGame(authConfigured);
     }).catch((error) => {
       console.error("Could not start Scramb:", error);
-      if (mounted) document.getElementById("feedback").textContent = "Game unavailable. Reload to try again.";
+      if (mounted) {
+        document.getElementById("game-error").hidden = false;
+        const startButton = document.getElementById("start-button");
+        startButton.textContent = "GAME UNAVAILABLE";
+        startButton.disabled = true;
+      }
     });
     return () => { mounted = false; };
   }, [authConfigured]);
@@ -30,6 +35,7 @@ export default function Game({ authConfigured }) {
             <button id="rules" className="help-button" type="button" aria-label="How to play tutorial" aria-haspopup="dialog" aria-controls="tutorial-dialog"><span className="help-label">HOW TO PLAY</span><span className="help-icon" aria-hidden="true">?</span></button>
           </div>
         </header>
+        <p id="game-error" className="game-error" role="alert" hidden>Game unavailable. Reload to try again.</p>
 
         <div className="game-layout">
           <section className="board-panel" aria-label="Daily letter grid">
@@ -182,7 +188,7 @@ export default function Game({ authConfigured }) {
                   <div><strong id="profile-words">0</strong><span>WORDS</span></div>
                 </div>
               </div>
-              <p className="profile-note">Your daily run and finished results sync with your account.</p>
+              <p id="profile-note" className="profile-note">Your daily run and finished results sync with your account.</p>
               <section className="profile-history" aria-labelledby="profile-history-title">
                 <h3 id="profile-history-title">RECENT RESULTS</h3>
                 <ol id="profile-history-list"><li>Loading results...</li></ol>
@@ -202,7 +208,7 @@ export default function Game({ authConfigured }) {
           <h2 id="tutorial-title">HOW TO SCRAMB</h2>
         </div>
         <div className="tutorial-content">
-          <div className="tutorial-demo board" aria-hidden="true">
+          <div id="tutorial-demo" className="tutorial-demo board" aria-hidden="true">
             <div className="tutorial-stamp"><span id="tutorial-demo-word" /> <span id="tutorial-demo-points" /></div>
           </div>
           <div className="tutorial-tooltip" aria-live="polite">

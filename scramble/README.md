@@ -15,6 +15,9 @@ links to the full written recipe. Copy Result shares the score, run stats, and
 up to three highest-scoring words without including a tile diagram.
 The footer includes Terms of Use and Privacy Policy links that open
 scrollable dialogs alongside the existing game rules dialog.
+The header numbers canonical UTC daily puzzles starting with #1 on
+September 25, 2026; older boards have no puzzle number. Practice and
+unranked runs use the same day's board number without becoming ranked attempts.
 
 ## Google sign-in
 

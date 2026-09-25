@@ -1,10 +1,10 @@
 import { runContext, runResponse } from "../../../run-db";
-import { validRankedBoardId } from "../../../ranked-board";
+import { utcDailyBoardId, validRankedBoardId } from "../../../ranked-board";
 import { comparison, historyBefore, isFrozen, publicRankedRun, scoreDistribution, verifyWord } from "../../../ranked-run";
 
 export const runtime = "nodejs";
 
-const daily = () => new Date().toISOString().slice(0, 10);
+const daily = utcDailyBoardId;
 
 function logUnexpected(operation, error) {
   const code = ["42P01", "42703", "23505", "ECONNREFUSED", "ETIMEDOUT"].includes(error?.code)

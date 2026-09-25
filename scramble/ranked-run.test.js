@@ -1,11 +1,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { generateBoard, validRankedBoardId } from "./ranked-board.js";
+import { dailyPuzzleNumber, generateBoard, utcDailyBoardId, validRankedBoardId } from "./ranked-board.js";
 import { comparison, historyBefore, isExpired, isFrozen, publicRankedRun, scoreDistribution, verifyWord } from "./ranked-run.js";
 
 const boardId = "2026-09-24";
 const board = generateBoard(boardId);
 const fresh = () => ({ played: {}, moves: [], score: 0 });
+
+test("daily puzzle numbers follow the UTC board key across rollover boundaries", () => {
+  assert.equal(dailyPuzzleNumber("2026-09-25"), 1);
+  assert.equal(dailyPuzzleNumber("2026-09-26"), 2);
+  assert.equal(dailyPuzzleNumber("2026-12-31"), 98);
+  assert.equal(dailyPuzzleNumber("2027-01-01"), 99);
+  assert.equal(utcDailyBoardId(new Date("2026-09-25T00:59:59+01:00")), "2026-09-24");
+  assert.equal(utcDailyBoardId(new Date("2026-09-25T01:00:00+01:00")), "2026-09-25");
+  assert.equal(dailyPuzzleNumber(utcDailyBoardId(new Date("2026-09-26T01:00:00+01:00"))), 2);
+});
+
+test("earlier daily boards remain valid but have no launch-era puzzle number", () => {
+  assert.equal(validRankedBoardId("2026-09-24"), true);
+  assert.equal(dailyPuzzleNumber("2026-09-24"), null);
+  assert.equal(dailyPuzzleNumber("2026-01-01"), null);
+  assert.throws(() => dailyPuzzleNumber("2026-09-25:practice"), /Invalid daily board ID/);
+  assert.throws(() => dailyPuzzleNumber("2026-02-30"), /Invalid daily board ID/);
+});
 
 test("ranked board exactly matches the browser's deterministic daily generation", () => {
   assert.deepEqual(board.fixed.flatMap((letter, index) => letter ? [`${index}:${letter}`] : []),

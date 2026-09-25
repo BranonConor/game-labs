@@ -4,6 +4,18 @@ export const SIZE = 8;
 export const DURATION_MS = 4 * 60 * 1000;
 export const FULL_BOARD_BONUS = 50;
 export const VALUES = { A: 1, B: 3, C: 3, D: 2, E: 1, F: 4, G: 2, H: 4, I: 1, J: 8, K: 5, L: 1, M: 3, N: 1, O: 1, P: 3, Q: 10, R: 1, S: 1, T: 1, U: 1, V: 4, W: 4, X: 8, Y: 4, Z: 10 };
+const FIRST_PUZZLE_DAY = "2026-09-25";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function utcDailyBoardId(at = new Date()) {
+  return at.toISOString().slice(0, 10);
+}
+
+export function dailyPuzzleNumber(boardId) {
+  if (!validRankedBoardId(boardId)) throw new Error("Invalid daily board ID.");
+  if (boardId < FIRST_PUZZLE_DAY) return null;
+  return (Date.parse(`${boardId}T00:00:00Z`) - Date.parse(`${FIRST_PUZZLE_DAY}T00:00:00Z`)) / DAY_MS + 1;
+}
 
 const SEED_WORDS = [
   "GARDEN", "MARKET", "WINTER", "SUMMER", "SHADOW", "FLOWER", "SILVER", "SPIRIT",

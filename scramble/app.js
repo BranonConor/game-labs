@@ -1,6 +1,6 @@
 import { startAtmosphere } from "./atmosphere.js";
 import { createGoogleAuth, googleAuthError } from "./auth.js";
-import { DURATION_MS, FULL_BOARD_BONUS, generateBoard, SIZE, VALUES } from "./ranked-board.js";
+import { dailyPuzzleNumber, DURATION_MS, FULL_BOARD_BONUS, generateBoard, SIZE, utcDailyBoardId, VALUES } from "./ranked-board.js";
 import { validRunState } from "./run-state.js";
 import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
 import { formatShareResult } from "./share-result.js";
@@ -27,7 +27,7 @@ export function mountGame(authConfigured) {
   let inspectedRoute = null;
   let shareStatusTimer = null;
   let shareExitTimer = null;
-  const day = new Date().toISOString().slice(0, 10);
+  const day = utcDailyBoardId();
   const requestedSeed = new URLSearchParams(location.search).get("seed");
   const practiceSeed = requestedSeed && /^[\w-]{1,64}$/.test(requestedSeed) ? requestedSeed : null;
   const boardId = practiceSeed ? `${day}:${practiceSeed}` : day;
@@ -586,7 +586,7 @@ export function mountGame(authConfigured) {
     inspectedRoute = null;
     $("board-kind").textContent = practiceSeed ? "DEV PRACTICE"
       : rankedMode === "replay" ? "UNRANKED PRACTICE"
-        : activeUserId && rankedMode === "unranked" && !rankedAttemptExists ? "UNRANKED GRID" : "DAILY GRID";
+        : "DAILY GRID";
     boardElement.classList.remove("inspecting");
     const filled = initialFilled + Object.keys(state.played).length;
     $("score").textContent = String(state.score).padStart(4, "0");
@@ -946,7 +946,7 @@ export function mountGame(authConfigured) {
     if (!dictionary) { void loadDictionary(); return; }
     if (!syncReady) return;
     if (state.startedAt) return;
-    if (day !== new Date().toISOString().slice(0, 10)) {
+    if (day !== utcDailyBoardId()) {
       message("A new daily grid is ready. Refresh to start today's run.", "error");
       return;
     }
@@ -1593,8 +1593,8 @@ export function mountGame(authConfigured) {
   });
 
   const dateLabel = new Intl.DateTimeFormat("en", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }).format(new Date(`${day}T12:00:00Z`));
-  const issueNumber = String(Math.floor(Date.parse(`${day}T00:00:00Z`) / 86400000) - 20500).padStart(3, "0");
-  $("date-label").textContent = `${dateLabel} / #${issueNumber}`;
+  const puzzleNumber = dailyPuzzleNumber(day);
+  $("date-label").textContent = `${dateLabel}${puzzleNumber === null ? "" : ` / #${puzzleNumber}`}`;
   for (const tier of SCORE_TIERS) {
     const item = document.createElement("li");
     const image = document.createElement("img");

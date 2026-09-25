@@ -119,7 +119,7 @@ export default function Game({ authConfigured }) {
         <div className="menu-top"><span>SCRAMB / MENU</span><button id="menu-close" className="menu-close" type="button" aria-label="Close menu">×</button></div>
         <div id="menu-content" className="menu-content">
           <div id="menu-home" className="menu-screen">
-            <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p>Ready for a fresh run?</p></div>
+            <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p><a href="https://branon.dev" target="_blank" rel="noopener noreferrer">Loving the game? Come tell me about it! <span>branon.dev</span></a></p></div>
             <nav className="menu-items" aria-label="Menu pages">
               <button id="account-nav" className="menu-item menu-account-item" type="button" data-menu-page="profile" disabled>
                 <span className="menu-account-copy"><span id="account-nav-title">CHECKING ACCOUNT...</span><small id="account-nav-detail">ONE MOMENT</small></span>

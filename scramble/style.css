@@ -187,6 +187,9 @@ footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 12px 0 23px; 
 .menu-dialog[open] .menu-splash { animation: yolk-splash 16s steps(3, end) -7s infinite; }
 .menu-hero h2, .menu-page h2 { margin: 16px 0 9px; color: #ffe2aa; font: 700 25px/1.25 "Silkscreen", monospace; letter-spacing: -.06em; }
 .menu-hero > p:last-child, #menu-page-generic > p:last-child { max-width: 260px; color: #d7d8d5; font: 13px/1.55 "DM Sans", sans-serif; }
+.menu-hero > p:last-child a { color: inherit; text-decoration: none; }
+.menu-hero > p:last-child a span { color: #ffcf83; text-decoration: underline; text-underline-offset: 3px; }
+.menu-hero > p:last-child a:hover { text-decoration: underline; }
 .menu-items { display: grid; gap: 9px; margin-top: 9px; }
 .menu-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 15px 16px; border: 1px solid #737e8c; background: #303c52; box-shadow: 3px 3px #101626, inset 2px 2px #ffffff19; color: #f7e8cf; text-align: left; font: 700 14px "Silkscreen", monospace; transition: transform .16s, background .16s, border-color .16s; }
 .menu-item:hover:not(:disabled) { transform: translateX(4px); border-color: #ffd48e; background: #4b465d; }

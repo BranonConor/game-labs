@@ -112,11 +112,11 @@ export default function Game({ authConfigured }) {
             </section>
           </aside>
         </div>
-        <footer><div className="footer-actions"><span className="footer-credit">a <a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev</a> creation</span><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="reseed" className="text-link dev-link" type="button">DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button">DEV / SKIP TO END ↠</button></div></footer>
+        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="reseed" className="text-link dev-link" type="button">DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button">DEV / SKIP TO END ↠</button></div></footer>
       </main>
 
       <dialog id="menu-dialog" className="menu-dialog" aria-label="Scramb menu">
-        <div className="menu-top"><span>SCRAMB / MENU</span><button id="menu-close" className="menu-close" type="button" aria-label="Close menu">X</button></div>
+        <div className="menu-top"><span>SCRAMB / MENU</span><button id="menu-close" className="menu-close" type="button" aria-label="Close menu">×</button></div>
         <div id="menu-content" className="menu-content">
           <div id="menu-home" className="menu-screen">
             <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p>Ready for a fresh run?</p></div>
@@ -180,7 +180,7 @@ export default function Game({ authConfigured }) {
 
       <dialog id="rules-dialog" className="modal" aria-labelledby="rules-title">
         <div className="modal-header">
-          <button className="modal-close" type="button" data-close="" aria-label="Close">X</button>
+          <button className="modal-close" type="button" data-close="" aria-label="Close">×</button>
           <p className="overline">THE RECIPE</p><h2 id="rules-title">Make words.<br />Fill the board.</h2>
         </div>
         <div className="modal-content">

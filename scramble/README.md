@@ -39,7 +39,9 @@ rather than offering a nonfunctional sign-in button.
 
 NextAuth.js handles Google sign-in and sessions. The profile displays the
 Google name, email, and picture when signed in, plus today's score and word
-count. Signing out switches back to the guest run.
+count. Signing out switches back to the guest run. The development footer
+controls are shown only to the designated Google admin account; other players
+cannot see or activate them.
 
 ## Run storage
 

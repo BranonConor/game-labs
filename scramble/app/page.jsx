@@ -1,8 +1,10 @@
+import { getServerSession } from "next-auth";
 import Game from "./game";
-import { authConfigured } from "../auth-options";
+import { authConfigured, authOptions } from "../auth-options";
 
 export const dynamic = "force-dynamic";
 
-export default function Page() {
-  return <Game authConfigured={authConfigured} />;
+export default async function Page() {
+  const session = authConfigured ? await getServerSession(authOptions) : null;
+  return <Game authConfigured={authConfigured} adminTools={session?.user?.isAdmin === true} />;
 }

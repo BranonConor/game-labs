@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-export default function Game({ authConfigured }) {
+export default function Game({ authConfigured, adminTools }) {
   useEffect(() => {
     let mounted = true;
     import("../app.js").then(({ mountGame }) => {
@@ -118,7 +118,7 @@ export default function Game({ authConfigured }) {
             </section>
           </aside>
         </div>
-        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="reseed" className="text-link dev-link" type="button">DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button">DEV / SKIP TO END ↠</button></div></footer>
+        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a>{adminTools && <><button id="reseed" className="text-link dev-link" type="button" hidden>DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button" hidden>DEV / SKIP TO END ↠</button></>}</div></footer>
       </main>
 
       <dialog id="menu-dialog" className="menu-dialog" aria-label="Scramb menu">

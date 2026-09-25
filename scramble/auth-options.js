@@ -1,6 +1,7 @@
 import GoogleProviderPackage from "next-auth/providers/google";
 
 const GoogleProvider = GoogleProviderPackage.default ?? GoogleProviderPackage;
+const ADMIN_EMAIL = "branoneusebio@gmail.com";
 
 export const authConfigured = Boolean(
   process.env.GOOGLE_CLIENT_ID &&
@@ -21,6 +22,7 @@ export const authOptions = {
   callbacks: {
     session({ session, token }) {
       session.user.id = token.sub;
+      session.user.isAdmin = Boolean(token.sub && token.email?.toLowerCase() === ADMIN_EMAIL);
       return session;
     },
   },

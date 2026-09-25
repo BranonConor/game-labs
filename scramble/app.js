@@ -588,7 +588,8 @@ export function mountGame(authConfigured) {
     $("profile-score").textContent = state.score.toLocaleString();
     $("profile-words").textContent = String(state.words.length);
     $("filled-count").textContent = `${filled}/64 FILLED`;
-    $("skip-to-end").disabled = !syncReady || state.finished;
+    const skipToEnd = $("skip-to-end");
+    if (skipToEnd) skipToEnd.disabled = !accountUser?.isAdmin || !syncReady || state.finished;
     document.body.classList.toggle("run-active", Boolean(state.startedAt && !state.finished));
     document.body.classList.toggle("run-finished", state.finished);
     $("start-overlay").hidden = Boolean(state.startedAt);
@@ -1344,6 +1345,14 @@ export function mountGame(authConfigured) {
   }
   function updateAccount(user) {
     accountUser = user;
+    const isAdmin = user?.isAdmin === true;
+    const reseed = $("reseed");
+    const skipToEnd = $("skip-to-end");
+    if (reseed) reseed.hidden = !isAdmin;
+    if (skipToEnd) {
+      skipToEnd.hidden = !isAdmin;
+      skipToEnd.disabled = !isAdmin || !syncReady || state.finished;
+    }
     scoresGeneration++;
     scoresLoading = false;
     if (!user) {
@@ -1517,14 +1526,15 @@ export function mountGame(authConfigured) {
     menuContent.scrollTop = 0;
     menuDialog.querySelector(`[data-menu-page="${selected}"]`).focus();
   });
-  $("reseed").addEventListener("click", () => {
+  $("reseed")?.addEventListener("click", () => {
+    if (!accountUser?.isAdmin) return;
     const params = new URLSearchParams(location.search);
     params.delete("v");
     params.set("seed", crypto.randomUUID());
     location.search = params.toString();
   });
-  $("skip-to-end").addEventListener("click", () => {
-    if (!syncReady || state.finished) return;
+  $("skip-to-end")?.addEventListener("click", () => {
+    if (!accountUser?.isAdmin || !syncReady || state.finished) return;
     state.startedAt = Date.now() - DURATION;
     finish("time");
   });

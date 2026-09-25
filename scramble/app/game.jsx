@@ -112,37 +112,75 @@ export default function Game({ authConfigured }) {
             </section>
           </aside>
         </div>
-        <footer><div className="footer-actions"><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="reseed" className="text-link dev-link" type="button">DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button">DEV / SKIP TO END ↠</button></div></footer>
+        <footer><div className="footer-actions"><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="reseed" className="text-link dev-link" type="button">DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button">DEV / SKIP TO END ↠</button></div><span className="footer-credit">a <a href="https://branon.dev" target="_blank" rel="noopener noreferrer">branon.dev</a> creation</span></footer>
       </main>
 
       <dialog id="menu-dialog" className="menu-dialog" aria-label="Scramb menu">
-        <div className="menu-top"><span>SCRAMB / MENU</span><button id="menu-close" className="menu-close" type="button" aria-label="Close menu">×</button></div>
-        <div id="menu-home" className="menu-screen">
-          <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p>More ways to play together are on the way.</p></div>
-          <section className="menu-account" aria-label="Google account">
-            <p id="account-status" role="status" aria-live="polite">CHECKING SIGN-IN...</p>
-            <button id="google-signin" className="action-button" type="button" disabled>CONTINUE WITH GOOGLE <span aria-hidden="true">↗</span></button>
+        <div className="menu-top"><span>SCRAMB / MENU</span><button id="menu-close" className="menu-close" type="button" aria-label="Close menu">X</button></div>
+        <div id="menu-content" className="menu-content">
+          <div id="menu-home" className="menu-screen">
+            <div className="menu-hero"><span className="menu-egg" aria-hidden="true"><img src="/egg.svg" alt="" /><span className="menu-splash" /></span><p className="overline">FRESH FROM THE GRID</p><h2>WHAT'S<br />COOKING?</h2><p>Ready for a fresh run?</p></div>
+            <nav className="menu-items" aria-label="Menu pages">
+              <button id="account-nav" className="menu-item menu-account-item" type="button" data-menu-page="profile" disabled>
+                <span className="menu-account-copy"><span id="account-nav-title">CHECKING ACCOUNT...</span><small id="account-nav-detail">ONE MOMENT</small></span>
+                <span id="account-nav-arrow" aria-hidden="true">↗</span>
+                <span id="account-nav-avatar" className="menu-account-avatar" aria-hidden="true" hidden>
+                  <img id="account-nav-image" alt="" hidden />
+                  <span id="account-nav-fallback">?</span>
+                </span>
+              </button>
+              <button className="menu-item" type="button" data-menu-page="scores"><span>SCORES<small>COMING SOON</small></span><span aria-hidden="true">↗</span></button>
+              <button className="menu-item" type="button" data-menu-page="settings"><span>SETTINGS<small>COMING SOON</small></span><span aria-hidden="true">↗</span></button>
+            </nav>
+            <p id="account-status" className="menu-account-error" role="alert" hidden />
+            <p id="sync-status" className="menu-account-error" role="alert" hidden />
+            <p id="menu-footnote" className="menu-footnote">GOOD LUCK OUT THERE</p>
+          </div>
+          <section id="menu-page" className="menu-screen menu-page" aria-labelledby="menu-page-title" hidden>
+            <button id="menu-back" className="menu-back" type="button">← BACK TO MENU</button>
+            <div id="menu-page-generic">
+              <img src="/egg.svg" alt="" />
+              <p className="overline">COMING SOON</p>
+              <h2 id="menu-page-title" />
+              <p id="menu-page-description" />
+            </div>
+            <div id="profile-content" className="profile-content" hidden>
+              <p className="overline">YOUR ACCOUNT</p>
+              <h2 id="profile-title">PROFILE</h2>
+              <div className="profile-card">
+                <div className="profile-avatar">
+                  <img id="profile-avatar-image" alt="" hidden />
+                  <span id="profile-avatar-fallback" aria-hidden="true">?</span>
+                </div>
+                <div className="profile-identity">
+                  <span id="profile-provider">GUEST PLAYER</span>
+                  <strong id="profile-name">Guest player</strong>
+                  <p id="profile-email">Checking sign-in...</p>
+                </div>
+              </div>
+              <div className="profile-run">
+                <span className="overline">TODAY'S RUN</span>
+                <div className="profile-stats">
+                  <div><strong id="profile-score">0</strong><span>POINTS</span></div>
+                  <div><strong id="profile-words">0</strong><span>WORDS</span></div>
+                </div>
+              </div>
+              <p className="profile-note">Your daily run and finished results sync with your account.</p>
+              <section className="profile-history" aria-labelledby="profile-history-title">
+                <h3 id="profile-history-title">RECENT RESULTS</h3>
+                <ol id="profile-history-list"><li>Loading results...</li></ol>
+              </section>
+              <p id="profile-sync-status" className="profile-status" role="alert" hidden />
+              <p id="profile-status" className="profile-status" role="status" aria-live="polite" hidden />
+              <button id="profile-logout" className="menu-item" type="button" hidden>SIGN OUT <span aria-hidden="true">↗</span></button>
+            </div>
           </section>
-          <nav className="menu-items" aria-label="Menu pages">
-            <button className="menu-item" type="button" data-menu-page="scores"><span>SCORES<small>COMING SOON</small></span><span aria-hidden="true">↗</span></button>
-            <button className="menu-item" type="button" data-menu-page="profile"><span>PROFILE<small id="profile-label">GUEST MODE</small></span><span aria-hidden="true">↗</span></button>
-            <button className="menu-item" type="button" data-menu-page="settings"><span>SETTINGS<small>COMING SOON</small></span><span aria-hidden="true">↗</span></button>
-            <button id="menu-logout" className="menu-item" type="button" hidden><span>SIGN OUT<small>GOOGLE ACCOUNT</small></span><span aria-hidden="true">↗</span></button>
-          </nav>
-          <p id="menu-footnote" className="menu-footnote">YOUR RUN STAYS ON THIS DEVICE</p>
         </div>
-        <section id="menu-page" className="menu-screen menu-page" aria-labelledby="menu-page-title" hidden>
-          <button id="menu-back" className="menu-back" type="button">← BACK TO MENU</button>
-          <img src="/egg.svg" alt="" />
-          <p className="overline">COMING SOON</p>
-          <h2 id="menu-page-title" />
-          <p id="menu-page-description" />
-        </section>
       </dialog>
 
       <dialog id="rules-dialog" className="modal" aria-labelledby="rules-title">
         <div className="modal-header">
-          <button className="modal-close" type="button" data-close="" aria-label="Close">×</button>
+          <button className="modal-close" type="button" data-close="" aria-label="Close">X</button>
           <p className="overline">THE RECIPE</p><h2 id="rules-title">Make words.<br />Fill the board.</h2>
         </div>
         <div className="modal-content">

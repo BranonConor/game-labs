@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --webpack -H 127.0.0.1",
-    "build": "next build --webpack",
+    "build": "node db/migrate.mjs && next build --webpack",
     "start": "next start -H 127.0.0.1"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "@next/env": "^16.2.12",
     "next": "16.2.12",
     "next-auth": "4.24.15",
     "react": "19.3.0",

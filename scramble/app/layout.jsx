@@ -1,4 +1,7 @@
 import "../style.css";
+import Script from "next/script";
+
+const analyticsId = "G-VKX4FBTEML";
 
 export const metadata = {
   metadataBase: new URL(
@@ -28,5 +31,25 @@ export const metadata = {
 export const viewport = { themeColor: "#111324" };
 
 export default function RootLayout({ children }) {
-  return <html lang="en"><body>{children}</body></html>;
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        {process.env.NODE_ENV === "production" && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${analyticsId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${analyticsId}');`}
+            </Script>
+          </>
+        )}
+      </body>
+    </html>
+  );
 }

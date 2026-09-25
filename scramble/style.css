@@ -163,19 +163,25 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .word-chip { width: 11px; height: 11px; flex: none; border: 1px solid #fbe1be; box-shadow: 2px 2px #161528, inset 1px 1px #fff8; }
 .word-list .empty-note { font: 10px/1.6 "Silkscreen", monospace; color: #a5bac0; }
 .word-list .earned { color: #ffce8c; }
-footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: panel-arrive .38s .27s ease-out both; }
+footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: panel-arrive .38s .27s ease-out both; }
 .footer-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 10px 18px; }
+.footer-credit { color: #aab8bd; font: 10px "DM Sans", sans-serif; }
+.footer-credit a { color: #ffcf83; text-decoration: none; }
+.footer-credit a:hover { text-decoration: underline; }
 .text-link { background: none; border: none; padding: 4px 0; color: #ffcf83; font: 10px "Silkscreen", monospace; white-space: nowrap; text-decoration: none; }
 .dev-link { color: #9dd5c4; }
 .text-link:hover { text-decoration: underline; }
 .dev-link:disabled { opacity: .45; cursor: not-allowed; text-decoration: none; }
-.menu-dialog { position: fixed; inset: 0 auto 0 0; width: min(390px, calc(100vw - 22px)); height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; border: 0; border-right: 2px solid #ffe0a7; background: #20283d; color: #f8ecdb; box-shadow: 9px 0 #0c102090, 24px 0 70px #080b19b8; animation: menu-in .32s cubic-bezier(.2, .85, .28, 1) both; }
+.menu-dialog { position: fixed; inset: 0 auto 0 0; width: min(390px, calc(100vw - 22px)); height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; overflow: hidden; border: 0; border-right: 2px solid #ffe0a7; background: #20283d; color: #f8ecdb; box-shadow: 9px 0 #0c102090, 24px 0 70px #080b19b8; animation: menu-in .32s cubic-bezier(.2, .85, .28, 1) both; }
+.menu-dialog[open] { display: flex; flex-direction: column; }
 .menu-dialog::backdrop { background: #080b19b3; backdrop-filter: blur(4px); animation: menu-backdrop-in .32s ease both; }
 .menu-dialog.closing { animation: menu-out .22s ease-in both; }
 .menu-dialog.closing::backdrop { animation: menu-backdrop-out .22s ease-in both; }
-.menu-top { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 18px 23px; border-bottom: 1px solid #667081; background: #252b43; color: #a9dbc4; font: 10px "Silkscreen", monospace; }
-.menu-close { width: 34px; height: 34px; border: 1px solid #8a8393; background: #33334d; color: #ffe1b0; font-size: 23px; line-height: 1; }
+.menu-top { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 18px 23px; border-bottom: 1px solid #667081; background: #252b43; color: #a9dbc4; font: 10px "Silkscreen", monospace; }
+.menu-close, .modal-close { display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid #8a8393; background: #33334d; color: #ffe1b0; font: 700 19px/1 "Silkscreen", monospace; }
+.menu-content { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .menu-close:hover, .menu-back:hover { background: #4d4259; }
+.modal-close:hover { background: #4d4259; }
 .menu-screen { padding: 30px 24px 36px; animation: menu-screen-in .23s ease-out both; }
 .menu-hero { position: relative; overflow: hidden; min-height: 195px; padding: 24px 22px; border: 1px solid #9a7c83; background: radial-gradient(circle at 90% 15%, #f4b97366, transparent 42%), repeating-linear-gradient(0deg, transparent 0 9px, #ffffff08 10px), #423850; box-shadow: inset 3px 3px #fff5d033, 4px 4px #12172a; }
 .menu-egg { position: absolute; top: 19px; right: 20px; width: 65px; height: 84px; }
@@ -184,20 +190,44 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: 
 .menu-splash { position: absolute; z-index: 1; top: 61px; left: 29px; width: 5px; height: 5px; background: #ffcb67; box-shadow: -23px -4px #ffcb67, -17px 4px #f7a84b, 20px -7px #ffcb67, 25px 3px #f7a84b; opacity: 0; }
 .menu-dialog[open] .menu-splash { animation: yolk-splash 16s steps(3, end) -7s infinite; }
 .menu-hero h2, .menu-page h2 { margin: 16px 0 9px; color: #ffe2aa; font: 700 25px/1.25 "Silkscreen", monospace; letter-spacing: -.06em; }
-.menu-hero > p:last-child, .menu-page > p:last-child { max-width: 260px; color: #d7d8d5; font: 13px/1.55 "DM Sans", sans-serif; }
-.menu-account { display: grid; gap: 10px; margin-top: 16px; padding: 13px; border: 1px solid #737e8c; background: #293247; }
-.menu-account p { margin: 0; overflow-wrap: anywhere; color: #a9dbc4; font: 10px/1.5 "Silkscreen", monospace; }
-.menu-account .action-button { width: 100%; font-size: 10px; }
-.menu-items { display: grid; gap: 9px; margin-top: 16px; }
+.menu-hero > p:last-child, #menu-page-generic > p:last-child { max-width: 260px; color: #d7d8d5; font: 13px/1.55 "DM Sans", sans-serif; }
+.menu-items { display: grid; gap: 9px; margin-top: 9px; }
 .menu-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 15px 16px; border: 1px solid #737e8c; background: #303c52; box-shadow: 3px 3px #101626, inset 2px 2px #ffffff19; color: #f7e8cf; text-align: left; font: 700 14px "Silkscreen", monospace; transition: transform .16s, background .16s, border-color .16s; }
-.menu-item:hover { transform: translateX(4px); border-color: #ffd48e; background: #4b465d; }
+.menu-item:hover:not(:disabled) { transform: translateX(4px); border-color: #ffd48e; background: #4b465d; }
+.menu-item:disabled { opacity: .65; cursor: wait; }
 .menu-item small { display: block; margin-top: 5px; color: #9ed7c6; font: 9px "Silkscreen", monospace; }
 .menu-item > span:last-child { color: #ffd48e; font-size: 17px; }
+.menu-account-copy { min-width: 0; }
+.menu-account-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-account-item > #account-nav-arrow { color: #ffd48e; font-size: 17px; }
+.menu-account-avatar { display: grid; place-items: center; flex: none; width: 34px; height: 34px; overflow: hidden; border: 2px solid #ffcf83; border-radius: 50%; background: #293247; color: #ffcf83; font: 14px "Silkscreen", monospace; }
+.menu-account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.menu-account-error { margin: 14px 0 0; padding: 12px; border: 1px solid #cf8e8e; background: #493746; color: #ffe0cf; font: 9px/1.5 "Silkscreen", monospace; overflow-wrap: anywhere; }
 .menu-footnote { margin: 23px 0 0; color: #aab9c7; font: 9px/1.5 "Silkscreen", monospace; }
-.menu-page { min-height: 75%; }
 .menu-back { padding: 9px 11px; border: 1px solid #8a8393; background: #33334d; color: #ffe1b0; font: 10px "Silkscreen", monospace; }
-.menu-page img { display: block; width: 86px; margin: 75px 0 25px; image-rendering: pixelated; filter: drop-shadow(5px 6px #111728); animation: egg-float 15s ease-in-out -5s infinite; }
+#menu-page-generic > img { display: block; width: 86px; margin: 75px 0 25px; image-rendering: pixelated; filter: drop-shadow(5px 6px #111728); animation: egg-float 15s ease-in-out -5s infinite; }
 .menu-page h2 { margin-top: 13px; }
+.profile-content { padding-top: 24px; }
+.profile-content h2 { margin-bottom: 20px; }
+.profile-card { display: flex; align-items: center; gap: 15px; min-width: 0; padding: 16px; border: 1px solid #9a7c83; background: #423850; box-shadow: inset 3px 3px #fff5d033, 4px 4px #12172a; }
+.profile-avatar { display: grid; place-items: center; flex: none; width: 62px; height: 62px; overflow: hidden; border: 2px solid #ffcf83; background: #293247; color: #ffcf83; font: 26px "Silkscreen", monospace; }
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.profile-identity { min-width: 0; }
+.profile-identity span, .profile-run .overline, .profile-stats span, .profile-status { color: #a9dbc4; font: 9px/1.5 "Silkscreen", monospace; }
+.profile-identity strong { display: block; margin: 4px 0; color: #ffe2aa; font: 13px/1.4 "Silkscreen", monospace; overflow-wrap: anywhere; }
+.profile-identity p { margin: 0; color: #d7d8d5; font: 12px/1.4 "DM Sans", sans-serif; overflow-wrap: anywhere; }
+.profile-run { margin-top: 17px; padding: 17px; border: 1px solid #737e8c; background: #293247; }
+.profile-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 14px; }
+.profile-stats div { display: grid; gap: 4px; }
+.profile-stats strong { color: #ffcf83; font: 24px "Silkscreen", monospace; }
+.profile-note { margin: 17px 0; color: #cbd4d4; font: 12px/1.6 "DM Sans", sans-serif; }
+.profile-history { margin-bottom: 17px; padding: 15px; border: 1px solid #737e8c; background: #293247; }
+.profile-history h3 { margin: 0 0 12px; color: #a9dbc4; font: 10px "Silkscreen", monospace; }
+.profile-history ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.profile-history li { display: flex; justify-content: space-between; gap: 10px; color: #d7d8d5; font: 11px "Silkscreen", monospace; }
+.profile-history li span:last-child { color: #ffcf83; text-align: right; }
+.profile-status { margin: 0 0 12px; overflow-wrap: anywhere; }
+.profile-content .menu-item { width: 100%; }
 .modal { position: fixed; inset: 0; width: min(475px, calc(100% - 26px)); max-height: 90dvh; margin: auto; overflow: hidden; background: #242b45; border: 1px solid #afb0b1; color: #f7edde; box-shadow: 7px 7px 0 #101426, 0 25px 100px #070a15; padding: 0; }
 .modal[open] { display: flex; flex-direction: column; animation: recipe-in .3s cubic-bezier(.2, .85, .3, 1) both; }
 .modal::backdrop { background: #080b19ba; backdrop-filter: blur(5px); }
@@ -207,7 +237,7 @@ footer { gap: 20px; color: #aab8bd; padding: 23px 0; font-size: 9px; animation: 
 .modal-header { position: relative; flex: none; padding: 31px 55px 0 31px; }
 .modal-content { min-height: 0; padding: 0 max(0px, calc(31px - var(--scrollbar-width, 0px))) 0 31px; overflow-y: auto; overscroll-behavior: contain; }
 .modal-footer { flex: none; padding: 16px 31px 31px; }
-.modal-close { position: absolute; top: 14px; right: 19px; color: #e8d6bb; font-size: 26px; background: none; border: 0; }
+.modal-close { position: absolute; top: 14px; right: 19px; }
 .modal h2 { font: 700 28px/1.2 "Silkscreen", monospace; letter-spacing: -.06em; }
 .modal p:not(.overline) { font-size: 13px; color: #cbd4d4; line-height: 1.7; }
 .modal p strong { color: #ffe0aa; }

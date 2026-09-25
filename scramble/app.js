@@ -1,5 +1,6 @@
 import { startAtmosphere } from "./atmosphere.js";
 import { createGoogleAuth, googleAuthError } from "./auth.js";
+import { validRunState } from "./run-state.js";
 import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
 
 export function mountGame(authConfigured) {
@@ -36,7 +37,8 @@ export function mountGame(authConfigured) {
   const requestedSeed = new URLSearchParams(location.search).get("seed");
   const practiceSeed = requestedSeed && /^[\w-]{1,64}$/.test(requestedSeed) ? requestedSeed : null;
   const boardId = practiceSeed ? `${day}:${practiceSeed}` : day;
-  const storageKey = `scramble-v6:${boardId}`;
+  const guestStorageKey = `scramble-v6:${boardId}`;
+  let storageKey = guestStorageKey;
   const $ = (id) => document.getElementById(id);
   const eggAsset = (tier) => `/eggs/${tier.id}.svg`;
   const boardElement = $("board");
@@ -48,7 +50,6 @@ export function mountGame(authConfigured) {
   const mobileKeyboard = $("mobile-keyboard");
   const menuPages = {
     scores: "Daily scores and rankings will live here when the leaderboard is ready.",
-    profile: "Sign in with Google from the menu. Your run stays saved on this device.",
     settings: "Game preferences will live here. For now, motion follows your device settings.",
   };
 
@@ -120,26 +121,148 @@ export function mountGame(authConfigured) {
   specialTiles.slice(1, 3).forEach((index) => effectTiles.set(index, "boost"));
   const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], spentEffects: [], score: 0, fullBoardBonusAwarded: false });
   let state = freshState();
+  let activeUserId = null;
+  let syncReady = !authConfigured;
+  let syncGeneration = 0;
+  let saveSequence = 0;
+  let saveQueue = Promise.resolve();
   let path = [];
   let draft = [];
   let pointerActive = false;
 
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKey));
-    if (saved && (saved.startedAt === null || Number.isFinite(saved.startedAt))
-      && typeof saved.finished === "boolean" && saved.played && typeof saved.played === "object"
-      && Array.isArray(saved.words) && Array.isArray(saved.spentEffects) && Number.isFinite(saved.score)) state = saved;
-  } catch (error) {
-    console.warn("Could not restore today's run:", error);
-    feedback.textContent = "Saved run unavailable. Starting a new run.";
+  function readLocal(key) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(key));
+      const run = saved?.state || saved;
+      if (run) {
+        const normalized = { ...run, fullBoardBonusAwarded: Boolean(run.fullBoardBonusAwarded) };
+        if (validRunState(normalized)) return { state: normalized, pending: Boolean(saved?.pending) };
+        throw new Error("Saved run has an invalid format.");
+      }
+    } catch (error) {
+      console.warn("Could not restore today's run:", error);
+      feedback.textContent = "Saved run unavailable. Starting a new run.";
+    }
+    return { state: freshState(), pending: false };
+  }
+  state = readLocal(guestStorageKey).state;
+
+  function syncError(error) {
+    console.error("Could not sync Scramb run:", error);
+    $("profile-note").textContent = "Cloud sync is unavailable right now. Your run will retry on the next save.";
+    for (const id of ["sync-status", "profile-sync-status"]) {
+      $(id).textContent = "CLOUD SYNC FAILED / RETRY ON NEXT SAVE";
+      $(id).hidden = false;
+    }
+  }
+
+  function clearSyncError() {
+    $("profile-note").textContent = "Your daily run and finished results sync with your account.";
+    for (const id of ["sync-status", "profile-sync-status"]) {
+      $(id).hidden = true;
+      $(id).textContent = "";
+    }
+  }
+
+  async function requestRun(method, snapshot) {
+    const response = await fetch(`/api/runs/${encodeURIComponent(boardId)}`, {
+      method,
+      cache: "no-store",
+      ...(snapshot ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state: snapshot }) } : {}),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `Run request failed: HTTP ${response.status}`);
+    return result;
   }
 
   function save() {
+    const snapshot = structuredClone(state);
+    const userId = activeUserId;
+    const key = storageKey;
+    const sequence = ++saveSequence;
     try {
-      localStorage.setItem(storageKey, JSON.stringify(state));
+      localStorage.setItem(key, JSON.stringify(userId ? { state: snapshot, pending: true } : snapshot));
     } catch (error) {
       console.warn("Could not save today's run:", error);
       message("Browser storage is unavailable; keep this tab open to preserve your run.", "error");
+    }
+    if (userId && syncReady) {
+      saveQueue = saveQueue.then(async () => {
+        if (userId !== activeUserId) return;
+        await requestRun("PUT", snapshot);
+        if (sequence === saveSequence) {
+          localStorage.setItem(key, JSON.stringify({ state: snapshot, pending: false }));
+          clearSyncError();
+        }
+      }).catch((error) => {
+        syncError(error);
+      });
+    }
+  }
+
+  function applyLoadedRun(nextState) {
+    state = nextState;
+    path = [];
+    draft = [];
+    moveWorker?.terminate();
+    moveWorker = null;
+    moveWorkerReady = false;
+    $("results-content").hidden = true;
+    $("compose-content").hidden = false;
+    $("draft-heading").textContent = "CURRENT WORD";
+    renderProgress();
+    tick();
+    if (state.finished) showResults();
+    else if (lexiconText) startMoveWorker(lexiconText);
+    if (!state.startedAt && dictionary) $("start-button").disabled = false;
+  }
+
+  async function syncForUser(user) {
+    const generation = ++syncGeneration;
+    syncReady = false;
+    $("start-button").disabled = true;
+    if (!user) {
+      activeUserId = null;
+      storageKey = guestStorageKey;
+      syncReady = true;
+      clearSyncError();
+      applyLoadedRun(readLocal(guestStorageKey).state);
+      return;
+    }
+    if (!user.id) {
+      syncReady = true;
+      syncError(new Error("Google session is missing a user ID."));
+      return;
+    }
+    const key = `${guestStorageKey}:user:${user.id}`;
+    const cached = readLocal(key);
+    try {
+      const remote = await requestRun("GET");
+      if (generation !== syncGeneration) return;
+      if (remote.state && !validRunState(remote.state)) throw new Error("Saved run has an invalid format.");
+      activeUserId = user.id;
+      storageKey = key;
+      const nextState = cached.pending
+        ? cached.state
+        : remote.state || (cached.state.startedAt ? cached.state : readLocal(guestStorageKey).state);
+      syncReady = true;
+      clearSyncError();
+      applyLoadedRun(nextState);
+      if (cached.pending || (!remote.state && nextState.startedAt)) save();
+      else {
+        try {
+          localStorage.setItem(key, JSON.stringify({ state: nextState, pending: false }));
+        } catch (error) {
+          console.warn("Could not cache your saved run:", error);
+        }
+      }
+    } catch (error) {
+      if (generation !== syncGeneration) return;
+      activeUserId = user.id;
+      storageKey = key;
+      syncReady = true;
+      applyLoadedRun(cached.state.startedAt ? cached.state : readLocal(guestStorageKey).state);
+      syncError(error);
     }
   }
 
@@ -163,7 +286,7 @@ export function mountGame(authConfigured) {
   }
 
   function checkRemainingMoves() {
-    if (!moveWorkerReady || !state.startedAt || state.finished) return;
+    if (!syncReady || !moveWorkerReady || !state.startedAt || state.finished) return;
     moveWorker.postMessage({
       type: "check",
       id: ++moveCheckId,
@@ -182,7 +305,7 @@ export function mountGame(authConfigured) {
         if (data.type === "ready") {
           moveWorkerReady = true;
           checkRemainingMoves();
-        } else if (data.type === "result" && data.id === moveCheckId && !state.finished && !data.hasMove) {
+        } else if (data.type === "result" && data.id === moveCheckId && syncReady && !state.finished && !data.hasMove) {
           finish("stuck");
         }
       };
@@ -213,9 +336,9 @@ export function mountGame(authConfigured) {
       dictionary = loaded;
       lexiconText = text;
       startButton.firstChild.textContent = "START THE CLOCK ";
-      startButton.disabled = false;
+      startButton.disabled = !syncReady;
       renderProgress();
-      if (!state.finished) startMoveWorker(text);
+      if (syncReady && !state.finished) startMoveWorker(text);
       if (feedback.textContent === "Dictionary unavailable. Check your connection and retry loading.") message("");
     } catch (error) {
       console.error("Could not load Scramb's dictionary:", error);
@@ -308,7 +431,7 @@ export function mountGame(authConfigured) {
         tile.style.setProperty("--route-color", color.light);
         tile.style.setProperty("--route-deep", color.deep);
       }
-      tile.disabled = !state.startedAt || (!state.finished && !dictionary);
+      tile.disabled = !syncReady || !state.startedAt || (!state.finished && !dictionary);
       tile.setAttribute("aria-label", state.finished
         ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${lastRoute ? `, part of ${lastRoute.word}, ${lastRoute.points} points` : ""}`
         : state.startedAt
@@ -397,7 +520,7 @@ export function mountGame(authConfigured) {
     const preview = $("draft-preview");
     const flyout = $("selection-preview");
     preview.replaceChildren();
-    wordEntry.disabled = path.length < 4 || state.finished || !dictionary;
+    wordEntry.disabled = !syncReady || path.length < 4 || state.finished || !dictionary;
     wordEntry.value = draft.join("");
     if (!path.length) {
       const placeholder = document.createElement("span");
@@ -424,9 +547,9 @@ export function mountGame(authConfigured) {
     }
     if ($("results-content").hidden) $("path-length").textContent = path.length ? `${path.length} TILES` : "NO PATH";
     const result = path.length ? verdict() : null;
-    $("submit").disabled = !result?.word || state.finished;
+    $("submit").disabled = !syncReady || !result?.word || state.finished;
     $("mobile-submit").disabled = $("submit").disabled;
-    $("clear").disabled = !path.length || state.finished;
+    $("clear").disabled = !syncReady || !path.length || state.finished;
     $("mobile-clear").disabled = $("clear").disabled;
     const blanks = path.filter((index) => !letterAt(index)).length;
     $("mobile-word-announcement").textContent = path.length
@@ -463,8 +586,10 @@ export function mountGame(authConfigured) {
     boardElement.classList.remove("inspecting");
     const filled = initialFilled + Object.keys(state.played).length;
     $("score").textContent = String(state.score).padStart(4, "0");
+    $("profile-score").textContent = state.score.toLocaleString();
+    $("profile-words").textContent = String(state.words.length);
     $("filled-count").textContent = `${filled}/64 FILLED`;
-    $("skip-to-end").disabled = state.finished;
+    $("skip-to-end").disabled = !syncReady || state.finished;
     document.body.classList.toggle("run-active", Boolean(state.startedAt && !state.finished));
     document.body.classList.toggle("run-finished", state.finished);
     $("start-overlay").hidden = Boolean(state.startedAt);
@@ -512,7 +637,7 @@ export function mountGame(authConfigured) {
     const seconds = Math.ceil(ms / 1000);
     $("timer").textContent = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
     $("timer").classList.toggle("urgent", ms < 30000 && Boolean(state.startedAt && !state.finished));
-    if (state.startedAt && !state.finished && ms <= 0) finish("time");
+    if (syncReady && state.startedAt && !state.finished && ms <= 0) finish("time");
   }
 
   function clearPath() {
@@ -550,7 +675,7 @@ export function mountGame(authConfigured) {
   }
 
   function beginSelection(index) {
-    if (!state.startedAt || state.finished) return;
+    if (!syncReady || !state.startedAt || state.finished) return;
     if (claimedTiles().has(index)) {
       message("Tiles in submitted words cannot be used again.", "error");
       return;
@@ -565,7 +690,7 @@ export function mountGame(authConfigured) {
   }
 
   function submitWord() {
-    if (!state.startedAt || state.finished) return;
+    if (!syncReady || !state.startedAt || state.finished) return;
     if (remaining() <= 0) { finish("time"); return; }
     const result = verdict();
     if (!result.word) {
@@ -627,7 +752,7 @@ export function mountGame(authConfigured) {
   }
 
   function finish(reason) {
-    if (state.finished) return;
+    if (!syncReady || state.finished) return;
     if (menuDialog.open) menuDialog.close();
     if (rulesDialog.open) rulesDialog.close();
     state.endedAt = Date.now();
@@ -748,6 +873,7 @@ export function mountGame(authConfigured) {
   for (const id of ["clear", "mobile-clear", "selection-clear"]) $(id).addEventListener("click", () => { clearPath(); message("Path and unsubmitted letters cleared."); });
   $("start-button").addEventListener("click", () => {
     if (!dictionary) { void loadDictionary(); return; }
+    if (!syncReady) return;
     if (state.startedAt) return;
     state.startedAt = Date.now();
     save();
@@ -801,35 +927,107 @@ export function mountGame(authConfigured) {
     menuDialog.classList.add("closing");
     window.setTimeout(() => { if (menuDialog.open) menuDialog.close(); }, 220);
   }
-  const signInButton = $("google-signin");
-  const signOutButton = $("menu-logout");
+  const accountNav = $("account-nav");
+  const profileSignOutButton = $("profile-logout");
   const accountStatus = $("account-status");
+  const profileStatus = $("profile-status");
+  const menuContent = $("menu-content");
+  const menuPage = $("menu-page");
+  const profileImage = $("profile-avatar-image");
+  const navImage = $("account-nav-image");
   let googleAuth = null;
+  let accountUser = null;
+  let historyGeneration = 0;
   let accountError = null;
-  function updateAccount(user) {
-    if (user) accountError = null;
-    signInButton.hidden = Boolean(user);
-    signInButton.disabled = !googleAuth;
-    signOutButton.hidden = !user;
-    $("profile-label").textContent = user ? "GOOGLE ACCOUNT" : "GUEST MODE";
-    accountStatus.textContent = accountError || (user
-      ? `SIGNED IN AS ${user.displayName || user.email || "GOOGLE PLAYER"}`
-      : "PLAYING AS A GUEST / YOUR RUN STAYS ON THIS DEVICE");
-    menuPages.profile = user
-      ? `Signed in as ${user.email || user.displayName || "a Google player"}. Your game progress is still saved on this device, not synced to your account.`
-      : "Sign in with Google from the menu. Your run stays saved on this device.";
-    if ($("menu-page-title").textContent === "PROFILE") $("menu-page-description").textContent = menuPages.profile;
+  async function loadHistory() {
+    const generation = ++historyGeneration;
+    const list = $("profile-history-list");
+    list.replaceChildren(document.createElement("li"));
+    list.firstChild.textContent = "Loading results...";
+    try {
+      await saveQueue;
+      const response = await fetch("/api/runs", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `History request failed: HTTP ${response.status}`);
+      if (generation !== historyGeneration || !accountUser) return;
+      list.replaceChildren();
+      if (!result.runs.length) {
+        const empty = document.createElement("li");
+        empty.textContent = "No finished runs yet.";
+        list.append(empty);
+      }
+      for (const run of result.runs) {
+        const item = document.createElement("li");
+        const date = document.createElement("span");
+        date.textContent = new Intl.DateTimeFormat("en", { timeZone: "UTC", month: "short", day: "numeric" })
+          .format(new Date(`${run.board_id}T12:00:00Z`));
+        const score = document.createElement("span");
+        score.textContent = `${run.score} PTS / ${run.words} WORDS`;
+        item.append(date, score);
+        list.append(item);
+      }
+    } catch (error) {
+      if (generation !== historyGeneration) return;
+      console.error("Could not load recent results:", error);
+      list.replaceChildren(document.createElement("li"));
+      list.firstChild.textContent = "Could not load recent results.";
+    }
   }
-  function showAuthError(error) {
-    accountError = googleAuthError(error);
+  for (const [image, fallback] of [[profileImage, $("profile-avatar-fallback")], [navImage, $("account-nav-fallback")]]) {
+    image.addEventListener("error", () => {
+      image.hidden = true;
+      fallback.hidden = false;
+    });
+  }
+  function updateAccount(user) {
+    accountUser = user;
+    if (!user) historyGeneration++;
+    void syncForUser(user);
+    if (user) accountError = null;
+    accountNav.disabled = !googleAuth;
+    accountNav.setAttribute("aria-label", user ? `Profile: ${user.name || user.email || "Google player"}` : "Sign in with Google");
+    $("account-nav-title").textContent = user ? "PROFILE" : "SIGN IN";
+    $("account-nav-detail").textContent = user ? (user.name || user.email || "GOOGLE ACCOUNT") : "WITH GOOGLE";
+    $("account-nav-arrow").hidden = Boolean(user);
+    $("account-nav-avatar").hidden = !user;
+    profileSignOutButton.hidden = !user;
+    accountStatus.hidden = !accountError;
+    accountStatus.textContent = accountError || "";
+    $("profile-provider").textContent = user ? "GOOGLE ACCOUNT" : "GUEST PLAYER";
+    $("profile-name").textContent = user?.name || (user ? "Google player" : "Guest player");
+    $("profile-email").textContent = user?.email || (user ? "Email not available" : "Sign in to add your account");
+    for (const [image, fallback] of [[profileImage, $("profile-avatar-fallback")], [navImage, $("account-nav-fallback")]]) {
+      image.hidden = !user?.image;
+      if (user?.image) image.src = user.image;
+      else image.removeAttribute("src");
+      fallback.hidden = Boolean(user?.image);
+      fallback.textContent = user?.name?.trim().charAt(0).toUpperCase() || (user ? "G" : "?");
+    }
+    profileStatus.hidden = !accountError;
+    profileStatus.textContent = accountError || "";
+    if (!user && !menuPage.hidden && !$("profile-content").hidden) {
+      menuPage.hidden = true;
+      $("menu-home").hidden = false;
+      menuContent.scrollTop = 0;
+      accountNav.focus();
+    }
+  }
+  function showAuthError(error, action = "sign-in") {
+    accountError = googleAuthError(error, action);
+    accountStatus.hidden = false;
     accountStatus.textContent = accountError;
-    signInButton.disabled = !googleAuth;
+    profileStatus.hidden = false;
+    profileStatus.textContent = accountError;
+    accountNav.disabled = !googleAuth;
   }
   try {
     googleAuth = createGoogleAuth(updateAccount, showAuthError, authConfigured);
     if (!googleAuth) {
-      accountStatus.textContent = "GOOGLE SIGN-IN NEEDS SETUP / SOLO PLAY STILL WORKS";
-      signInButton.textContent = "GOOGLE SIGN-IN NOT CONFIGURED";
+      accountNav.disabled = true;
+      $("account-nav-title").textContent = "SIGN IN UNAVAILABLE";
+      $("account-nav-detail").textContent = "SERVER CONFIGURATION ERROR";
+      accountStatus.hidden = false;
+      accountStatus.textContent = "GOOGLE SIGN-IN ERROR: SERVER CONFIGURATION IS MISSING";
     }
     const authError = new URLSearchParams(location.search).get("error");
     if (authError) {
@@ -839,33 +1037,42 @@ export function mountGame(authConfigured) {
   } catch (error) {
     showAuthError(error);
   }
-  signInButton.addEventListener("click", async () => {
+  async function signInAccount() {
     if (!googleAuth) return;
     accountError = null;
-    signInButton.disabled = true;
-    accountStatus.textContent = "OPENING GOOGLE SIGN-IN...";
+    accountStatus.hidden = true;
+    accountNav.disabled = true;
+    $("account-nav-detail").textContent = "OPENING GOOGLE...";
     try {
       await googleAuth.signIn();
     } catch (error) {
       showAuthError(error);
+    } finally {
+      $("account-nav-detail").textContent = accountUser?.name || accountUser?.email || (accountUser ? "GOOGLE ACCOUNT" : "WITH GOOGLE");
+      accountNav.disabled = false;
     }
-  });
-  signOutButton.addEventListener("click", async () => {
+  }
+  async function signOutAccount() {
+    if (!googleAuth || profileSignOutButton.disabled) return;
     accountError = null;
-    signOutButton.disabled = true;
-    accountStatus.textContent = "SIGNING OUT...";
+    profileSignOutButton.disabled = true;
+    profileStatus.hidden = false;
+    profileStatus.textContent = "SIGNING OUT...";
     try {
+      await saveQueue;
       await googleAuth.signOut();
     } catch (error) {
-      showAuthError(error);
+      showAuthError(error, "sign-out");
     } finally {
-      signOutButton.disabled = false;
+      profileSignOutButton.disabled = false;
     }
-  });
+  }
+  profileSignOutButton.addEventListener("click", signOutAccount);
   $("menu-toggle").addEventListener("click", () => {
     $("menu-footnote").textContent = state.startedAt && !state.finished
       ? "THE CLOCK KEEPS TICKING WHILE YOU BROWSE"
-      : "YOUR RUN STAYS ON THIS DEVICE";
+      : "GOOD LUCK OUT THERE";
+    menuContent.scrollTop = 0;
     menuDialog.showModal();
   });
   $("menu-close").addEventListener("click", closeMenu);
@@ -879,23 +1086,39 @@ export function mountGame(authConfigured) {
   menuDialog.addEventListener("close", () => {
     menuDialog.classList.remove("closing");
     $("menu-home").hidden = false;
-    $("menu-page").hidden = true;
+    menuPage.hidden = true;
     if (!document.querySelector("dialog[open]")) $("menu-toggle").focus();
   });
   document.querySelectorAll("[data-menu-page]").forEach((button) => {
     button.addEventListener("click", () => {
       const page = button.dataset.menuPage;
-      $("menu-page-title").textContent = page.toUpperCase();
-      $("menu-page-description").textContent = menuPages[page];
+      if (page === "profile" && !accountUser) {
+        signInAccount();
+        return;
+      }
+      const isProfile = page === "profile";
+      $("menu-page-generic").hidden = isProfile;
+      $("profile-content").hidden = !isProfile;
+      menuPage.setAttribute("aria-labelledby", isProfile ? "profile-title" : "menu-page-title");
+      if (isProfile) {
+        $("profile-score").textContent = state.score.toLocaleString();
+        $("profile-words").textContent = String(state.words.length);
+        void loadHistory();
+      } else {
+        $("menu-page-title").textContent = page.toUpperCase();
+        $("menu-page-description").textContent = menuPages[page];
+      }
       $("menu-home").hidden = true;
-      $("menu-page").hidden = false;
+      menuPage.hidden = false;
+      menuContent.scrollTop = 0;
       $("menu-back").focus();
     });
   });
   $("menu-back").addEventListener("click", () => {
-    const selected = $("menu-page-title").textContent.toLowerCase();
-    $("menu-page").hidden = true;
+    const selected = $("profile-content").hidden ? $("menu-page-title").textContent.toLowerCase() : "profile";
+    menuPage.hidden = true;
     $("menu-home").hidden = false;
+    menuContent.scrollTop = 0;
     menuDialog.querySelector(`[data-menu-page="${selected}"]`).focus();
   });
   $("reseed").addEventListener("click", () => {
@@ -905,12 +1128,13 @@ export function mountGame(authConfigured) {
     location.search = params.toString();
   });
   $("skip-to-end").addEventListener("click", () => {
-    if (state.finished) return;
+    if (!syncReady || state.finished) return;
     state.startedAt = Date.now() - DURATION;
     finish("time");
   });
   rulesDialog.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", closeRules));
   $("restart").addEventListener("click", () => {
+    if (!syncReady) return;
     if (!confirm("Restart today's prototype board and erase this run?")) return;
     window.clearTimeout(shareStatusTimer);
     window.clearTimeout(shareExitTimer);

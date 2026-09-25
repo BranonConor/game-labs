@@ -1182,29 +1182,31 @@ export function mountGame(authConfigured) {
   function showEmptyScores(title, description) {
     const empty = document.createElement("li");
     empty.className = "scores-empty";
-    const egg = document.createElement("img");
-    egg.src = "/egg.svg";
-    egg.alt = "";
     const copy = document.createElement("span");
     const heading = document.createElement("strong");
     heading.textContent = title;
     const detail = document.createElement("small");
     detail.textContent = description;
     copy.append(heading, detail);
-    empty.append(egg, copy);
+    empty.append(copy);
     $("scores-history-list").replaceChildren(empty);
   }
+  $("scores-play").addEventListener("click", closeMenu);
   async function loadScores(append = false, refresh = false) {
     if (!accountUser || scoresLoading) return;
     scoresLoading = true;
     const generation = scoresGeneration;
     const status = $("scores-status");
     status.hidden = true;
+    let networkFailure = false;
+    let failureMessage = "Scores are unavailable right now.";
     if (!append && !refresh) {
       $("scores-today-empty").hidden = false;
       $("scores-today-result").hidden = true;
       $("scores-empty-title").textContent = "CHECKING THE GRID";
+      $("scores-empty-copy").hidden = false;
       $("scores-empty-copy").textContent = "Loading today's comparison...";
+      $("scores-play").hidden = true;
       showEmptyScores("CHECKING YOUR RECORD", "Loading completed daily grids...");
       $("scores-history-headings").hidden = true;
       $("scores-more").hidden = true;
@@ -1213,9 +1215,18 @@ export function mountGame(authConfigured) {
     try {
       const params = new URLSearchParams({ boardId: day });
       if (append && scoresCursor) params.set("cursor", scoresCursor);
-      const response = await fetch(`/api/ranked?${params}`, { cache: "no-store" });
+      let response;
+      try {
+        response = await fetch(`/api/ranked?${params}`, { cache: "no-store" });
+      } catch (error) {
+        networkFailure = true;
+        throw error;
+      }
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || `Scores request failed: HTTP ${response.status}`);
+      if (!response.ok) {
+        failureMessage = result.error || `Scores request failed: HTTP ${response.status}`;
+        throw new Error(failureMessage);
+      }
       if (generation !== scoresGeneration || !accountUser) return;
       const today = result.today;
       $("scores-date").textContent = scoreDate(day).toUpperCase() + " UTC";
@@ -1237,6 +1248,10 @@ export function mountGame(authConfigured) {
       $("scores-note").textContent = note;
       $("scores-empty-title").textContent = "THE GRID IS WAITING";
       $("scores-empty-copy").textContent = note;
+      const offerPlay = today.score == null && !today.note
+        && !(state.startedAt && rankedMode === "unranked" && !practiceSeed);
+      $("scores-empty-copy").hidden = offerPlay;
+      $("scores-play").hidden = !offerPlay;
       const chart = $("scores-distribution");
       chart.replaceChildren();
       if (today.total > 0 && today.distribution?.length) {
@@ -1256,7 +1271,7 @@ export function mountGame(authConfigured) {
         if (!append) list.replaceChildren();
         for (const run of result.history) list.append(renderScoreRow(run));
         if (!list.children.length) {
-          showEmptyScores("NO RANKED DAYS YET", "Finished daily scores and placements will appear here. Earlier synced runs stay in Profile.");
+          showEmptyScores("NO RANKED DAYS YET", "Finished daily scores and placements will appear here.");
         }
         $("scores-history-headings").hidden = !list.querySelector("li:not(.scores-empty)");
         scoresCursor = result.nextCursor;
@@ -1265,13 +1280,17 @@ export function mountGame(authConfigured) {
     } catch (error) {
       if (generation !== scoresGeneration) return;
       console.error("Could not load scores:", error);
-      status.textContent = "Could not load scores. Close and reopen Scores to retry.";
+      status.textContent = networkFailure
+        ? "Could not load scores. Close and reopen Scores to retry."
+        : failureMessage;
       status.hidden = false;
       if (!append && !refresh) {
         $("scores-today-empty").hidden = false;
         $("scores-today-result").hidden = true;
         $("scores-empty-title").textContent = "SCORES UNAVAILABLE";
+        $("scores-empty-copy").hidden = false;
         $("scores-empty-copy").textContent = "Today's comparison could not be loaded.";
+        $("scores-play").hidden = true;
         showEmptyScores("RECORD UNAVAILABLE", "Your completed grids could not be loaded.");
       }
     } finally {
@@ -1337,7 +1356,10 @@ export function mountGame(authConfigured) {
       $("scores-today-empty").hidden = false;
       $("scores-today-result").hidden = true;
       $("scores-empty-title").textContent = "THE GRID IS WAITING";
+      $("scores-empty-copy").hidden = false;
       $("scores-empty-copy").textContent = "Sign in before starting a daily grid to join the ranking.";
+      $("scores-play").hidden = true;
+      $("scores-status").hidden = true;
       $("scores-chart").hidden = true;
       $("scores-history-headings").hidden = true;
       showEmptyScores("NO RANKED DAYS YET", "Sign in and finish a daily grid to start your score history.");

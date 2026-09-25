@@ -151,12 +151,12 @@ export default function Game({ authConfigured }) {
               <p id="menu-page-description" />
             </div>
             <div id="scores-content" className="scores-content" hidden>
-              <div className="scores-heading"><div><p className="overline">YOUR PLACE IN THE GRID</p><h2 id="scores-title">SCORES</h2></div><span id="scores-date" className="scores-date" /></div>
+              <div className="scores-heading"><h2 id="scores-title">SCORES</h2><span id="scores-date" className="scores-date" /></div>
               <section className="scores-card" aria-labelledby="scores-today-title">
                 <div className="scores-card-top"><span id="scores-today-title" className="overline">TODAY'S GRID</span><span id="scores-phase" className="scores-phase">LIVE</span></div>
                 <div id="scores-today-empty" className="scores-today-empty">
                   <img src="/egg.svg" alt="" />
-                  <div><strong id="scores-empty-title">THE GRID IS WAITING</strong><p id="scores-empty-copy">Sign in and finish today's grid to join the ranking.</p></div>
+                  <div><strong id="scores-empty-title">THE GRID IS WAITING</strong><p id="scores-empty-copy">Sign in and finish today's grid to join the ranking.</p><button id="scores-play" className="text-link scores-play" type="button" hidden>PLAY TODAY'S GRID ↗</button></div>
                 </div>
                 <div id="scores-today-result" hidden>
                   <div className="scores-result-grid">
@@ -174,7 +174,7 @@ export default function Game({ authConfigured }) {
               <section className="scores-history" aria-labelledby="scores-history-title">
                 <div className="scores-history-top"><h3 id="scores-history-title">PAST GRIDS</h3><span>YOUR DAILY RECORD</span></div>
                 <div id="scores-history-headings" className="scores-history-headings" hidden><span>DATE</span><span>POINTS</span><span>YOUR PLACE</span></div>
-                <ol id="scores-history-list"><li className="scores-empty"><img src="/egg.svg" alt="" /><span><strong>NO RANKED DAYS YET</strong><small>Finished daily scores and placements will appear here. Earlier synced runs stay in Profile.</small></span></li></ol>
+                <ol id="scores-history-list"><li className="scores-empty"><span><strong>NO RANKED DAYS YET</strong><small>Finished daily scores and placements will appear here.</small></span></li></ol>
                 <button id="scores-more" className="menu-back scores-more" type="button" hidden>LOAD MORE ↓</button>
               </section>
               <p id="scores-status" className="scores-status" role="status" aria-live="polite" hidden />

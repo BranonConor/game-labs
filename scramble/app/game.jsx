@@ -194,13 +194,13 @@ export default function Game({ authConfigured, adminTools }) {
                 </div>
               </div>
               <div className="profile-run">
-                <span className="overline">TODAY'S RUN</span>
+                <span className="overline">ALL-TIME</span>
                 <div className="profile-stats">
                   <div><strong id="profile-score">0</strong><span>POINTS</span></div>
                   <div><strong id="profile-words">0</strong><span>WORDS</span></div>
                 </div>
               </div>
-              <p id="profile-note" className="profile-note">Your daily run and finished results sync with your account.</p>
+              <p id="profile-note" className="profile-note" hidden />
               <section className="profile-history" aria-labelledby="profile-history-title">
                 <h3 id="profile-history-title">RECENT RESULTS</h3>
                 <ol id="profile-history-list"><li>Loading results...</li></ol>

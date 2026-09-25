@@ -93,6 +93,7 @@ export function mountGame(authConfigured) {
   function syncError(error) {
     console.error("Could not sync Scramb run:", error);
     $("profile-note").textContent = "Cloud sync is unavailable right now. Your run will retry on the next save.";
+    $("profile-note").hidden = false;
     for (const id of ["sync-status", "profile-sync-status"]) {
       $(id).textContent = "CLOUD SYNC FAILED / RETRY ON NEXT SAVE";
       $(id).hidden = false;
@@ -100,7 +101,8 @@ export function mountGame(authConfigured) {
   }
 
   function clearSyncError() {
-    $("profile-note").textContent = "Your daily run and finished results sync with your account.";
+    $("profile-note").textContent = "";
+    $("profile-note").hidden = true;
     for (const id of ["sync-status", "profile-sync-status"]) {
       $(id).hidden = true;
       $(id).textContent = "";
@@ -588,8 +590,6 @@ export function mountGame(authConfigured) {
     boardElement.classList.remove("inspecting");
     const filled = initialFilled + Object.keys(state.played).length;
     $("score").textContent = String(state.score).padStart(4, "0");
-    $("profile-score").textContent = state.score.toLocaleString();
-    $("profile-words").textContent = String(state.words.length);
     $("filled-count").textContent = `${filled}/64 FILLED`;
     const skipToEnd = $("skip-to-end");
     if (skipToEnd) skipToEnd.disabled = !accountUser?.isAdmin || !syncReady || state.finished;
@@ -1329,6 +1329,8 @@ export function mountGame(authConfigured) {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || `History request failed: HTTP ${response.status}`);
       if (generation !== historyGeneration || !accountUser) return;
+      $("profile-score").textContent = result.totals.points.toLocaleString();
+      $("profile-words").textContent = result.totals.words.toLocaleString();
       list.replaceChildren();
       if (!result.runs.length) {
         const empty = document.createElement("li");
@@ -1348,6 +1350,8 @@ export function mountGame(authConfigured) {
     } catch (error) {
       if (generation !== historyGeneration) return;
       console.error("Could not load recent results:", error);
+      $("profile-score").textContent = "—";
+      $("profile-words").textContent = "—";
       list.replaceChildren(document.createElement("li"));
       list.firstChild.textContent = "Could not load recent results.";
     }
@@ -1372,6 +1376,8 @@ export function mountGame(authConfigured) {
     scoresLoading = false;
     if (!user) {
       historyGeneration++;
+      $("profile-score").textContent = "0";
+      $("profile-words").textContent = "0";
       $("scores-score").textContent = "—";
       $("scores-rank").textContent = "No ranked result yet";
       $("scores-percentile").textContent = "";
@@ -1514,8 +1520,8 @@ export function mountGame(authConfigured) {
       menuDialog.dataset.page = isScores ? "scores" : page;
       menuPage.setAttribute("aria-labelledby", isProfile ? "profile-title" : isScores ? "scores-title" : "menu-page-title");
       if (isProfile) {
-        $("profile-score").textContent = state.score.toLocaleString();
-        $("profile-words").textContent = String(state.words.length);
+        $("profile-score").textContent = "…";
+        $("profile-words").textContent = "…";
         void loadHistory();
       } else if (isScores) {
         scoresGeneration++;

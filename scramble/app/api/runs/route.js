@@ -1,4 +1,5 @@
 import { runContext, runResponse } from "../../../run-db";
+import { profileTotals } from "../../../profile-totals";
 
 export const runtime = "nodejs";
 
@@ -7,6 +8,7 @@ export async function GET() {
   if (context.error) return context.error;
   const { sql, userId } = context;
   try {
+    const totals = await profileTotals(sql, userId);
     const runs = await sql`
       SELECT board_id, (state->>'score')::integer AS score,
         jsonb_array_length(state->'words') AS words
@@ -17,7 +19,7 @@ export async function GET() {
       ORDER BY board_id DESC
       LIMIT 8
     `;
-    return runResponse({ runs });
+    return runResponse({ runs, totals });
   } catch (error) {
     console.error("Could not load recent runs:", error);
     return runResponse({ error: "Could not load recent results." }, 500);

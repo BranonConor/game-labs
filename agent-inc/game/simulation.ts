@@ -44,11 +44,11 @@ export type OfflineReport = { seconds: number; completed: number; tokens: number
 const INBOX: Point = { x: 3.45, z: 1.75 };
 const CORE: Point = { x: -2.9, z: -1.25 };
 const CONTEXT: Point = { x: 3.0, z: -1.8 };
-const DESKS: Point[] = [
-  { x: -0.75, z: 0.15 },
-  { x: 1.2, z: 0.15 },
-  { x: -0.75, z: 1.75 },
-  { x: 1.2, z: 1.75 },
+export const DESKS: readonly Point[] = [
+  { x: -1, z: 0.15 },
+  { x: 0.85, z: 0.15 },
+  { x: -2.35, z: 1.75 },
+  { x: 2.25, z: 1.75 },
 ];
 const CHAT_REQUESTS = [
   "Why does the moon glow?",

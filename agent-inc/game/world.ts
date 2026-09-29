@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { DESKS } from "./simulation";
 import type { Agent, Simulation } from "./simulation";
 import { sampleDaylight } from "./lighting";
 import {
@@ -16,7 +17,8 @@ const palette = {
   cream: 0xffebcc,
   lavender: 0xbba6eb,
 };
-const cutoutYaw = 0.14;
+const cutoutYaw = 0;
+const cameraBase = new THREE.Vector3(0, 17, 24);
 const coreDisplay = { x: -3.8, z: -2.2 };
 const moonColor = new THREE.Color(0xa9c9ff);
 const moonAmbient = new THREE.Color(0xb8cbea);
@@ -132,8 +134,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     return art;
   };
   const camera = new THREE.OrthographicCamera(-7.3, 7.3, 5.5, -5.5, 0.1, 100);
-  camera.position.set(12, 15, 20);
-  camera.lookAt(0, 0.3, 0);
+  camera.position.copy(cameraBase);
+  camera.lookAt(0, 0.4, 0);
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "low-power" });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -142,7 +144,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.domElement.className = "world-canvas";
-  renderer.domElement.setAttribute("aria-label", "Isometric view of the little AI office");
+  renderer.domElement.setAttribute("aria-label", "Front-facing orthographic view of the little AI office");
   renderer.domElement.setAttribute("role", "img");
   host.appendChild(renderer.domElement);
   let contextLost = false;
@@ -333,16 +335,13 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   scene.add(lockedContext);
   const desks = new THREE.Group();
   scene.add(desks);
-  const deskPoints = [
-    [-0.75, 0.15], [1.2, 0.15], [-0.75, 1.75], [1.2, 1.75],
-  ];
-  deskPoints.forEach(([x, z], index) => {
+  DESKS.forEach(({ x, z }, index) => {
     desk(desks, x, z, index, track);
     contact(desks, x, z - 0.56, 1.3, 0.65);
     contact(desks, x + 0.35, z + 0.37, 0.55, 0.45, 0.065, 0.5);
   });
   // Unused stations are built but unlit, making added capacity legible at a glance.
-  const stationLights = deskPoints.map(([x, z]) => {
+  const stationLights = DESKS.map(({ x, z }) => {
     const mesh = cutout(desks, track(statusLightArt()), x + 0.43, 0.82, z - 0.55, 0.18, 0.27);
     return mesh;
   });
@@ -437,7 +436,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     const height = Math.max(1, host.clientHeight);
     renderer.setSize(Math.ceil(width * (width < 700 ? 0.68 : 0.8)), Math.ceil(height * (width < 700 ? 0.68 : 0.8)), false);
     const aspect = width / height;
-    const span = 6.1;
+    const span = 5;
     camera.left = -span * aspect;
     camera.right = span * aspect;
     camera.top = span;
@@ -484,6 +483,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         const fall = 1.58 / (sunlight.position.y - 1.4);
         const endX = x + (x - sunlight.position.x) * fall;
         const endZ = -3.77 + 5.23 * fall;
+        const insideRoom = THREE.MathUtils.clamp((4.5 - Math.abs(endX)) / 0.55, 0, 1);
         const vertices = (shaft.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
         vertices.set([
           x - 0.62, 1.78, -3.7, x + 0.62, 1.78, -3.7,
@@ -492,9 +492,9 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         shaft.geometry.attributes.position.needsUpdate = true;
         shaft.geometry.computeBoundingSphere();
         (shaft.material as THREE.MeshBasicMaterial).color.copy(sunlight.color);
-        (shaft.material as THREE.MeshBasicMaterial).opacity = light.sun / 3.2 * 0.13 + moonStrength * 0.035;
+        (shaft.material as THREE.MeshBasicMaterial).opacity = (light.sun / 3.2 * 0.13 + moonStrength * 0.035) * insideRoom;
         (pool.material as THREE.MeshBasicMaterial).color.copy(sunlight.color);
-        (pool.material as THREE.MeshBasicMaterial).opacity = light.sun / 3.2 * 0.22 + moonStrength * 0.12;
+        (pool.material as THREE.MeshBasicMaterial).opacity = (light.sun / 3.2 * 0.22 + moonStrength * 0.12) * insideRoom;
         pool.position.set(endX, 0.067, endZ);
       }
       while (agentMeshes.length < simulation.agents.length) {
@@ -535,8 +535,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         speck.visible = busy || i % 3 === 0;
       });
       camera.zoom = zoom;
-      camera.position.set(12 + panX, 15, 20 + panZ);
-      camera.lookAt(panX, 0.3, panZ);
+      camera.position.set(cameraBase.x + panX, cameraBase.y, cameraBase.z + panZ);
+      camera.lookAt(panX, 0.4, panZ);
       camera.updateProjectionMatrix();
       sky.position.copy(camera.position);
       if (!contextLost) renderer.render(scene, camera);

@@ -10,6 +10,8 @@ import type { AgentLevels, OfflineReport, Request } from "../game/simulation";
 import { createWorld } from "../game/world";
 import { sampleDaylight } from "../game/lighting";
 
+const FIXED_STEP = 1 / 30;
+
 function requestSymbol(request: Request) {
   if (request.status === "complete") return "✓";
   if (request.status === "failed") return "!";
@@ -90,6 +92,7 @@ export default function Game() {
         save();
         last = performance.now();
         accumulator = 0;
+        world?.capturePositions();
         setRevision((value) => value + 1);
       }
     };
@@ -97,12 +100,16 @@ export default function Game() {
       const elapsed = Math.min((now - last) / 1000, 0.2);
       last = now;
       if (!document.hidden) {
-        accumulator += elapsed;
-        while (accumulator >= 1 / 30) {
-          simulation.update(1 / 30);
-          accumulator -= 1 / 30;
+        accumulator = simulation.paused ? 0 : accumulator + elapsed;
+        let advanced = false;
+        while (accumulator >= FIXED_STEP) {
+          world?.capturePositions();
+          simulation.update(FIXED_STEP);
+          accumulator -= FIXED_STEP;
+          advanced = true;
         }
-        world?.render(now / 1000, previewRef.current);
+        world?.render(now / 1000, previewRef.current,
+          simulation.paused ? 1 : accumulator / FIXED_STEP, advanced);
         frames++;
         if (now - fpsStart > 1000) {
           setFps(Math.round(frames * 1000 / (now - fpsStart)));

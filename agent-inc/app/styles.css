@@ -36,7 +36,7 @@ button:focus-visible { outline: 3px solid #638c8e; outline-offset: 3px; }
 .scene-divider { margin: 0 8px; color: #c5b5b6; }
 .online-dot, .tiny-pulse { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #59bd9b; box-shadow: 0 0 0 3px #73d4aa33; }
 .world-host { position: relative; height: clamp(430px, 49vw, 670px); min-height: 430px; overflow: hidden; background: radial-gradient(circle at 50% 35%, #728d97, #393a61 75%, #302d50); }
-.world-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none; cursor: grab; }
+.world-canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .world-canvas:active { cursor: grabbing; }
 .world-host.context-lost::after { content: "LIGHTING TEMPORARILY UNAVAILABLE · RESTORING THE OFFICE…"; position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: #fff1db; background: #2b2947e8; font: 700 12px var(--mono); pointer-events: none; }
 .world-host.static-fallback::after { content: "3D UNAVAILABLE · REQUESTS AND UPGRADES CONTINUE BELOW"; position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: #fff1db; background: radial-gradient(circle at 50% 42%, #586e79, #302d50); font: 700 13px var(--mono); pointer-events: none; }

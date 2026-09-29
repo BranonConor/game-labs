@@ -6,6 +6,7 @@ import {
   OFFLINE_LIMIT_SECONDS, parseProgress, Simulation, stationCost, stationInterval, workflowCost,
 } from "./simulation.ts";
 import { DAY_LENGTH_SECONDS, sampleDaylight } from "./lighting.ts";
+import { interpolatePosition } from "./animation.ts";
 
 function run(simulation: Simulation, seconds: number) {
   for (let i = 0; i < seconds * 30; i++) simulation.update(1 / 30);
@@ -35,6 +36,24 @@ test("identical initial state and ticks produce identical outcomes", () => {
   assert.deepEqual(a.progress, b.progress);
   assert.deepEqual(a.agents, b.agents);
   assert.deepEqual(a.requests, b.requests);
+});
+
+test("render positions interpolate between fixed steps without changing simulation state", () => {
+  const sim = new Simulation(initialProgress(1000));
+  run(sim, 2);
+  const previous = { x: sim.agents[0].x, z: sim.agents[0].z };
+  sim.update(1 / 30);
+  const current = { x: previous.x + 1, z: previous.z - 2 };
+  const saved = sim.save(1000);
+  assert.deepEqual(interpolatePosition(previous, current, 0), previous);
+  assert.deepEqual(interpolatePosition(previous, current, 1), current);
+  assert.deepEqual(interpolatePosition(previous, current, 0.5), {
+    x: (previous.x + current.x) / 2, z: (previous.z + current.z) / 2,
+  });
+  assert.deepEqual(interpolatePosition(previous, current, -1), previous);
+  assert.deepEqual(interpolatePosition(previous, current, 2), current);
+  assert.deepEqual(interpolatePosition(undefined, current, 0), current);
+  assert.deepEqual(sim.save(1000), saved);
 });
 
 test("capacity adds a second agent and processes two requests concurrently", () => {

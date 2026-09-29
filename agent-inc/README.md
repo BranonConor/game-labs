@@ -103,7 +103,15 @@ restoration message while the request loop keeps running; Three.js restores
 its resources when the context returns. If WebGL cannot initialize, requests
 and upgrades remain playable through the feed/UI with a static backdrop and
 an explicit warning. Narrow/mobile displays render at a lower internal
-resolution, and reduced-motion users get still decorative animations.
+resolution, and reduced-motion users get still decorative animations. The
+simulation stays on a deterministic 30 Hz timestep while rendered agent
+positions interpolate between ticks on each display frame. The canvas itself
+uses normal browser scaling, not CSS pixelation of the whole 3D view: original
+sprite textures retain nearest-neighbor filtering and sharp source pixels.
+Moving shadow maps refresh on simulation ticks rather than every display
+frame, leaving GPU time for the smoother scene motion. Cosmetic bobbing is
+time-based and eases through occasional dropped frames; it never changes
+rewards or agent decisions.
 
 Progress (tokens, capacity, station tiers, each agent's training, shared kits,
 context unlock, and response totals) is saved locally in this browser. Earlier

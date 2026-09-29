@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { DESKS } from "./simulation";
 import type { Agent, RequestStatus, Simulation } from "./simulation";
 import { sampleDaylight } from "./lighting";
+import { interpolatePosition } from "./animation";
 import {
   agentArt, chairArt, contextConsoleArt, coreBodyArt, deskArt,
   monitorArt, plantArt, posterArt, stackArt, statusLightArt, workflowKitArt,
@@ -186,7 +187,8 @@ function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt)
 }
 
 export type World = {
-  render: (elapsed: number, previewOffset: number) => void;
+  capturePositions: () => void;
+  render: (elapsed: number, previewOffset: number, alpha: number, advanced: boolean) => void;
   dispose: () => void;
 };
 
@@ -207,6 +209,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.VSMShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
   renderer.domElement.className = "world-canvas";
   renderer.domElement.setAttribute("aria-label", "Perspective view of the little AI office");
   renderer.domElement.setAttribute("role", "img");
@@ -219,6 +223,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   };
   const onContextRestored = () => {
     contextLost = false;
+    renderer.shadowMap.needsUpdate = true;
     host.classList.remove("context-lost");
   };
   renderer.domElement.addEventListener("webglcontextlost", onContextLost);
@@ -446,6 +451,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     return model;
   };
   const agentMeshes = simulation.agents.map((agent) => makeAgentModel(agent.id));
+  let previousPositions = simulation.agents.map(({ x, z }) => ({ x, z }));
   const contextRoom = new THREE.Group();
   contextRoom.visible = simulation.progress.context;
   block(contextRoom, 3, 0.08, -1.8, 3.05, 0.12, 2.85, palette.lavender);
@@ -625,7 +631,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const resize = () => {
     const width = Math.max(1, host.clientWidth);
     const height = Math.max(1, host.clientHeight);
-    const resolutionScale = width < 700 ? 0.75 : 0.9;
+    const resolutionScale = width < 700 ? 0.8 : 1;
     renderer.setSize(Math.ceil(width * resolutionScale), Math.ceil(height * resolutionScale), false);
     const aspect = width / height;
     const minimumHalfWidth = 4.7;
@@ -640,9 +646,24 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   observer.observe(host);
   resize();
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let animationTime = performance.now() / 1000;
+  let lastFrameTime = animationTime;
+  let lastPreviewOffset = 0;
+  let lastRoomKey = "";
 
   return {
-    render(elapsed: number, previewOffset: number) {
+    capturePositions() {
+      previousPositions = simulation.agents.map(({ x, z }) => ({ x, z }));
+    },
+    render(elapsed: number, previewOffset: number, alpha: number, advanced: boolean) {
+      animationTime += Math.max(0, Math.min(0.05, elapsed - lastFrameTime));
+      lastFrameTime = elapsed;
+      const roomKey = `${simulation.progress.capacity}/${simulation.progress.context}/${simulation.progress.workflow}`;
+      if (advanced || previewOffset !== lastPreviewOffset || roomKey !== lastRoomKey) {
+        renderer.shadowMap.needsUpdate = true;
+      }
+      lastPreviewOffset = previewOffset;
+      lastRoomKey = roomKey;
       const light = sampleDaylight(simulation.time, previewOffset);
       const direct = light.sun + light.moon;
       const moonShare = direct > 0 ? light.moon / direct : 0;
@@ -702,7 +723,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         const dustPositions = (dust.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
         for (let i = 0; i < 12; i++) {
           const depth = 0.14 + ((i * 0.31 + x * 0.13 + 1) % 1) * 0.7;
-          const drift = reducedMotion ? 0 : Math.sin(elapsed * 0.38 + i * 2.3 + x);
+          const drift = reducedMotion ? 0 : Math.sin(animationTime * 0.38 + i * 2.3 + x);
           const along = depth + drift * 0.025;
           const across = Math.sin(i * 15.73 + x * 7.19) * 0.68;
           dustPositions[i * 3] = THREE.MathUtils.lerp(x, endX, along) + across * (0.6 + along * 0.3);
@@ -718,8 +739,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         agentMeshes.push(makeAgentModel(agentMeshes.length));
       }
       const busy = simulation.agents.some((a) => a.taskId !== undefined);
-      (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + (reducedMotion ? 0 : Math.sin(elapsed * 3) * 0.15);
-      core.position.y = 0.95 + (reducedMotion ? 0 : Math.sin(elapsed * 2.5) * 0.025);
+      (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + (reducedMotion ? 0 : Math.sin(animationTime * 2.2) * 0.1);
+      core.position.y = 0.95 + (reducedMotion ? 0 : Math.sin(animationTime * 1.9) * 0.035);
       contextRoom.visible = simulation.progress.context;
       lockedContext.visible = !simulation.progress.context;
       stationLights.forEach((light, i) => {
@@ -745,13 +766,14 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         if (!request) return;
         const step = request.status === "working" ? Math.min(16, Math.floor(request.progress * 16)) : 0;
         (notice.material as THREE.MeshBasicMaterial).map = noticeFrames[request.status][step];
-        notice.position.y = 2.06 + (reducedMotion ? 0 : Math.sin(elapsed * 2.6 + i) * 0.06);
+        notice.position.y = 2.06 + (reducedMotion ? 0 : Math.sin(animationTime * 1.8 + i) * 0.045);
       });
       agentMeshes.forEach((model, index) => {
         const agent: Agent = simulation.agents[index];
-        model.group.position.set(agent.x,
-          agent.state === "idle" && !reducedMotion ? Math.sin(elapsed * 2.4 + index) * 0.026 : 0, agent.z);
-        model.shadow.position.set(agent.x, 0.095, agent.z);
+        const position = interpolatePosition(previousPositions[index], agent, alpha);
+        model.group.position.set(position.x,
+          agent.state === "idle" && !reducedMotion ? Math.sin(animationTime * 1.65 + index) * 0.038 : 0, position.z);
+        model.shadow.position.set(position.x, 0.095, position.z);
         (model.shadow.material as THREE.MeshBasicMaterial).opacity = 0.62 + daylightShadow * 0.18;
         if (agent.state === "idle") {
           model.facing = index < 2 ? "right" : "left";
@@ -766,7 +788,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         }
         const pose: keyof AgentArt = agent.state === "working" ? "working" :
           agent.state === "idle" ? "coffee" :
-          !reducedMotion && Math.sin(elapsed * 11 + index) > 0 ? "stepA" : "stepB";
+          !reducedMotion && Math.sin(animationTime * 8 + index) > 0 ? "stepA" : "stepB";
         const frame = model.frames[pose][model.facing];
         if (frame !== (model.figure.material as THREE.MeshStandardMaterial).map) {
           (model.figure.material as THREE.MeshStandardMaterial).map = frame;
@@ -776,7 +798,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         }
       });
       specks.forEach((speck, i) => {
-        speck.position.y = 2.2 + (reducedMotion ? 0 : Math.sin(elapsed * 1.7 + i * 2.1) * 0.26);
+        speck.position.y = 2.2 + (reducedMotion ? 0 : Math.sin(animationTime * 1.2 + i * 2.1) * 0.15);
         speck.visible = busy || i % 3 === 0;
       });
       camera.zoom = zoom;

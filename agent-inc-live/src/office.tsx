@@ -5,7 +5,7 @@ import {
 } from "../../agent-inc/game/simulation";
 import type { Agent, Request } from "../../agent-inc/game/simulation";
 import { sampleDaylight } from "../../agent-inc/game/lighting";
-import { createWorld } from "../../agent-inc/game/world";
+import { createWorld, LIVE_COFFEE_Z } from "../../agent-inc/game/world";
 
 type Status = "idle" | "thinking" | "tool" | "blocked" | "offline";
 type Worker = { status: Status; activity: string };
@@ -25,6 +25,7 @@ type Room = { currentSessionId: string; sessions: Session[] };
 type Actor = { key: string; title: string; status: Status; activity: string; helper: boolean };
 
 const MAX_DESKS = DESKS.length;
+const LIVE_COFFEE_SPOTS = COFFEE_SPOTS.map(({ x }) => ({ x, z: LIVE_COFFEE_Z + 0.75 }));
 const STEP = 1 / 30;
 const emptyRoom: Room = { currentSessionId: "", sessions: [] };
 
@@ -57,7 +58,7 @@ function makeScene() {
   scene.agents = Array.from({ length: MAX_DESKS }, (_, id) => makeAgent(id));
   scene.requests = [];
   scene.progress.capacity = 0;
-  scene.progress.context = true;
+  scene.progress.context = false;
   scene.progress.workflow = 1;
   return scene;
 }
@@ -69,7 +70,7 @@ function applyRoom(scene: Simulation, actors: Actor[], occupied: boolean[]) {
   shown.forEach((actor, id) => {
     const agent = scene.agents[id];
     const busy = actor.status !== "idle" && actor.status !== "offline";
-    const destination = busy ? DESKS[id] : COFFEE_SPOTS[id];
+    const destination = busy ? DESKS[id] : LIVE_COFFEE_SPOTS[id];
     if (!occupied[id]) {
       agent.x = destination.x;
       agent.z = destination.z;
@@ -144,7 +145,7 @@ function LiveOffice() {
     const occupied = Array(MAX_DESKS).fill(false) as boolean[];
     let world: ReturnType<typeof createWorld> | undefined;
     try {
-      world = createWorld(host.current, scene);
+      world = createWorld(host.current, scene, "live");
     } catch (error) {
       host.current.classList.add("static-fallback");
       setConnection(`3D office unavailable; live status remains visible. ${error instanceof Error ? error.message : String(error)}`);

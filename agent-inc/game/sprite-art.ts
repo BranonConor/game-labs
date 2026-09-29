@@ -196,7 +196,7 @@ export function coffeeCounterArt(): THREE.CanvasTexture {
   });
 }
 
-export function chatRoomTitleArt(): THREE.CanvasTexture {
+export function chatRoomTitleArt(text = "CHAT ROOM"): THREE.CanvasTexture {
   return texture(256, 64, (ctx) => {
     pixel(ctx, "#3b344d", 5, 8, 246, 49);
     pixel(ctx, "#d5a989", 8, 11, 240, 43);
@@ -207,7 +207,7 @@ export function chatRoomTitleArt(): THREE.CanvasTexture {
     ctx.font = "bold 31px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("CHAT ROOM", 128, 34);
+    ctx.fillText(text, 128, 34);
   });
 }
 

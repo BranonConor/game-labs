@@ -9,8 +9,11 @@ feed and side-panel layout therefore remain the game's, while their labels
 and content reflect real Copilot activity instead of simulated requests.
 
 The canvas has no token economy or upgrades: its Activity panel shows sessions
-and subagents, and pause/speed affect decorative office ambience only. The
-original scene has four desks; additional participating sessions and helpers
+and subagents, and pause/speed affect decorative office ambience only. Its
+live-only scene variant removes the AI core and context chamber and moves the
+coffee counter to the back wall, with idle agents gathering in front of it.
+The desks stay where they are; the original game's layout is unchanged. The
+office has four desks; additional participating sessions and helpers
 remain visible in the roster but not as additional 3D actors. The scene
 adapter moves actors between the coffee counter and desks without running
 the game's `Simulation.update()` or generating fictional rewards.

@@ -22,6 +22,7 @@ const windowXs = [-4.8, 0, 4.8];
 const cutoutYaw = 0;
 const cameraBase = new THREE.Vector3(0, 15, 20);
 const coreDisplay = { x: -3.8, z: -2.2 };
+export const LIVE_COFFEE_Z = -3.55;
 const moonColor = new THREE.Color(0xa9c9ff);
 const moonAmbient = new THREE.Color(0xb8cbea);
 const moonBounce = new THREE.Color(0xb4ccf4);
@@ -203,7 +204,9 @@ export type World = {
   dispose: () => void;
 };
 
-export function createWorld(host: HTMLElement, simulation: Simulation): World {
+export function createWorld(host: HTMLElement, simulation: Simulation, variant: "game" | "live" = "game"): World {
+  const isLive = variant === "live";
+  const coffeeZ = isLive ? LIVE_COFFEE_Z : 3.55;
   const scene = new THREE.Scene();
   const artTextures: THREE.Texture[] = [];
   const track = <T extends THREE.Texture>(art: T): T => {
@@ -308,10 +311,11 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const coreGlow = new THREE.PointLight(0x8af6d8, 1.5, 5, 2);
   coreGlow.position.set(coreDisplay.x, 1.55, coreDisplay.z);
   const coffeeGlow = new THREE.PointLight(0xffae7b, 0.9, 4, 2);
-  coffeeGlow.position.set(0, 1.35, 3.65);
+  coffeeGlow.position.set(0, 1.35, coffeeZ + 0.1);
   const deskGlow = new THREE.PointLight(0xffb577, 1.1, 8, 2);
   deskGlow.position.set(0.3, 2.4, 0.55);
-  scene.add(coreGlow, coffeeGlow, deskGlow);
+  scene.add(coffeeGlow, deskGlow);
+  if (!isLive) scene.add(coreGlow);
 
   block(scene, 0, -0.3, 0, room.halfWidth * 2, 0.55, room.front - room.back, palette.edge);
   const floorMap = track(woodFloorTexture());
@@ -367,7 +371,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   block(scene, (wallStart + room.halfWidth) / 2, room.windowY, room.back,
     room.halfWidth - wallStart, 1.14, 0.2, palette.wall);
   block(scene, 0, 2.75, room.back, room.halfWidth * 2, 0.17, 0.3, palette.wallTop);
-  const titleMap = track(chatRoomTitleArt());
+  const titleMap = track(chatRoomTitleArt(isLive ? "LIVE OFFICE" : "CHAT ROOM"));
   const title = new THREE.Mesh(
     new THREE.PlaneGeometry(3.35, 0.82),
     new THREE.MeshBasicMaterial({ map: titleMap, transparent: true, alphaTest: 0.2, side: THREE.DoubleSide }),
@@ -408,24 +412,26 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     return { bulb, glow };
   });
 
-  // A soft circular floor marker gives the core and inbox distinct destinations.
-  const rug = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.92, 0.92, 0.04, 12), material(0xae8e86),
-  );
-  rug.position.set(coreDisplay.x, 0.05, coreDisplay.z);
-  rug.receiveShadow = true;
-  scene.add(rug);
-  const coreArt = track(coreBodyArt());
-  const coreBack = cutout(scene, coreArt, coreDisplay.x + 0.1, 0.96, coreDisplay.z - 0.14, 1.39, 1.9);
-  (coreBack.material as THREE.MeshStandardMaterial).color.setHex(0x79788e);
-  (coreBack.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
-  coreBack.castShadow = false;
-  const core = cutout(scene, coreArt, coreDisplay.x, 0.95, coreDisplay.z, 1.35, 1.86);
-  const coreLabel = label("AI CORE");
-  coreLabel.position.set(coreDisplay.x, 2.38, coreDisplay.z);
-  scene.add(coreLabel);
+  let core: THREE.Mesh | undefined;
+  if (!isLive) {
+    const rug = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.92, 0.92, 0.04, 12), material(0xae8e86),
+    );
+    rug.position.set(coreDisplay.x, 0.05, coreDisplay.z);
+    rug.receiveShadow = true;
+    scene.add(rug);
+    const coreArt = track(coreBodyArt());
+    const coreBack = cutout(scene, coreArt, coreDisplay.x + 0.1, 0.96, coreDisplay.z - 0.14, 1.39, 1.9);
+    (coreBack.material as THREE.MeshStandardMaterial).color.setHex(0x79788e);
+    (coreBack.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
+    coreBack.castShadow = false;
+    core = cutout(scene, coreArt, coreDisplay.x, 0.95, coreDisplay.z, 1.35, 1.86);
+    const coreLabel = label("AI CORE");
+    coreLabel.position.set(coreDisplay.x, 2.38, coreDisplay.z);
+    scene.add(coreLabel);
+  }
 
-  cutout(scene, track(coffeeCounterArt()), 0, 0.68, 3.55, 4.6, 1.25);
+  cutout(scene, track(coffeeCounterArt()), 0, 0.68, coffeeZ, 4.6, 1.25);
   const shadowCanvas = document.createElement("canvas");
   shadowCanvas.width = 64;
   shadowCanvas.height = 64;
@@ -455,8 +461,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     parent.add(caster);
     contacts.push({ mesh, opacity });
   };
-  contact(scene, coreDisplay.x, coreDisplay.z, 1.05, 0.85, 0.076);
-  contact(scene, 0, 3.55, 4.1, 0.82);
+  if (!isLive) contact(scene, coreDisplay.x, coreDisplay.z, 1.05, 0.85, 0.076);
+  contact(scene, 0, coffeeZ, 4.1, 0.82);
   const makeAgentModel = (id: number) => {
     const frames = agentArt(id);
     Object.values(frames).flatMap((directions) => Object.values(directions)).forEach(track);
@@ -467,23 +473,26 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const agentMeshes = simulation.agents.map((agent) => makeAgentModel(agent.id));
   let previousPositions = simulation.agents.map(({ x, z }) => ({ x, z }));
   const contextRoom = new THREE.Group();
-  contextRoom.visible = simulation.progress.context;
-  block(contextRoom, 3, 0.08, -1.8, 3.05, 0.12, 2.85, palette.lavender);
-  cutout(contextRoom, track(contextConsoleArt()), 3, 0.76, -2.5, 1.45, 1.42);
-  contact(contextRoom, 3, -2.5, 1.25, 0.65, 0.153);
-  for (let i = 0; i < 3; i++) {
-    cutout(contextRoom, track(stackArt(i)), 2.1 + i * 0.78, 0.48, -1.18, 0.66, 0.87);
-    contact(contextRoom, 2.1 + i * 0.78, -1.18, 0.54, 0.42, 0.153, 0.55);
-  }
-  const contextLabel = label("CONTEXT");
-  contextLabel.position.set(3, 2.28, -2.1);
-  contextRoom.add(contextLabel);
-  scene.add(contextRoom);
+  contextRoom.visible = !isLive && simulation.progress.context;
   const lockedContext = new THREE.Group();
-  const ghostLabel = label("CONTEXT  ?");
-  ghostLabel.position.set(3, 1.34, -1.8);
-  lockedContext.add(ghostLabel);
-  scene.add(lockedContext);
+  lockedContext.visible = !isLive && !simulation.progress.context;
+  if (!isLive) {
+    block(contextRoom, 3, 0.08, -1.8, 3.05, 0.12, 2.85, palette.lavender);
+    cutout(contextRoom, track(contextConsoleArt()), 3, 0.76, -2.5, 1.45, 1.42);
+    contact(contextRoom, 3, -2.5, 1.25, 0.65, 0.153);
+    for (let i = 0; i < 3; i++) {
+      cutout(contextRoom, track(stackArt(i)), 2.1 + i * 0.78, 0.48, -1.18, 0.66, 0.87);
+      contact(contextRoom, 2.1 + i * 0.78, -1.18, 0.54, 0.42, 0.153, 0.55);
+    }
+    const contextLabel = label("CONTEXT");
+    contextLabel.position.set(3, 2.28, -2.1);
+    contextRoom.add(contextLabel);
+    scene.add(contextRoom);
+    const ghostLabel = label("CONTEXT  ?");
+    ghostLabel.position.set(3, 1.34, -1.8);
+    lockedContext.add(ghostLabel);
+    scene.add(lockedContext);
+  }
   const desks = new THREE.Group();
   scene.add(desks);
   const monitors = DESKS.map(({ x, z }, index) => {
@@ -537,7 +546,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   cutout(scene, leaves, 5.8, 0.67, 3.35, 0.78, 0.94);
   contact(scene, 5.8, 3.35, 0.55, 0.42);
   const specks: THREE.Mesh[] = [];
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < (isLive ? 0 : 9); i++) {
     const speck = block(scene, coreDisplay.x - 0.32 + (i % 3) * 0.32, 2.2 + (i % 2) * 0.2,
       coreDisplay.z - 0.33 + Math.floor(i / 3) * 0.31,
       0.08, 0.08, 0.08, palette.cream, palette.cream, 0.8);
@@ -753,10 +762,12 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         agentMeshes.push(makeAgentModel(agentMeshes.length));
       }
       const busy = simulation.agents.some((a) => a.taskId !== undefined);
-      (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + (reducedMotion ? 0 : Math.sin(animationTime * 2.2) * 0.1);
-      core.position.y = 0.95 + (reducedMotion ? 0 : Math.sin(animationTime * 1.9) * 0.035);
-      contextRoom.visible = simulation.progress.context;
-      lockedContext.visible = !simulation.progress.context;
+      if (core) {
+        (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + (reducedMotion ? 0 : Math.sin(animationTime * 2.2) * 0.1);
+        core.position.y = 0.95 + (reducedMotion ? 0 : Math.sin(animationTime * 1.9) * 0.035);
+      }
+      contextRoom.visible = !isLive && simulation.progress.context;
+      lockedContext.visible = !isLive && !simulation.progress.context;
       stationLights.forEach((light, i) => {
         const active = simulation.agents[i]?.state === "working";
         (light.material as THREE.MeshStandardMaterial).emissiveIntensity = i < simulation.progress.capacity ? active ? 1.1 : 0.45 : 0;

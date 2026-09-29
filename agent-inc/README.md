@@ -53,6 +53,14 @@ fill keeps faces readable when backlit. This cutout system lives in
 `game/sprite-art.ts` and does not drive simulation state. No external texture
 assets or network-fetched fonts are required.
 
+Three.js's shadow depth pass honors the cutout materials' alpha test, so the
+directional sun casts the illustrated silhouettes rather than rectangular
+planes. Small, translucent floor-contact textures ground agents and furniture
+even at night; a tighter PCF shadow map supplies the longer moving daytime
+shadows. The map is smaller on narrow or coarse-pointer devices. These layers
+are deliberately restrained: there is no screen-space ambient occlusion or
+depth-of-field pass that would blur the pixel art or add an extra GPU context.
+
 Use a browser with WebGL 2 and working GPU drivers for the 3D office; WebGPU
 is **not** required. vGPU was evaluated, but it would add another GPU context
 for a backdrop that Three.js can render inside the existing scene, so the app

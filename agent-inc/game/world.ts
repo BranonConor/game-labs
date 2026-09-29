@@ -136,7 +136,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   renderer.toneMappingExposure = 1.35;
   renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.domElement.className = "world-canvas";
   renderer.domElement.setAttribute("aria-label", "Isometric view of the little AI office");
   renderer.domElement.setAttribute("role", "img");
@@ -204,13 +204,14 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const sunlight = new THREE.DirectionalLight(0xffd9a2, 2.4);
   sunlight.position.set(2, 9, -9);
   sunlight.castShadow = true;
-  sunlight.shadow.mapSize.set(1024, 1024);
+  const shadowSize = host.clientWidth < 980 || matchMedia("(pointer: coarse)").matches ? 768 : 1536;
+  sunlight.shadow.mapSize.set(shadowSize, shadowSize);
   sunlight.shadow.camera.left = -9;
   sunlight.shadow.camera.right = 9;
   sunlight.shadow.camera.top = 9;
   sunlight.shadow.camera.bottom = -9;
-  sunlight.shadow.bias = -0.001;
-  sunlight.shadow.normalBias = 0.025;
+  sunlight.shadow.bias = -0.0005;
+  sunlight.shadow.normalBias = 0.012;
   scene.add(sunlight);
   const coreGlow = new THREE.PointLight(0x8af6d8, 1.5, 5, 2);
   coreGlow.position.set(coreDisplay.x, 1.9, coreDisplay.z);
@@ -278,12 +279,28 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const shadowContext = shadowCanvas.getContext("2d");
   if (!shadowContext) throw new Error("Canvas 2D is required for contact shadows.");
   const shadowGradient = shadowContext.createRadialGradient(32, 32, 3, 32, 32, 31);
-  shadowGradient.addColorStop(0, "#292335aa");
-  shadowGradient.addColorStop(0.55, "#29233566");
+  shadowGradient.addColorStop(0, "#241f38e8");
+  shadowGradient.addColorStop(0.3, "#292335a8");
+  shadowGradient.addColorStop(0.7, "#29233540");
   shadowGradient.addColorStop(1, "#29233500");
   shadowContext.fillStyle = shadowGradient;
   shadowContext.fillRect(0, 0, 64, 64);
   const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
+  shadowTexture.magFilter = THREE.LinearFilter;
+  const contacts: { mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>; opacity: number }[] = [];
+  const contact = (parent: THREE.Object3D, x: number, z: number, width: number, depth: number, y = 0.065, opacity = 0.68) => {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, depth),
+      new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false, opacity, toneMapped: false }),
+    );
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(x, y, z);
+    mesh.renderOrder = 3;
+    parent.add(mesh);
+    contacts.push({ mesh, opacity });
+  };
+  contact(scene, coreDisplay.x, coreDisplay.z, 1.4, 1.05, 0.076);
+  contact(scene, 3.45, 1.75, 0.95, 0.65);
   const makeAgentModel = (id: number) => {
     const frames = agentArt(id);
     Object.values(frames).flatMap((directions) => Object.values(directions)).forEach(track);
@@ -296,8 +313,10 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   contextRoom.visible = simulation.progress.context;
   block(contextRoom, 3, 0.08, -1.8, 3.05, 0.12, 2.85, palette.lavender);
   cutout(contextRoom, track(contextConsoleArt()), 3, 0.76, -2.5, 1.45, 1.42);
+  contact(contextRoom, 3, -2.5, 1.25, 0.65, 0.153);
   for (let i = 0; i < 3; i++) {
     cutout(contextRoom, track(stackArt(i)), 2.1 + i * 0.78, 0.48, -1.18, 0.66, 0.87);
+    contact(contextRoom, 2.1 + i * 0.78, -1.18, 0.54, 0.42, 0.153, 0.55);
   }
   const contextLabel = label("CONTEXT");
   contextLabel.position.set(3, 2.28, -2.1);
@@ -313,7 +332,11 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const deskPoints = [
     [-0.75, 0.15], [1.2, 0.15], [-0.75, 1.75], [1.2, 1.75],
   ];
-  deskPoints.forEach(([x, z], index) => desk(desks, x, z, index, track));
+  deskPoints.forEach(([x, z], index) => {
+    desk(desks, x, z, index, track);
+    contact(desks, x, z - 0.56, 1.3, 0.65);
+    contact(desks, x + 0.35, z + 0.37, 0.55, 0.45, 0.065, 0.5);
+  });
   // Unused stations are built but unlit, making added capacity legible at a glance.
   const stationLights = deskPoints.map(([x, z]) => {
     const mesh = cutout(desks, track(statusLightArt()), x + 0.43, 0.82, z - 0.55, 0.18, 0.27);
@@ -321,11 +344,13 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   });
   for (let i = 0; i < 2; i++) {
     cutout(scene, track(stackArt(i)), -4.6 + i * 0.35, 0.43, 2.2, 0.65, 0.81);
+    contact(scene, -4.6 + i * 0.35, 2.2, 0.55, 0.4, 0.065, 0.52);
   }
   const leaves = track(plantArt());
   const plantBack = cutout(scene, leaves, -4.42, 0.84, 2.83, 0.94, 1.14);
   (plantBack.material as THREE.MeshStandardMaterial).color.setHex(0x8a9c94);
   cutout(scene, leaves, -4.37, 0.84, 2.99, 0.98, 1.16);
+  contact(scene, -4.37, 2.99, 0.63, 0.55);
   const specks: THREE.Mesh[] = [];
   for (let i = 0; i < 9; i++) {
     const speck = block(scene, coreDisplay.x - 0.32 + (i % 3) * 0.32, 2.65 + (i % 2) * 0.2,
@@ -431,6 +456,10 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       skyBounce.color.setHex(light.bounceColor);
       skyBounce.groundColor.setHex(0xb47976);
       skyBounce.intensity = light.ambient * 0.95;
+      const daylightShadow = Math.min(1, light.sun / 3.2);
+      contacts.forEach(({ mesh, opacity }) => {
+        mesh.material.opacity = opacity * (0.72 + daylightShadow * 0.28);
+      });
       coreGlow.intensity = 0.85 + light.lamp * 0.7;
       terminalGlow.intensity = light.lamp * 0.5;
       deskGlow.intensity = 0.3 + light.lamp * 1.8;
@@ -472,6 +501,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         const agent: Agent = simulation.agents[index];
         model.group.position.set(agent.x, 0, agent.z);
         model.shadow.position.set(agent.x, 0.095, agent.z);
+        (model.shadow.material as THREE.MeshBasicMaterial).opacity = 0.72 + daylightShadow * 0.18;
         if (agent.state === "walking" || agent.state === "returning") {
           const dx = agent.target.x - agent.x;
           if (Math.abs(dx) > 0.2) model.facing = dx < 0 ? "left" : "right";

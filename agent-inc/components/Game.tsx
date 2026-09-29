@@ -1,0 +1,289 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import {
+  applyOffline, CAPACITY_COST, CONTEXT_COST, initialProgress, MAX_CAPACITY,
+  parseProgress, SAVE_KEY, Simulation,
+} from "../game/simulation";
+import type { OfflineReport, Request } from "../game/simulation";
+import { createWorld } from "../game/world";
+
+function requestSymbol(request: Request) {
+  if (request.status === "complete") return "✓";
+  if (request.status === "working") return "◉";
+  if (request.status === "assigned") return "↗";
+  return "◌";
+}
+
+export default function Game() {
+  const [simulation, setSimulation] = useState<Simulation | null>(null);
+  const [revision, setRevision] = useState(0);
+  const [offline, setOffline] = useState<OfflineReport | null>(null);
+  const [message, setMessage] = useState("A little intelligence is waking up.");
+  const [storageError, setStorageError] = useState("");
+  const [debug, setDebug] = useState(false);
+  const [fps, setFps] = useState(0);
+  const host = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(SAVE_KEY);
+    } catch {
+      setStorageError("Local storage is unavailable; progress cannot be saved in this browser.");
+    }
+    const loaded = parseProgress(saved);
+    if (saved && !loaded) setStorageError("Saved progress could not be read. A new system has been started.");
+    const progress = loaded ?? initialProgress();
+    if (loaded) {
+      const report = applyOffline(progress, Date.now());
+      if (report.completed > 0) setOffline(report);
+    }
+    setSimulation(new Simulation(progress));
+  }, []);
+
+  useEffect(() => {
+    if (!simulation || !host.current) return;
+    let world: ReturnType<typeof createWorld>;
+    try {
+      world = createWorld(host.current, simulation);
+    } catch (error) {
+      setStorageError(`The 3D office could not start: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    let raf = 0;
+    let last = performance.now();
+    let accumulator = 0;
+    let lastUI = 0;
+    let lastSave = last;
+    let lastCompleted = simulation.progress.completed;
+    let frames = 0;
+    let fpsStart = last;
+
+    const save = () => {
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(simulation.save()));
+      } catch {
+        setStorageError("Progress could not be saved. Check browser storage permissions or available space.");
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        save();
+        last = performance.now();
+      } else {
+        if (!simulation.paused) {
+          const report = applyOffline(simulation.progress, Date.now());
+          if (report.completed > 0) setOffline(report);
+        } else simulation.progress.savedAt = Date.now();
+        save();
+        last = performance.now();
+        accumulator = 0;
+        setRevision((value) => value + 1);
+      }
+    };
+    const frame = (now: number) => {
+      const elapsed = Math.min((now - last) / 1000, 0.2);
+      last = now;
+      if (!document.hidden) {
+        accumulator += elapsed;
+        while (accumulator >= 1 / 30) {
+          simulation.update(1 / 30);
+          accumulator -= 1 / 30;
+        }
+        world.render(now / 1000);
+        frames++;
+        if (now - fpsStart > 1000) {
+          setFps(Math.round(frames * 1000 / (now - fpsStart)));
+          frames = 0;
+          fpsStart = now;
+        }
+        if (simulation.progress.completed > lastCompleted) {
+          const gained = simulation.progress.completed - lastCompleted;
+          lastCompleted = simulation.progress.completed;
+          setMessage(`${gained === 1 ? "A request" : `${gained} requests`} answered. Your little system is learning to hum.`);
+          save();
+        }
+        if (now - lastUI > 180) {
+          setRevision((value) => value + 1);
+          lastUI = now;
+        }
+        if (now - lastSave > 5000) {
+          save();
+          lastSave = now;
+        }
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", save);
+    raf = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(raf);
+      save();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", save);
+      world.dispose();
+    };
+  }, [simulation]);
+
+  const buyCapacity = () => {
+    if (!simulation?.buyCapacity()) return;
+    setMessage("Another little process comes online. Two minds, two desks, one growing intelligence.");
+    setRevision((value) => value + 1);
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(simulation.save())); }
+    catch { setStorageError("Progress could not be saved. Check browser storage permissions or available space."); }
+  };
+  const buyContext = () => {
+    if (!simulation?.unlockContext()) return;
+    setMessage("The context chamber materializes. Agents can now carry longer thoughts through it.");
+    setRevision((value) => value + 1);
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(simulation.save())); }
+    catch { setStorageError("Progress could not be saved. Check browser storage permissions or available space."); }
+  };
+  const togglePause = () => {
+    if (!simulation) return;
+    simulation.paused = !simulation.paused;
+    setRevision((value) => value + 1);
+  };
+  const toggleSpeed = () => {
+    if (!simulation) return;
+    simulation.speed = simulation.speed === 1 ? 2 : 1;
+    setRevision((value) => value + 1);
+  };
+
+  // React receives coarse snapshots; agent positions are read directly by Three.js.
+  void revision;
+  const progress = simulation?.progress;
+  const queued = simulation?.requests.filter((request) => request.status === "queued").length ?? 0;
+  const active = simulation?.requests.filter((request) => request.status === "working" || request.status === "assigned").length ?? 0;
+  const feed = simulation
+    ? [
+        ...simulation.requests.filter((request) => request.status !== "complete").reverse(),
+        ...simulation.requests.filter((request) => request.status === "complete"),
+      ].slice(0, 7)
+    : [];
+  const contextAvailable = (progress?.capacity ?? 0) >= 2;
+
+  return (
+    <main className="shell">
+      <header className="topbar">
+        <div className="identity">
+          <span className="brand-icon" aria-hidden="true">✦</span>
+          <div>
+            <div className="brand">agent<span>inc.</span></div>
+            <div className="brand-caption">a little intelligence, growing</div>
+          </div>
+        </div>
+        <div className="top-stats">
+          <div className="stat"><span className="stat-label">✧ &nbsp;TOKENS</span><strong>{progress?.tokens.toLocaleString() ?? "—"}</strong></div>
+          <div className="stat"><span className="stat-label">◈ &nbsp;CAPACITY</span><strong>{progress?.capacity ?? 1} <small>/ {MAX_CAPACITY}</small></strong></div>
+          <div className="stat desktop-stat"><span className="stat-label">◌ &nbsp;RESOLVED</span><strong>{progress?.completed ?? 0}</strong></div>
+        </div>
+      </header>
+
+      <div className="layout">
+        <section className="world-panel" aria-label="Office simulation">
+          <div className="scene-header">
+            <div><span className="online-dot" /> SYSTEM ONLINE <span className="scene-divider">/</span> THE LITTLE OFFICE</div>
+            <span className="scene-subtitle">drag to look around · scroll to zoom</span>
+          </div>
+          <div ref={host} className="world-host">
+            {!simulation && <div className="boot-message">WAKING UP THE OFFICE…</div>}
+            <div className="world-callout">
+              <span className="callout-star">✦</span>
+              <span>{message}</span>
+            </div>
+          </div>
+          <div className="scene-footer">
+            <div className="scene-live"><span className="tiny-pulse" /> {simulation?.paused ? "SIMULATION PAUSED" : "SIMULATING"} <span className="footer-sep">·</span> {active} processing <span className="footer-sep">·</span> {queued} in queue</div>
+            <div className="scene-controls">
+              <button type="button" onClick={togglePause} aria-label={simulation?.paused ? "Resume simulation" : "Pause simulation"}>{simulation?.paused ? "▶ RESUME" : "Ⅱ PAUSE"}</button>
+              <button type="button" onClick={toggleSpeed} aria-label={`Set simulation to ${simulation?.speed === 1 ? "double" : "normal"} speed`}>{simulation?.speed ?? 1}× SPEED</button>
+            </div>
+          </div>
+        </section>
+
+        <aside className="sidebar">
+          <div className="sidebar-heading"><span>YOUR SYSTEM</span><span className="heading-ornament">✧ ─ ✧</span></div>
+          <div className="system-card">
+            <div className="system-emblem">✦</div>
+            <div><div className="system-name">{progress?.context ? "The Thoughtful One" : "The Little Chatbot"}</div><div className="system-desc">You are the intelligence. Give your little processes room to grow.</div></div>
+          </div>
+          <div className="mini-metrics">
+            <div><span>ACTIVE AGENTS</span><strong>{simulation?.agents.length ?? 1}</strong></div>
+            <div><span>TOTAL EARNED</span><strong>{progress?.earned.toLocaleString() ?? 0}</strong></div>
+          </div>
+
+          <div className="section-title"><span>✦ &nbsp;GROW YOUR MIND</span><span>01 / 02</span></div>
+          <div className="upgrade-list">
+            <div className="upgrade">
+              <div className="upgrade-symbol">✳</div>
+              <div className="upgrade-info">
+                <div className="upgrade-name">Expand capacity <span>LVL {progress?.capacity ?? 1}</span></div>
+                <p>Activate another tiny agent and processing station. Handle requests side by side.</p>
+                <button type="button" className="buy-button" onClick={buyCapacity}
+                  disabled={!progress || progress.tokens < CAPACITY_COST || progress.capacity >= MAX_CAPACITY}>
+                  {progress?.capacity === MAX_CAPACITY ? "CAPACITY MAXED" : <>ACTIVATE <span>✧ {CAPACITY_COST}</span></>}
+                </button>
+              </div>
+            </div>
+            <div className={`upgrade ${contextAvailable ? "" : "upgrade-locked"}`}>
+              <div className="upgrade-symbol context-symbol">▣</div>
+              <div className="upgrade-info">
+                <div className="upgrade-name">Context chamber <span>{progress?.context ? "ONLINE" : "LOCKED"}</span></div>
+                <p>A whole new room for longer thoughts. Agents visit it to solve richer requests.</p>
+                <button type="button" className="buy-button context-button" onClick={buyContext}
+                  disabled={!progress || progress.context || !contextAvailable || progress.tokens < CONTEXT_COST}>
+                  {progress?.context ? "CHAMBER ONLINE" : contextAvailable ? <>UNLOCK <span>✧ {CONTEXT_COST}</span></> : "REQUIRES CAPACITY 2"}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="side-hint">✧ &nbsp;The architecture is the world. Every new capability becomes a place.</div>
+        </aside>
+      </div>
+
+      <section className="feed-panel" aria-label="Request feed">
+        <div className="feed-top"><div><span className="feed-glyph">◈</span> INCOMING SIGNALS <span className="feed-count">{queued + active} LIVE</span></div><span className="feed-caption">human requests · simulated locally</span></div>
+        <div className="feed-list" aria-live="off">
+          {feed.length === 0 && <div className="feed-empty"><span>◌</span> Listening for the first hello…</div>}
+          {feed.map((request) => (
+            <div className={`feed-item feed-${request.status}`} key={request.id}>
+              <span className="feed-icon">{requestSymbol(request)}</span>
+              <span className="feed-task">{request.title}</span>
+              {request.kind === "context" && <span className="request-kind">CONTEXT</span>}
+              <span className="feed-status">{request.status === "complete" ? `+${request.reward} ✧` :
+                request.status === "working" ? `${Math.round(request.progress * 100)}%` :
+                request.status === "assigned" ? `AGENT ${request.agentId! + 1} MOVING` : "WAITING"}</span>
+              {request.status === "working" && <span className="progress-track"><span style={{ width: `${request.progress * 100}%` }} /></span>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {offline && offline.completed > 0 && (
+        <div className="welcome-back" role="dialog" aria-label="Offline progress">
+          <div className="welcome-card">
+            <span className="welcome-spark">✧</span>
+            <span className="eyebrow">WELCOME BACK, INTELLIGENCE</span>
+            <h2>The office kept humming.</h2>
+            <p>While you were away, your system answered <strong>{offline.completed} requests</strong> and gathered <strong>+{offline.tokens} tokens</strong>.</p>
+            <button type="button" onClick={() => setOffline(null)}>LOVELY, LET&apos;S SEE →</button>
+          </div>
+        </div>
+      )}
+      {storageError && <div className="storage-error" role="alert">{storageError}<button type="button" onClick={() => setStorageError("")} aria-label="Dismiss warning">×</button></div>}
+      <footer className="page-footer">
+        <span>AGENT INC. <span className="footer-sep">·</span> FIRST PLAYABLE PROTOTYPE</span>
+        <button type="button" onClick={() => setDebug(!debug)} aria-expanded={debug}>{debug ? "HIDE" : "SHOW"} DEBUG</button>
+      </footer>
+      {debug && <div className="debug-panel">
+        <span>SIM {simulation?.time.toFixed(1) ?? 0}s</span><span>FPS {fps}</span>
+        <span>AGENTS {simulation?.agents.length ?? 0}</span><span>QUEUE {queued}</span>
+        <span>ACTIVE {active}</span><span>DONE {progress?.completed ?? 0}</span>
+        <span>TOKENS {progress?.tokens ?? 0}</span><span>SPEED {simulation?.speed ?? 1}×</span>
+      </div>}
+    </main>
+  );
+}

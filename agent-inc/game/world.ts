@@ -201,10 +201,17 @@ function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt)
 export type World = {
   capturePositions: () => void;
   render: (elapsed: number, previewOffset: number, alpha: number, advanced: boolean) => void;
+  focusAgent: (index: number | null) => void;
   dispose: () => void;
 };
 
-export function createWorld(host: HTMLElement, simulation: Simulation, variant: "game" | "live" = "game"): World {
+export type WorldInteraction = {
+  onAgentHover: (index: number | null, clientX: number, clientY: number) => void;
+  onAgentSelect: (index: number) => void;
+};
+
+export function createWorld(host: HTMLElement, simulation: Simulation, variant: "game" | "live" = "game",
+  interaction?: WorldInteraction): World {
   const isLive = variant === "live";
   const coffeeZ = isLive ? LIVE_COFFEE_Z : 3.55;
   const scene = new THREE.Scene();
@@ -624,24 +631,64 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
   let dragging = false;
   let previousX = 0;
   let previousY = 0;
+  let pointerTravel = 0;
+  let selectedAgent: number | null = null;
+  let focusIndex: number | null = null;
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  const pickAgent = (event: PointerEvent): number | null => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.set((event.clientX - rect.left) / rect.width * 2 - 1,
+      -(event.clientY - rect.top) / rect.height * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+    const figures = agentMeshes.slice(0, simulation.progress.capacity).map((model) => model.figure);
+    for (const hit of raycaster.intersectObjects(figures)) {
+      const index = agentMeshes.findIndex((model) => model.figure === hit.object);
+      const map = (hit.object as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>).material.map;
+      if (index < 0 || !hit.uv || !map || !(map.image instanceof HTMLCanvasElement)) continue;
+      const image = map.image;
+      const x = Math.min(image.width - 1, Math.floor(hit.uv.x * image.width));
+      const y = Math.min(image.height - 1, Math.floor((1 - hit.uv.y) * image.height));
+      if ((image.getContext("2d")?.getImageData(x, y, 1, 1).data[3] ?? 0) > 48) return index;
+    }
+    return null;
+  };
   const onDown = (event: PointerEvent) => {
     dragging = true;
+    pointerTravel = 0;
     previousX = event.clientX;
     previousY = event.clientY;
     renderer.domElement.setPointerCapture(event.pointerId);
   };
   const onMove = (event: PointerEvent) => {
+    if (interaction && !dragging) {
+      const index = pickAgent(event);
+      renderer.domElement.style.cursor = index === null ? "grab" : "pointer";
+      interaction.onAgentHover(index, event.clientX, event.clientY);
+    }
     if (!dragging) return;
     const dx = event.clientX - previousX;
     const dy = event.clientY - previousY;
+    pointerTravel += Math.hypot(dx, dy);
+    if (interaction && pointerTravel <= 5) return;
+    focusIndex = null;
+    interaction?.onAgentHover(null, event.clientX, event.clientY);
     panX = THREE.MathUtils.clamp(panX - dx * 0.012 / zoom, -2.5, 2.5);
     panZ = THREE.MathUtils.clamp(panZ - dy * 0.014 / zoom, -2, 2);
     previousX = event.clientX;
     previousY = event.clientY;
   };
-  const onUp = () => { dragging = false; };
+  const onUp = (event: PointerEvent) => {
+    if (interaction && dragging && pointerTravel <= 5 && event.type === "pointerup") {
+      const index = pickAgent(event);
+      if (index !== null) interaction.onAgentSelect(index);
+    }
+    dragging = false;
+  };
+  const onLeave = () => interaction?.onAgentHover(null, 0, 0);
   const onWheel = (event: WheelEvent) => {
     event.preventDefault();
+    focusIndex = null;
     zoom = THREE.MathUtils.clamp(zoom * (event.deltaY > 0 ? 0.9 : 1.1), 0.74, 1.65);
   };
   const canvas = renderer.domElement;
@@ -649,6 +696,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
   canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerup", onUp);
   canvas.addEventListener("pointercancel", onUp);
+  if (interaction) canvas.addEventListener("pointerleave", onLeave);
   canvas.addEventListener("wheel", onWheel, { passive: false });
 
   const resize = () => {
@@ -678,8 +726,13 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
     capturePositions() {
       previousPositions = simulation.agents.map(({ x, z }) => ({ x, z }));
     },
+    focusAgent(index) {
+      selectedAgent = index !== null && index >= 0 && index < simulation.progress.capacity ? index : null;
+      focusIndex = selectedAgent;
+    },
     render(elapsed: number, previewOffset: number, alpha: number, advanced: boolean) {
-      animationTime += Math.max(0, Math.min(0.05, elapsed - lastFrameTime));
+      const frameDelta = Math.max(0, Math.min(0.05, elapsed - lastFrameTime));
+      animationTime += frameDelta;
       lastFrameTime = elapsed;
       const roomKey = `${simulation.progress.capacity}/${simulation.progress.context}/${simulation.progress.workflow}`;
       if (advanced || previewOffset !== lastPreviewOffset || roomKey !== lastRoomKey) {
@@ -800,7 +853,9 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
           agent.state === "idle" && !reducedMotion ? Math.sin(animationTime * 1.65 + index) * 0.038 : 0, position.z);
         model.shadow.position.set(position.x, 0.095, position.z);
         model.caster.position.set(position.x, 0.18, position.z);
-        (model.shadow.material as THREE.MeshBasicMaterial).opacity = 0.68 * (0.72 + daylightShadow * 0.28);
+        model.shadow.scale.setScalar(index === selectedAgent && isLive ? 1.22 : 1);
+        (model.shadow.material as THREE.MeshBasicMaterial).opacity =
+          (index === selectedAgent && isLive ? 0.86 : 0.68) * (0.72 + daylightShadow * 0.28);
         if (agent.state === "idle") {
           model.facing = index < 2 ? "right" : "left";
         } else if (agent.state === "working") {
@@ -827,6 +882,13 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
         speck.position.y = 2.2 + (reducedMotion ? 0 : Math.sin(animationTime * 1.2 + i * 2.1) * 0.15);
         speck.visible = busy || i % 3 === 0;
       });
+      if (focusIndex !== null && focusIndex < simulation.progress.capacity) {
+        const agent = simulation.agents[focusIndex];
+        const easing = 1 - Math.exp(-frameDelta * 7);
+        panX = THREE.MathUtils.lerp(panX, THREE.MathUtils.clamp(agent.x + 1.15, -2.5, 2.5), easing);
+        panZ = THREE.MathUtils.lerp(panZ, THREE.MathUtils.clamp(agent.z, -2, 2), easing);
+        zoom = THREE.MathUtils.lerp(zoom, 1.3, easing);
+      }
       camera.zoom = zoom;
       camera.position.set(cameraBase.x + panX, cameraBase.y, cameraBase.z + panZ);
       camera.lookAt(panX, 0.4, panZ);
@@ -840,6 +902,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
       canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp);
       canvas.removeEventListener("pointercancel", onUp);
+      if (interaction) canvas.removeEventListener("pointerleave", onLeave);
       canvas.removeEventListener("wheel", onWheel);
       canvas.removeEventListener("webglcontextlost", onContextLost);
       canvas.removeEventListener("webglcontextrestored", onContextRestored);

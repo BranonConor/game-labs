@@ -6,45 +6,13 @@ import {
 import type { Agent, Request } from "../../agent-inc/game/simulation";
 import { sampleDaylight } from "../../agent-inc/game/lighting";
 import { createWorld, LIVE_COFFEE_Z } from "../../agent-inc/game/world";
-
-type Status = "idle" | "thinking" | "tool" | "blocked" | "offline";
-type Worker = { status: Status; activity: string };
-type Signal = { kind: "message" | "tool" | "helper" | "error"; label: string; at: number };
-type Session = {
-  sessionId: string;
-  status: Status;
-  activity: string;
-  tools: string[];
-  subagents: Worker[];
-  messages?: number;
-  events?: Signal[];
-  updatedAt: number;
-  seenAt: number;
-};
-type Room = { currentSessionId: string; sessions: Session[] };
-type Actor = { key: string; title: string; status: Status; activity: string; helper: boolean };
+import { roomActors, sessionName } from "./room";
+import type { Actor, Room } from "./room";
 
 const MAX_DESKS = DESKS.length;
 const LIVE_COFFEE_SPOTS = COFFEE_SPOTS.map(({ x }) => ({ x, z: LIVE_COFFEE_Z + 0.75 }));
 const STEP = 1 / 30;
 const emptyRoom: Room = { currentSessionId: "", sessions: [] };
-
-function sessionName(id: string, currentId: string) {
-  return id === currentId ? "Your session" : `Session ${id.slice(0, 8)}`;
-}
-
-function roomActors(room: Room): Actor[] {
-  const sessions = room.sessions.map((session) => ({
-    key: session.sessionId, title: sessionName(session.sessionId, room.currentSessionId),
-    status: session.status, activity: session.activity, helper: false,
-  }));
-  const helpers = room.sessions.flatMap((session) => session.subagents.map((worker, index) => ({
-    key: `${session.sessionId}:helper:${index}`,
-    title: `${sessionName(session.sessionId, room.currentSessionId)} · helper ${index + 1}`,
-    status: worker.status, activity: worker.activity, helper: true,
-  })));
-  return [...sessions, ...helpers];
-}
 
 function makeAgent(id: number): Agent {
   return {
@@ -132,11 +100,33 @@ function LiveOffice() {
   const [ambiencePaused, setAmbiencePaused] = useState(false);
   const [ambientSpeed, setAmbientSpeed] = useState(1);
   const [selected, setSelected] = useState("");
+  const [hover, setHover] = useState<{ name: string; x: number; y: number } | null>(null);
   const host = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<Simulation | null>(null);
+  const worldRef = useRef<ReturnType<typeof createWorld> | null>(null);
+  const actorsRef = useRef<Actor[]>([]);
+  const selectedCard = useRef<HTMLDivElement>(null);
+  const focusedKey = useRef("");
   const previewRef = useRef(0);
   const pauseRef = useRef(false);
   const speedRef = useRef(1);
+
+  const selectActor = (key: string, showAgents = true) => {
+    const index = actorsRef.current.findIndex((actor) => actor.key === key);
+    worldRef.current?.focusAgent(index >= 0 && index < MAX_DESKS ? index : null);
+    focusedKey.current = `${key}:${index}`;
+    setSelected(key);
+    setPanelOpen(true);
+    if (showAgents) setTab("agents");
+  };
+
+  useEffect(() => {
+    if (panelOpen && tab === "agents") {
+      selectedCard.current?.scrollIntoView({
+        block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
+    }
+  }, [selected, panelOpen, tab]);
 
   useEffect(() => {
     if (!host.current) return;
@@ -145,7 +135,18 @@ function LiveOffice() {
     const occupied = Array(MAX_DESKS).fill(false) as boolean[];
     let world: ReturnType<typeof createWorld> | undefined;
     try {
-      world = createWorld(host.current, scene, "live");
+      world = createWorld(host.current, scene, "live", {
+        onAgentHover(index, clientX, clientY) {
+          const actor = index === null ? undefined : actorsRef.current[index];
+          const rect = host.current?.getBoundingClientRect();
+          setHover(actor && rect ? { name: actor.name, x: clientX - rect.left, y: clientY - rect.top } : null);
+        },
+        onAgentSelect(index) {
+          const actor = actorsRef.current[index];
+          if (actor) selectActor(actor.key);
+        },
+      });
+      worldRef.current = world;
     } catch (error) {
       host.current.classList.add("static-fallback");
       setConnection(`3D office unavailable; live status remains visible. ${error instanceof Error ? error.message : String(error)}`);
@@ -157,8 +158,10 @@ function LiveOffice() {
         if (!Array.isArray(update.sessions) || typeof update.currentSessionId !== "string") {
           throw new Error("Invalid office status");
         }
+        const nextActors = roomActors(update);
+        actorsRef.current = nextActors;
         world?.capturePositions();
-        applyRoom(scene, roomActors(update), occupied);
+        applyRoom(scene, nextActors, occupied);
         setRoom(update);
         setConnection("Live read-only view · local sessions running Agent Inc Live");
       } catch (error) {
@@ -210,6 +213,7 @@ function LiveOffice() {
       document.removeEventListener("visibilitychange", onVisibility);
       feed.close();
       world?.dispose();
+      worldRef.current = null;
       sceneRef.current = null;
     };
   }, []);
@@ -222,9 +226,21 @@ function LiveOffice() {
   const helpers = room.sessions.reduce((sum, session) => sum + session.subagents.length, 0);
   const messages = room.sessions.reduce((sum, session) => sum + (session.messages ?? 0), 0);
   const signals = room.sessions.flatMap((session) => (session.events ?? []).map((event, index) => ({
-    ...event, owner: sessionName(session.sessionId, room.currentSessionId),
+    ...event, owner: sessionName(session, room.currentSessionId),
     key: `${session.sessionId}:${event.at}:${index}`,
   }))).sort((a, b) => b.at - a.at).slice(0, 8);
+  useEffect(() => {
+    const index = actors.findIndex((actor) => actor.key === selected);
+    const key = `${selected}:${index}`;
+    if (focusedKey.current !== key) {
+      worldRef.current?.focusAgent(index >= 0 && index < MAX_DESKS ? index : null);
+      focusedKey.current = key;
+    }
+    if (selected && index < 0) {
+      setSelected("");
+      setHover(null);
+    }
+  }, [room, selected]);
   const daylight = sampleDaylight(sceneRef.current?.time ?? 0, previewOffset);
   const previewLight = () => {
     previewRef.current = (previewRef.current + 0.25) % 1;
@@ -267,6 +283,7 @@ function LiveOffice() {
             </div>
           </div>
           <div ref={host} className="world-host">
+            {hover && <div className="agent-hover" style={{ left: hover.x, top: hover.y }}>{hover.name}</div>}
             <div className="world-callout live-callout"><span className="callout-star">✦</span>
               <span>{blocked ? `${blocked} worker${blocked === 1 ? "" : "s"} need attention.` :
                 working ? `${working} worker${working === 1 ? " is" : "s are"} active.` :
@@ -338,10 +355,11 @@ function LiveOffice() {
                 <div className="upgrade station-card live-card" key={actor.key}>
                   <div className="station-number">{String(id + 1).padStart(2, "0")}</div>
                   <div className="upgrade-info">
-                    <div className="upgrade-name">{actor.title} <span>{actor.status.toUpperCase()}</span></div>
+                    <div className="upgrade-name">{actor.name} <span>{actor.status.toUpperCase()}</span></div>
+                    <p>{actor.sessionTitle}</p>
                     <p>{actor.activity}</p>
                     <button type="button" className="buy-button" aria-pressed={selected === actor.key}
-                      onClick={() => setSelected(actor.key)}>{selected === actor.key ? "SELECTED" : "SELECT DESK"} <span>◈ {id + 1}</span></button>
+                      onClick={() => selectActor(actor.key, false)}>{selected === actor.key ? "SELECTED" : "FIND AGENT"} <span>◈ {id + 1}</span></button>
                   </div>
                 </div>
               ))}
@@ -351,12 +369,17 @@ function LiveOffice() {
           {tab === "agents" && (
             <div id="panel-agents" role="tabpanel" aria-labelledby="tab-agents" className="upgrade-pane">
               <div className="pane-intro"><strong>The workers</strong><span>Subagents appear as additional workers when a desk is free. No training or upgrades alter real Copilot sessions.</span></div>
-              {actors.map((actor) => (
-                <div className="persona-card" key={actor.key}>
+              {actors.map((actor, index) => (
+                <div className={`persona-card ${selected === actor.key ? "persona-selected" : ""}`}
+                  key={actor.key} ref={selected === actor.key ? selectedCard : undefined}>
                   <div className="persona-heading"><span className="persona-avatar" style={{ backgroundColor: actor.helper ? "#b49ccc" : "#78bea6" }}>
                     {actor.helper ? "✳" : "✦"}</span>
-                    <span><strong>{actor.title}</strong><small>{actor.helper ? "Subagent" : "Session"} · {actor.status}</small></span>
+                    <span><button type="button" className="agent-name" onClick={() => selectActor(actor.key)}
+                      aria-label={`Find ${actor.name} in the office`}>{actor.name}</button>
+                      <small>{actor.helper ? "Subagent" : "Agent"} · {actor.status}
+                        {index >= MAX_DESKS ? " · waiting for a desk" : ""}</small></span>
                   </div>
+                  <div className="agent-assignment">SESSION <strong title={actor.sessionTitle}>{actor.sessionTitle}</strong></div>
                   <div className="live-descriptor">{actor.activity}</div>
                 </div>
               ))}

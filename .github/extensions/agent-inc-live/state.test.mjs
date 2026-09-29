@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyEvent, createState, isPublicSnapshot, publicSnapshot, selectRoom } from "./state.mjs";
+import { applyEvent, createState, isPublicSnapshot, normalizeTitle, publicSnapshot, selectRoom } from "./state.mjs";
 
 test("current session and subagent activity follow live SDK events", () => {
   const state = createState("daily-chat");
@@ -23,6 +23,7 @@ test("current session and subagent activity follow live SDK events", () => {
   const snapshot = publicSnapshot(state, 5);
   assert.equal(isPublicSnapshot(snapshot), true);
   assert.equal(JSON.stringify(snapshot).includes("PRIVATE"), false);
+  assert.equal(snapshot.subagents[0].id, "worker-1");
   assert.deepEqual(snapshot.tools, ["Terminal"]);
   assert.equal(snapshot.messages, 1);
   assert.equal(snapshot.events[0].label, "Assistant replied");
@@ -36,6 +37,8 @@ test("current session and subagent activity follow live SDK events", () => {
   assert.equal(state.status, "idle");
   applyEvent(state, { type: "session.idle" }, 8);
   assert.equal(state.status, "idle");
+  applyEvent(state, { type: "session.title_changed", data: { title: "Daily work chat" } }, 9);
+  assert.equal(publicSnapshot(state).title, "Daily work chat");
 });
 
 test("unrecognized events and malformed shared snapshots do not become office activity", () => {
@@ -44,8 +47,14 @@ test("unrecognized events and malformed shared snapshots do not become office ac
   assert.equal(isPublicSnapshot({ status: "working", sessionId: "s", seenAt: 10, subagents: [] }), false);
   const valid = publicSnapshot(state);
   assert.equal(isPublicSnapshot({ ...valid, content: "PRIVATE" }), false);
+  assert.equal(isPublicSnapshot({ ...valid, title: "x".repeat(101) }), false);
   assert.equal(isPublicSnapshot({ ...valid,
     subagents: [{ status: "idle", activity: "x", content: "PRIVATE" }] }), false);
+  assert.equal(isPublicSnapshot({ ...valid,
+    subagents: [{ id: "x".repeat(129), status: "idle", activity: "x" }] }), false);
+  assert.equal(JSON.stringify(publicSnapshot(state)).includes("PRIVATE"), false);
+  assert.equal(normalizeTitle("x".repeat(200)), undefined);
+  state.title = normalizeTitle("PRIVATE PROMPT ".repeat(40));
   assert.equal(JSON.stringify(publicSnapshot(state)).includes("PRIVATE"), false);
 });
 

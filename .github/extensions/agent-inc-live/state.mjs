@@ -1,5 +1,12 @@
 const STATUSES = new Set(["idle", "thinking", "tool", "blocked", "offline"]);
 
+export function normalizeTitle(value) {
+  if (value === null) return undefined;
+  if (typeof value !== "string" || !value.trim()) throw new Error("Invalid session display name");
+  const title = value.trim();
+  return title.length > 100 ? undefined : title;
+}
+
 export function toolKind(name = "") {
   if (/bash|terminal|shell|command/i.test(name)) return "Terminal";
   if (/test|build|lint|typecheck/i.test(name)) return "Checks";
@@ -11,7 +18,7 @@ export function toolKind(name = "") {
 
 export function createState(sessionId) {
   return {
-    sessionId, status: "idle", activity: "At the coffee counter",
+    sessionId, title: undefined, status: "idle", activity: "At the coffee counter",
     tools: [], subagents: [], messages: 0, events: [], updatedAt: Date.now(),
   };
 }
@@ -25,6 +32,13 @@ export function applyEvent(state, event, now = Date.now()) {
   const { type, data = {}, agentId } = event;
   let changed = true;
   switch (type) {
+    case "session.title_changed":
+      if (typeof data.title === "string" && data.title.trim()) {
+        state.title = normalizeTitle(data.title);
+      } else {
+        changed = false;
+      }
+      break;
     case "assistant.turn_start":
       state.status = "thinking";
       state.activity = "Planning the next step";
@@ -123,6 +137,7 @@ export function applyEvent(state, event, now = Date.now()) {
 export function publicSnapshot(state, now = Date.now()) {
   return {
     sessionId: state.sessionId,
+    ...(state.title ? { title: state.title } : {}),
     status: state.status,
     activity: state.activity,
     tools: state.tools.map(({ kind }) => kind),
@@ -130,7 +145,7 @@ export function publicSnapshot(state, now = Date.now()) {
     events: state.events.map(({ kind, label, at }) => ({ kind, label, at })),
     subagents: state.subagents
       .filter((agent) => !agent.finishedAt || now - agent.finishedAt < 15_000)
-      .map(({ status, activity }) => ({ status, activity })),
+      .map(({ id, status, activity }) => ({ id, status, activity })),
     updatedAt: state.updatedAt,
     seenAt: now,
   };
@@ -138,11 +153,13 @@ export function publicSnapshot(state, now = Date.now()) {
 
 export function isPublicSnapshot(value) {
   return value && typeof value.sessionId === "string" && value.sessionId.length <= 128 &&
+    (value.title === undefined || (typeof value.title === "string" &&
+      value.title.length > 0 && value.title.length <= 100)) &&
     STATUSES.has(value.status) && typeof value.activity === "string" &&
     value.activity.length <= 80 && Number.isFinite(value.seenAt) &&
     Number.isFinite(value.updatedAt) &&
     Object.keys(value).every((key) =>
-      ["sessionId", "status", "activity", "tools", "subagents", "messages", "events", "updatedAt", "seenAt"].includes(key)) &&
+      ["sessionId", "title", "status", "activity", "tools", "subagents", "messages", "events", "updatedAt", "seenAt"].includes(key)) &&
     Array.isArray(value.tools) && value.tools.length <= 12 &&
     value.tools.every((tool) => typeof tool === "string" && tool.length <= 80) &&
     (value.messages === undefined || (Number.isSafeInteger(value.messages) && value.messages >= 0)) &&
@@ -152,8 +169,9 @@ export function isPublicSnapshot(value) {
         Object.keys(event).every((key) => ["kind", "label", "at"].includes(key))))) &&
     Array.isArray(value.subagents) && value.subagents.length <= 12 &&
     value.subagents.every((agent) => STATUSES.has(agent.status) &&
+      (agent.id === undefined || (typeof agent.id === "string" && agent.id.length > 0 && agent.id.length <= 128)) &&
       typeof agent.activity === "string" && agent.activity.length <= 80 &&
-      Object.keys(agent).every((key) => ["status", "activity"].includes(key)));
+      Object.keys(agent).every((key) => ["id", "status", "activity"].includes(key)));
 }
 
 export function selectRoom(snapshots, currentSessionId, now = Date.now()) {

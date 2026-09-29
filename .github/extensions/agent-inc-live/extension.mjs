@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createCanvas, joinSession } from "@github/copilot-sdk/extension";
-import { applyEvent, createState, isPublicSnapshot, publicSnapshot, selectRoom } from "./state.mjs";
+import { applyEvent, createState, isPublicSnapshot, normalizeTitle, publicSnapshot, selectRoom } from "./state.mjs";
 
 const assets = dirname(fileURLToPath(import.meta.url));
 const gameStyles = resolve(assets, "../../../agent-inc/app/styles.css");
@@ -153,6 +153,11 @@ session = await joinSession({
 });
 
 state = createState(session.sessionId);
+async function refreshTitle() {
+  const { name } = await session.rpc.name.get();
+  state.title = normalizeTitle(name);
+}
+await refreshTitle();
 await mkdir(room, { recursive: true, mode: 0o700 });
 file = join(room, `${createHash("sha256").update(session.sessionId).digest("hex")}.json`);
 await publish();
@@ -163,7 +168,7 @@ session.on((event) => {
   }
 });
 const heartbeat = setInterval(() => {
-  void publish().catch((error) =>
+  void refreshTitle().then(publish).catch((error) =>
     session.log(`Agent Inc Live heartbeat failed: ${error.message}`, { level: "error" }));
 }, 10_000);
 process.once("SIGTERM", () => {

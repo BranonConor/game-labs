@@ -17,6 +17,14 @@ office has four desks; additional participating sessions and helpers
 remain visible in the roster but not as additional 3D actors. The scene
 adapter moves actors between the coffee counter and desks without running
 the game's `Simulation.update()` or generating fictional rewards.
+Each worker has a stable, generated display name. Its card shows the owning
+session's SDK display title when available (which may differ from the host
+App's sidebar name). Long SDK names are omitted rather than exposing what
+may be the opening prompt; the card then shows a short session identifier.
+Hovering its sprite shows its name, while
+clicking the sprite or the card's name focuses the camera and opens its activity
+card. Workers beyond the four desks remain in the roster and cannot be focused
+in the scene. Names are cosmetic and do not rename App sessions.
 
 The project extension loads in **game-labs sessions that contain this branch**.
 It listens to SDK events from each attached session: turn start/end, generic
@@ -27,16 +35,17 @@ extension process writes a sanitized heartbeat into
 `$COPILOT_HOME/extensions/agent-inc-live/artifacts/game-labs/` (or
 `~/.copilot/extensions/...`). The canvas serves an SSE feed over an ephemeral
 `127.0.0.1` port and shows recent participants in one office. Heartbeats
-older than 35 seconds disappear. Prompts, tool arguments/results, filenames,
+older than 35 seconds disappear. Raw prompts, tool arguments/results, filenames,
 repository contents, and raw event payloads are not written or sent to the
-page. This local experiment does not establish the App's parent/child session
-relationships or expose navigation and controls.
+page. The short SDK display title is the only potentially prompt-derived
+metadata shown when available. This local experiment does not establish the
+App's parent/child session relationships or expose navigation and controls.
 
 ## Local test
 
 1. The committed `office.bundle.js` is ready to run. To rebuild after editing
    either the client or the shared game scene, run `cd agent-inc-live && npm ci
-   && npm run build && npm run typecheck`. The bundle uses React and Three.js
+   && npm run build && npm run typecheck && npm test`. The bundle uses React and Three.js
    only at build time; the extension needs no running Next.js dev server.
 2. From the repo root, run `node --test .github/extensions/agent-inc-live/state.test.mjs`
    and `node --check .github/extensions/agent-inc-live/extension.mjs`.

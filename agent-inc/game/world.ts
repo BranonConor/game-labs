@@ -211,7 +211,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   renderer.toneMappingExposure = 1.35;
   renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.VSMShadowMap;
   renderer.domElement.className = "world-canvas";
   renderer.domElement.setAttribute("aria-label", "Perspective view of the little AI office");
   renderer.domElement.setAttribute("role", "img");
@@ -277,10 +277,12 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const skyBounce = new THREE.HemisphereLight(0xb6c9ce, 0x966c80, 0.9);
   scene.add(ambient, skyBounce);
   const sunlight = new THREE.DirectionalLight(0xffd9a2, 2.4);
-  sunlight.position.set(2, 9, -9);
+  sunlight.position.set(2, 9, -24);
   sunlight.castShadow = true;
-  const shadowSize = host.clientWidth < 980 || matchMedia("(pointer: coarse)").matches ? 768 : 1536;
+  const shadowSize = host.clientWidth < 980 || matchMedia("(pointer: coarse)").matches ? 512 : 1024;
   sunlight.shadow.mapSize.set(shadowSize, shadowSize);
+  sunlight.shadow.radius = 8;
+  sunlight.shadow.blurSamples = 8;
   sunlight.shadow.camera.left = -11;
   sunlight.shadow.camera.right = 11;
   sunlight.shadow.camera.top = 11;
@@ -307,6 +309,35 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   floor.position.y = 0.028;
   floor.receiveShadow = true;
   scene.add(floor);
+  const floorShade = new THREE.Mesh(
+    new THREE.PlaneGeometry(room.halfWidth * 2 - 0.18, room.front - room.back - 0.18),
+    new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false,
+      uniforms: { uSunSide: { value: 0 }, uNight: { value: 0 } },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        varying vec2 vUv;
+        uniform float uSunSide;
+        uniform float uNight;
+        void main() {
+          float nearEdge = smoothstep(0.15, 0.98, 1.0 - vUv.y);
+          float corners = smoothstep(0.15, 1.0, abs(vUv.x - 0.5) * 2.0);
+          float awayFromSun = max(0.0, -uSunSide * (vUv.x - 0.5) * 2.0);
+          float shade = nearEdge * (0.11 + 0.12 * corners + 0.12 * awayFromSun + 0.06 * uNight);
+          gl_FragColor = vec4(0.10, 0.065, 0.13, shade);
+        }
+      `,
+    }),
+  );
+  floorShade.rotation.x = -Math.PI / 2;
+  floorShade.position.y = 0.047;
+  scene.add(floorShade);
   // Real openings let the sky dome show through. Three's sun and
   // shadow map alone decide which parts of the interior receive direct light.
   block(scene, 0, 0.575, room.back, room.halfWidth * 2, 1.15, 0.2, palette.wall);
@@ -458,24 +489,45 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     specks.push(speck);
   }
   const beamTextureCanvas = document.createElement("canvas");
-  beamTextureCanvas.width = 64;
-  beamTextureCanvas.height = 64;
+  beamTextureCanvas.width = 128;
+  beamTextureCanvas.height = 128;
   const context = beamTextureCanvas.getContext("2d");
   if (!context) throw new Error("Canvas 2D is required for sunlight pools.");
-  const gradient = context.createRadialGradient(32, 32, 4, 32, 32, 32);
-  gradient.addColorStop(0, "#ffffffbb");
-  gradient.addColorStop(0.7, "#ffffff77");
-  gradient.addColorStop(1, "#ffffff00");
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, 64, 64);
+  const image = context.createImageData(128, 128);
+  for (let y = 0; y < 128; y++) {
+    for (let x = 0; x < 128; x++) {
+      const across = Math.max(0, 1 - Math.abs((x + 0.5) / 64 - 1));
+      const along = (y + 0.5) / 128;
+      const fade = Math.min(1, along * 9, (1 - along) * 5);
+      const index = (y * 128 + x) * 4;
+      image.data[index] = image.data[index + 1] = image.data[index + 2] = 255;
+      image.data[index + 3] = Math.round(220 * across ** 1.4 * fade);
+    }
+  }
+  context.putImageData(image, 0, 0);
   const beamTexture = new THREE.CanvasTexture(beamTextureCanvas);
   beamTexture.minFilter = THREE.LinearFilter;
+  const poolCanvas = document.createElement("canvas");
+  poolCanvas.width = poolCanvas.height = 64;
+  const poolContext = poolCanvas.getContext("2d");
+  if (!poolContext) throw new Error("Canvas 2D is required for sunlight pools.");
+  const poolGradient = poolContext.createRadialGradient(32, 32, 3, 32, 32, 32);
+  poolGradient.addColorStop(0, "#ffffffcc");
+  poolGradient.addColorStop(0.65, "#ffffff80");
+  poolGradient.addColorStop(1, "#ffffff00");
+  poolContext.fillStyle = poolGradient;
+  poolContext.fillRect(0, 0, 64, 64);
+  const poolTexture = new THREE.CanvasTexture(poolCanvas);
+  poolTexture.minFilter = THREE.LinearFilter;
   const beams = windowXs.map((x) => {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(12), 3));
+    geometry.setAttribute("uv", new THREE.BufferAttribute(new Float32Array([
+      0, 1, 1, 1, 0, 0, 1, 0,
+    ]), 2));
     geometry.setIndex([0, 1, 2, 1, 3, 2]);
     const material = new THREE.MeshBasicMaterial({
-      color: 0xffc990, transparent: true, opacity: 0, depthWrite: false,
+      map: beamTexture, color: 0xffc990, transparent: true, opacity: 0, depthWrite: false,
       side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
     });
     const shaft = new THREE.Mesh(geometry, material);
@@ -484,14 +536,22 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     const pool = new THREE.Mesh(
       new THREE.PlaneGeometry(2.05, 2.2),
       new THREE.MeshBasicMaterial({
-        map: beamTexture, transparent: true, opacity: 0, depthWrite: false,
+        map: poolTexture, transparent: true, opacity: 0, depthWrite: false,
         color: 0xffd6ad, blending: THREE.AdditiveBlending,
       }),
     );
     pool.rotation.x = -Math.PI / 2;
     pool.renderOrder = 2;
     scene.add(pool);
-    return { x, shaft, pool };
+    const dustGeometry = new THREE.BufferGeometry();
+    dustGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(36), 3));
+    const dust = new THREE.Points(dustGeometry, new THREE.PointsMaterial({
+      map: poolTexture, color: 0xffd6ad, size: 3, sizeAttenuation: false,
+      transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+    dust.renderOrder = 2;
+    scene.add(dust);
+    return { x, shaft, pool, dust };
   });
 
   let zoom = 1;
@@ -557,7 +617,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       sunlight.intensity = direct;
       sunlight.position.set(
         THREE.MathUtils.lerp(light.sunX, -3.4, moonShare),
-        THREE.MathUtils.lerp(light.sunY, 6.6, moonShare), -9,
+        THREE.MathUtils.lerp(light.sunY, 6.6, moonShare), -24,
       );
       ambient.color.setHex(light.skyColor)
         .lerp(moonAmbient, moonStrength * 0.32)
@@ -567,6 +627,9 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       skyBounce.groundColor.setHex(0xb47976);
       skyBounce.intensity = light.ambient * 0.95;
       const daylightShadow = Math.min(1, light.sun / 3.2);
+      const shadeMaterial = floorShade.material as THREE.ShaderMaterial;
+      shadeMaterial.uniforms.uSunSide.value = THREE.MathUtils.clamp(light.sunX / 6, -1, 1) * daylightShadow;
+      shadeMaterial.uniforms.uNight.value = moonStrength;
       contacts.forEach(({ mesh, opacity }) => {
         mesh.material.opacity = opacity * (0.72 + daylightShadow * 0.28);
       });
@@ -582,23 +645,37 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       skyMaterial.uniforms.uWarm.value = light.warmth;
       skyMaterial.uniforms.uTime.value = reducedMotion ? 0 : simulation.time;
       (skyMaterial.uniforms.uSun.value as THREE.Vector3).copy(sunlight.position).normalize();
-      for (const { x, shaft, pool } of beams) {
+      for (const { x, shaft, pool, dust } of beams) {
         const fall = (room.windowY - 0.08) / (sunlight.position.y - room.windowY);
         const endX = x + (x - sunlight.position.x) * fall;
-        const endZ = room.back + (room.back + 9) * fall;
+        const endZ = room.back + (room.back - sunlight.position.z) * fall;
         const insideRoom = THREE.MathUtils.clamp((room.halfWidth - 0.9 - Math.abs(endX)) / 0.7, 0, 1);
         const vertices = (shaft.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
         vertices.set([
-          x - 0.7, room.windowY + 0.06, room.back + 0.2, x + 0.7, room.windowY + 0.06, room.back + 0.2,
-          endX - 0.9, 0.08, endZ, endX + 0.9, 0.08, endZ,
+          x - 0.82, room.windowY + 0.06, room.back + 0.2, x + 0.82, room.windowY + 0.06, room.back + 0.2,
+          endX - 1.15, 0.08, endZ, endX + 1.15, 0.08, endZ,
         ]);
         shaft.geometry.attributes.position.needsUpdate = true;
         shaft.geometry.computeBoundingSphere();
         (shaft.material as THREE.MeshBasicMaterial).color.copy(sunlight.color);
-        (shaft.material as THREE.MeshBasicMaterial).opacity = (light.sun / 3.2 * 0.13 + moonStrength * 0.035) * insideRoom;
+        (shaft.material as THREE.MeshBasicMaterial).opacity = (daylightShadow * 0.4 + moonStrength * 0.04) * insideRoom;
         (pool.material as THREE.MeshBasicMaterial).color.copy(sunlight.color);
         (pool.material as THREE.MeshBasicMaterial).opacity = (light.sun / 3.2 * 0.22 + moonStrength * 0.12) * insideRoom;
         pool.position.set(endX, 0.067, endZ);
+        const dustPositions = (dust.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
+        for (let i = 0; i < 12; i++) {
+          const depth = 0.14 + ((i * 0.31 + x * 0.13 + 1) % 1) * 0.7;
+          const drift = reducedMotion ? 0 : Math.sin(elapsed * 0.38 + i * 2.3 + x);
+          const along = depth + drift * 0.025;
+          const across = Math.sin(i * 15.73 + x * 7.19) * 0.68;
+          dustPositions[i * 3] = THREE.MathUtils.lerp(x, endX, along) + across * (0.6 + along * 0.3);
+          dustPositions[i * 3 + 1] = THREE.MathUtils.lerp(room.windowY, 0.12, along);
+          dustPositions[i * 3 + 2] = THREE.MathUtils.lerp(room.back + 0.22, endZ, along);
+        }
+        dust.geometry.attributes.position.needsUpdate = true;
+        dust.geometry.computeBoundingSphere();
+        (dust.material as THREE.PointsMaterial).color.copy(sunlight.color);
+        (dust.material as THREE.PointsMaterial).opacity = (daylightShadow * 0.42 + moonStrength * 0.09) * insideRoom;
       }
       while (agentMeshes.length < simulation.agents.length) {
         agentMeshes.push(makeAgentModel(agentMeshes.length));
@@ -672,8 +749,13 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
           object.material.map?.dispose();
           object.material.dispose();
         }
+        if (object instanceof THREE.Points) {
+          object.geometry.dispose();
+          object.material.dispose();
+        }
       });
       beamTexture.dispose();
+      poolTexture.dispose();
       shadowTexture.dispose();
       artTextures.forEach((art) => art.dispose());
       renderer.dispose();

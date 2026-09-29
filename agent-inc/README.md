@@ -46,8 +46,11 @@ A moving directional sun and shadow
 map cast geometry-aware shadows through the window frames; hemisphere bounce,
 desk/core/sconce lights, soft contact shadows, and translucent shafts/pools convey
 morning, afternoon, dusk, and night. Shafts and pools approximate illuminated
-air and floor highlights; they are not physically accurate volumetric
-occlusion or indirect lighting. At night a weaker cool directional moonlight
+air and floor highlights: feathered beam edges and a few slow drifting motes
+fade with the sunlight, while a floor-local shade deepens the near corners and
+the side opposite the sun. These art-directed layers are not physically accurate
+volumetric occlusion or indirect lighting; nearby geometry still receives actual
+directional shadows through the window openings. At night a weaker cool directional moonlight
 casts shadows through the same real window openings; warmer desk/core lights
 remain visible. The walls, floor, and windows remain 3D;
 agents, desks, chairs, monitors, the inbox, core, and decor are original
@@ -73,8 +76,8 @@ required.
 Three.js's shadow depth pass honors the cutout materials' alpha test, so the
 directional sun or moon casts the illustrated silhouettes rather than rectangular
 planes. Small, translucent floor-contact textures ground agents and furniture
-even at night; a tighter PCF shadow map supplies longer moving directional
-shadows. The map is smaller on narrow or coarse-pointer devices. These layers
+even at night; a blurred variance shadow map softens the longer moving
+directional shadows. The map is smaller on narrow or coarse-pointer devices. These layers
 are deliberately restrained: there is no screen-space ambient occlusion or
 depth-of-field pass that would blur the pixel art or add an extra GPU context.
 

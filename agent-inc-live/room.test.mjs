@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { agentName, roomActors } from "./src/room.ts";
+import { EXTRA_DESKS, MAX_LIVE_DESKS, MIN_LIVE_DESKS, extraCoffeeSpot, liveDeskCount } from "../agent-inc/game/live-layout.ts";
 
 function session(sessionId, title) {
   return {
@@ -33,4 +34,15 @@ test("the roster retains session titles and stable desks as activity order chang
 test("unavailable titles fall back to an identifiable session label", () => {
   const actor = roomActors({ currentSessionId: "12345678-abc", sessions: [session("12345678-abc")] })[0];
   assert.equal(actor.sessionTitle, "Your session · 12345678");
+});
+
+test("desks grow per worker and shrink back to four, with distinct floor and coffee slots", () => {
+  assert.equal(MIN_LIVE_DESKS, 4);
+  assert.equal(MAX_LIVE_DESKS, 16);
+  assert.deepEqual([0, 1, 4, 5, 6, 16, 17, 2].map(liveDeskCount),
+    [4, 4, 4, 5, 6, 16, 16, 4]);
+  assert.equal(new Set(EXTRA_DESKS.map(({ x, z }) => `${x},${z}`)).size, 12);
+  assert(EXTRA_DESKS.every(({ x, z }) => Math.abs(x) < 7 && z > -5 && z < 5));
+  const coffee = EXTRA_DESKS.map((_, index) => extraCoffeeSpot(index, -3.55));
+  assert.equal(new Set(coffee.map(({ x, z }) => `${x},${z}`)).size, 12);
 });

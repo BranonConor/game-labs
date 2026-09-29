@@ -180,6 +180,6 @@ export function selectRoom(snapshots, currentSessionId, now = Date.now()) {
     sessions: snapshots.filter((item) => item && now >= item.seenAt && now - item.seenAt < 35_000)
       .sort((a, b) => Number(b.sessionId === currentSessionId) -
         Number(a.sessionId === currentSessionId) || b.updatedAt - a.updatedAt)
-      .slice(0, 12),
+      .slice(0, 32),
   };
 }

@@ -12,10 +12,12 @@ The canvas has no token economy or upgrades: its Activity panel shows sessions
 and subagents, and pause/speed affect decorative office ambience only. Its
 live-only scene variant removes the AI core and context chamber and moves the
 coffee counter to the back wall, with idle agents gathering in front of it.
-The desks stay where they are; the original game's layout is unchanged. The
-office has four desks; additional participating sessions and helpers
-remain visible in the roster but not as additional 3D actors. The scene
-adapter moves actors between the coffee counter and desks without running
+The original four desks stay in place. In the live office, additional desks
+appear for each participating worker beyond four and disappear as workers
+leave, down to a four-desk minimum. The existing room accommodates up to
+16 desks; extra workers remain in the roster with a waiting-for-desk label.
+The original game's layout is unchanged. The scene adapter moves actors
+between the coffee counter and desks without running
 the game's `Simulation.update()` or generating fictional rewards.
 Each worker has a stable, generated display name. Its card shows the owning
 session's SDK display title when available (which may differ from the host
@@ -23,8 +25,8 @@ App's sidebar name). Long SDK names are omitted rather than exposing what
 may be the opening prompt; the card then shows a short session identifier.
 Hovering its sprite shows its name, while
 clicking the sprite or the card's name focuses the camera and opens its activity
-card. Workers beyond the four desks remain in the roster and cannot be focused
-in the scene. Names are cosmetic and do not rename App sessions.
+card. Workers beyond the 16-desk room remain in the roster and cannot be
+focused in the scene. Names are cosmetic and do not rename App sessions.
 
 The project extension loads in **game-labs sessions that contain this branch**.
 It listens to SDK events from each attached session: turn start/end, generic
@@ -40,6 +42,8 @@ repository contents, and raw event payloads are not written or sent to the
 page. The short SDK display title is the only potentially prompt-derived
 metadata shown when available. This local experiment does not establish the
 App's parent/child session relationships or expose navigation and controls.
+The feed keeps up to 32 fresh sessions; at most 16 workers occupy the room
+simultaneously to bound rendering cost.
 
 ## Local test
 

@@ -69,3 +69,11 @@ test("one local room groups active sessions and their subagents, not stale heart
   assert.deepEqual(room.sessions.map(({ sessionId }) => sessionId), ["daily-chat", "child-session"]);
   assert.equal(room.sessions[0].subagents.length, 1);
 });
+
+test("the room includes more than four live sessions without dropping the thirteenth", () => {
+  const snapshots = Array.from({ length: 18 }, (_, index) =>
+    publicSnapshot(createState(`session-${index}`), 60_000));
+  const room = selectRoom(snapshots, "session-0", 60_001);
+  assert.equal(room.sessions.length, 18);
+  assert.equal(room.sessions[0].sessionId, "session-0");
+});

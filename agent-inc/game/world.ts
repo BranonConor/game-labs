@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { DESKS } from "./simulation";
 import type { Agent, RequestStatus, Simulation } from "./simulation";
+import { EXTRA_DESKS, liveDeskCount } from "./live-layout";
 import { sampleDaylight } from "./lighting";
 import { interpolatePosition } from "./animation";
 import {
@@ -214,6 +215,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
   interaction?: WorldInteraction): World {
   const isLive = variant === "live";
   const coffeeZ = isLive ? LIVE_COFFEE_Z : 3.55;
+  const stationPositions = isLive ? [...DESKS, ...EXTRA_DESKS] : DESKS;
   const scene = new THREE.Scene();
   const artTextures: THREE.Texture[] = [];
   const track = <T extends THREE.Texture>(art: T): T => {
@@ -500,27 +502,30 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
     lockedContext.add(ghostLabel);
     scene.add(lockedContext);
   }
-  const desks = new THREE.Group();
-  scene.add(desks);
-  const monitors = DESKS.map(({ x, z }, index) => {
-    const monitor = desk(desks, x, z, index, track);
-    contact(desks, x, z - 0.56, 1.3, 0.65);
-    contact(desks, x + 0.35, z + 0.37, 0.55, 0.45, 0.065, 0.5);
+  const stations = stationPositions.map(() => {
+    const station = new THREE.Group();
+    scene.add(station);
+    return station;
+  });
+  const monitors = stationPositions.map(({ x, z }, index) => {
+    const station = stations[index];
+    const monitor = desk(station, x, z, index, track);
+    contact(station, x, z - 0.56, 1.3, 0.65);
+    contact(station, x + 0.35, z + 0.37, 0.55, 0.45, 0.065, 0.5);
     return monitor;
   });
-  const screenGlows = DESKS.map(({ x, z }, index) => {
+  const screenGlows = stationPositions.map(({ x, z }, index) => {
     const glow = new THREE.PointLight(index % 2 ? 0xc2a0ed : 0x75e3cd, 0, 3.1, 2);
     glow.position.set(x, 1.35, z - 0.54);
-    scene.add(glow);
+    if (index < DESKS.length) stations[index].add(glow);
     return glow;
   });
-  // Unused stations are built but unlit, making added capacity legible at a glance.
-  const stationLights = DESKS.map(({ x, z }) => {
-    const mesh = cutout(desks, track(statusLightArt()), x + 0.43, 0.82, z - 0.55, 0.18, 0.27);
+  const stationLights = stationPositions.map(({ x, z }, index) => {
+    const mesh = cutout(stations[index], track(statusLightArt()), x + 0.43, 0.82, z - 0.55, 0.18, 0.27);
     return mesh;
   });
-  const workflowKits = DESKS.map(({ x, z }) =>
-    cutout(desks, track(workflowKitArt()), x - 0.58, 0.79, z - 0.49, 0.36, 0.34),
+  const workflowKits = stationPositions.map(({ x, z }, index) =>
+    cutout(stations[index], track(workflowKitArt()), x - 0.58, 0.79, z - 0.49, 0.36, 0.34),
   );
   const noticeFrames: Record<RequestStatus, THREE.CanvasTexture[]> = {
     queued: [track(stationNoticeArt("queued"))],
@@ -529,7 +534,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
     complete: [track(stationNoticeArt("complete"))],
     failed: [track(stationNoticeArt("failed"))],
   };
-  const notices = DESKS.map(({ x, z }) => {
+  const notices = stationPositions.map(({ x, z }, index) => {
     const mesh = new THREE.Mesh(
       new THREE.PlaneGeometry(0.58, 0.58),
       new THREE.MeshBasicMaterial({
@@ -538,20 +543,24 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
       }),
     );
     mesh.position.set(x, 2.06, z - 0.57);
-    scene.add(mesh);
+    stations[index].add(mesh);
     return mesh;
   });
   for (let i = 0; i < 2; i++) {
-    cutout(scene, track(stackArt(i)), -4.6 + i * 0.35, 0.43, 2.2, 0.65, 0.81);
-    contact(scene, -4.6 + i * 0.35, 2.2, 0.55, 0.4, 0.065, 0.52);
+    const x = (isLive ? -6.9 : -4.6) + i * 0.35;
+    const z = isLive ? -3.5 : 2.2;
+    cutout(scene, track(stackArt(i)), x, 0.43, z, 0.65, 0.81);
+    contact(scene, x, z, 0.55, 0.4, 0.065, 0.52);
   }
   const leaves = track(plantArt());
-  const plantBack = cutout(scene, leaves, -4.42, 0.84, 2.83, 0.94, 1.14);
+  const leftPlant = isLive ? { x: -6.8, z: -2.5 } : { x: -4.37, z: 2.99 };
+  const rightPlant = isLive ? { x: 6.8, z: -3.45 } : { x: 5.8, z: 3.35 };
+  const plantBack = cutout(scene, leaves, leftPlant.x - 0.05, 0.84, leftPlant.z - 0.16, 0.94, 1.14);
   (plantBack.material as THREE.MeshStandardMaterial).color.setHex(0x8a9c94);
-  cutout(scene, leaves, -4.37, 0.84, 2.99, 0.98, 1.16);
-  contact(scene, -4.37, 2.99, 0.63, 0.55);
-  cutout(scene, leaves, 5.8, 0.67, 3.35, 0.78, 0.94);
-  contact(scene, 5.8, 3.35, 0.55, 0.42);
+  cutout(scene, leaves, leftPlant.x, 0.84, leftPlant.z, 0.98, 1.16);
+  contact(scene, leftPlant.x, leftPlant.z, 0.63, 0.55);
+  cutout(scene, leaves, rightPlant.x, 0.67, rightPlant.z, 0.78, 0.94);
+  contact(scene, rightPlant.x, rightPlant.z, 0.55, 0.42);
   const specks: THREE.Mesh[] = [];
   for (let i = 0; i < (isLive ? 0 : 9); i++) {
     const speck = block(scene, coreDisplay.x - 0.32 + (i % 3) * 0.32, 2.2 + (i % 2) * 0.2,
@@ -673,8 +682,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
     if (interaction && pointerTravel <= 5) return;
     focusIndex = null;
     interaction?.onAgentHover(null, event.clientX, event.clientY);
-    panX = THREE.MathUtils.clamp(panX - dx * 0.012 / zoom, -2.5, 2.5);
-    panZ = THREE.MathUtils.clamp(panZ - dy * 0.014 / zoom, -2, 2);
+    panX = THREE.MathUtils.clamp(panX - dx * 0.012 / zoom, isLive ? -5.5 : -2.5, isLive ? 5.5 : 2.5);
+    panZ = THREE.MathUtils.clamp(panZ - dy * 0.014 / zoom, isLive ? -3.5 : -2, isLive ? 3.5 : 2);
     previousX = event.clientX;
     previousY = event.clientY;
   };
@@ -721,6 +730,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
   let lastFrameTime = animationTime;
   let lastPreviewOffset = 0;
   let lastRoomKey = "";
+  let lastVisibleDesks = -1;
 
   return {
     capturePositions() {
@@ -821,6 +831,14 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
       }
       contextRoom.visible = !isLive && simulation.progress.context;
       lockedContext.visible = !isLive && !simulation.progress.context;
+      if (isLive) {
+        const count = liveDeskCount(simulation.progress.capacity);
+        if (count !== lastVisibleDesks) {
+          stations.forEach((station, index) => { station.visible = index < count; });
+          host.dataset.visibleDesks = String(count);
+          lastVisibleDesks = count;
+        }
+      }
       stationLights.forEach((light, i) => {
         const active = simulation.agents[i]?.state === "working";
         (light.material as THREE.MeshStandardMaterial).emissiveIntensity = i < simulation.progress.capacity ? active ? 1.1 : 0.45 : 0;
@@ -848,6 +866,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
       });
       agentMeshes.forEach((model, index) => {
         const agent: Agent = simulation.agents[index];
+        model.group.visible = model.shadow.visible = model.caster.visible = !!agent;
+        if (!agent) return;
         const position = interpolatePosition(previousPositions[index], agent, alpha);
         model.group.position.set(position.x,
           agent.state === "idle" && !reducedMotion ? Math.sin(animationTime * 1.65 + index) * 0.038 : 0, position.z);
@@ -885,8 +905,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
       if (focusIndex !== null && focusIndex < simulation.progress.capacity) {
         const agent = simulation.agents[focusIndex];
         const easing = 1 - Math.exp(-frameDelta * 7);
-        panX = THREE.MathUtils.lerp(panX, THREE.MathUtils.clamp(agent.x + 1.15, -2.5, 2.5), easing);
-        panZ = THREE.MathUtils.lerp(panZ, THREE.MathUtils.clamp(agent.z, -2, 2), easing);
+        panX = THREE.MathUtils.lerp(panX, THREE.MathUtils.clamp(agent.x + 1.15, -5.5, 5.5), easing);
+        panZ = THREE.MathUtils.lerp(panZ, THREE.MathUtils.clamp(agent.z, -3.5, 3.5), easing);
         zoom = THREE.MathUtils.lerp(zoom, 1.3, easing);
       }
       camera.zoom = zoom;
@@ -930,6 +950,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation, variant: 
       shadowTexture.dispose();
       artTextures.forEach((art) => art.dispose());
       renderer.dispose();
+      if (isLive) delete host.dataset.visibleDesks;
       canvas.remove();
     },
   };

@@ -5,12 +5,16 @@ import {
 } from "../../agent-inc/game/simulation";
 import type { Agent, Request } from "../../agent-inc/game/simulation";
 import { sampleDaylight } from "../../agent-inc/game/lighting";
+import { EXTRA_DESKS, MAX_LIVE_DESKS, MIN_LIVE_DESKS, extraCoffeeSpot, liveDeskCount } from "../../agent-inc/game/live-layout";
 import { createWorld, LIVE_COFFEE_Z } from "../../agent-inc/game/world";
 import { roomActors, sessionName } from "./room";
 import type { Actor, Room } from "./room";
 
-const MAX_DESKS = DESKS.length;
-const LIVE_COFFEE_SPOTS = COFFEE_SPOTS.map(({ x }) => ({ x, z: LIVE_COFFEE_Z + 0.75 }));
+const LIVE_DESKS = [...DESKS, ...EXTRA_DESKS];
+const LIVE_COFFEE_SPOTS = [
+  ...COFFEE_SPOTS.map(({ x }) => ({ x, z: LIVE_COFFEE_Z + 0.75 })),
+  ...EXTRA_DESKS.map((_, index) => extraCoffeeSpot(index, LIVE_COFFEE_Z)),
+];
 const STEP = 1 / 30;
 const emptyRoom: Room = { currentSessionId: "", sessions: [] };
 
@@ -23,7 +27,7 @@ function makeAgent(id: number): Agent {
 
 function makeScene() {
   const scene = new Simulation(initialProgress());
-  scene.agents = Array.from({ length: MAX_DESKS }, (_, id) => makeAgent(id));
+  scene.agents = Array.from({ length: MIN_LIVE_DESKS }, (_, id) => makeAgent(id));
   scene.requests = [];
   scene.progress.capacity = 0;
   scene.progress.context = false;
@@ -32,13 +36,15 @@ function makeScene() {
 }
 
 function applyRoom(scene: Simulation, actors: Actor[], occupied: boolean[]) {
-  const shown = actors.slice(0, MAX_DESKS);
+  const shown = actors.slice(0, MAX_LIVE_DESKS);
+  while (scene.agents.length < shown.length) scene.agents.push(makeAgent(scene.agents.length));
+  scene.agents.length = Math.max(MIN_LIVE_DESKS, shown.length);
   scene.progress.capacity = shown.length;
   scene.requests = [];
   shown.forEach((actor, id) => {
     const agent = scene.agents[id];
     const busy = actor.status !== "idle" && actor.status !== "offline";
-    const destination = busy ? DESKS[id] : LIVE_COFFEE_SPOTS[id];
+    const destination = busy ? LIVE_DESKS[id] : LIVE_COFFEE_SPOTS[id];
     if (!occupied[id]) {
       agent.x = destination.x;
       agent.z = destination.z;
@@ -58,7 +64,7 @@ function applyRoom(scene: Simulation, actors: Actor[], occupied: boolean[]) {
       agent.taskId = undefined;
     }
   });
-  for (let id = shown.length; id < MAX_DESKS; id++) {
+  for (let id = shown.length; id < scene.agents.length; id++) {
     occupied[id] = false;
     const agent = scene.agents[id];
     agent.x = agent.z = 100;
@@ -66,6 +72,7 @@ function applyRoom(scene: Simulation, actors: Actor[], occupied: boolean[]) {
     agent.taskId = undefined;
     agent.state = "idle";
   }
+  occupied.length = scene.agents.length;
 }
 
 function moveAgents(scene: Simulation, delta: number) {
@@ -113,7 +120,7 @@ function LiveOffice() {
 
   const selectActor = (key: string, showAgents = true) => {
     const index = actorsRef.current.findIndex((actor) => actor.key === key);
-    worldRef.current?.focusAgent(index >= 0 && index < MAX_DESKS ? index : null);
+    worldRef.current?.focusAgent(index >= 0 && index < MAX_LIVE_DESKS ? index : null);
     focusedKey.current = `${key}:${index}`;
     setSelected(key);
     setPanelOpen(true);
@@ -132,7 +139,7 @@ function LiveOffice() {
     if (!host.current) return;
     const scene = makeScene();
     sceneRef.current = scene;
-    const occupied = Array(MAX_DESKS).fill(false) as boolean[];
+    const occupied = Array(MIN_LIVE_DESKS).fill(false) as boolean[];
     let world: ReturnType<typeof createWorld> | undefined;
     try {
       world = createWorld(host.current, scene, "live", {
@@ -219,7 +226,8 @@ function LiveOffice() {
   }, []);
 
   const actors = roomActors(room);
-  const visible = actors.slice(0, MAX_DESKS);
+  const visible = actors.slice(0, MAX_LIVE_DESKS);
+  const deskCount = liveDeskCount(actors.length);
   const working = actors.filter((actor) => actor.status === "thinking" || actor.status === "tool").length;
   const idle = actors.filter((actor) => actor.status === "idle").length;
   const blocked = actors.filter((actor) => actor.status === "blocked").length;
@@ -233,7 +241,7 @@ function LiveOffice() {
     const index = actors.findIndex((actor) => actor.key === selected);
     const key = `${selected}:${index}`;
     if (focusedKey.current !== key) {
-      worldRef.current?.focusAgent(index >= 0 && index < MAX_DESKS ? index : null);
+      worldRef.current?.focusAgent(index >= 0 && index < MAX_LIVE_DESKS ? index : null);
       focusedKey.current = key;
     }
     if (selected && index < 0) {
@@ -339,8 +347,9 @@ function LiveOffice() {
                   </div>
                 </div>
                 <div className="upgrade"><div className="upgrade-symbol context-symbol">▣</div>
-                  <div className="upgrade-info"><div className="upgrade-name">Project room <span>{visible.length} / {MAX_DESKS} DESKS</span></div>
-                    <p>Additional sessions and helpers stay visible in the lists below. Only sessions running this extension can join.</p>
+                  <div className="upgrade-info"><div className="upgrade-name">Project room <span>{deskCount} DESKS</span></div>
+                    <p>Desks grow with participating workers and return to four when they leave. Only sessions running this extension can join.</p>
+                    {actors.length > MAX_LIVE_DESKS && <p>{actors.length - MAX_LIVE_DESKS} workers are waiting for space in the 16-desk room.</p>}
                   </div>
                 </div>
               </div>
@@ -377,7 +386,7 @@ function LiveOffice() {
                     <span><button type="button" className="agent-name" onClick={() => selectActor(actor.key)}
                       aria-label={`Find ${actor.name} in the office`}>{actor.name}</button>
                       <small>{actor.helper ? "Subagent" : "Agent"} · {actor.status}
-                        {index >= MAX_DESKS ? " · waiting for a desk" : ""}</small></span>
+                        {index >= MAX_LIVE_DESKS ? " · waiting for a desk" : ""}</small></span>
                   </div>
                   <div className="agent-assignment">SESSION <strong title={actor.sessionTitle}>{actor.sessionTitle}</strong></div>
                   <div className="live-descriptor">{actor.activity}</div>
@@ -411,7 +420,7 @@ function LiveOffice() {
       )}
       {debug && <div className="debug-panel">
         <span>LIGHT {sceneRef.current?.time.toFixed(1) ?? 0}s</span><span>FPS {fps}</span>
-        <span>DESKS {visible.length}/{MAX_DESKS}</span><span>WORKERS {actors.length}</span>
+        <span>DESKS {deskCount}/{MAX_LIVE_DESKS}</span><span>WORKERS {actors.length}</span>
         <span>SESSIONS {room.sessions.length}</span><span>HELPERS {helpers}</span>
         <span>VISUAL SPEED {ambientSpeed}×</span>
       </div>}

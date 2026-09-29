@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import type { Agent, Simulation } from "./simulation";
 import { sampleDaylight } from "./lighting";
+import { agentArt, coreSigilArt, monitorArt, plantArt, terminalArt } from "./sprite-art";
+import type { AgentArt } from "./sprite-art";
 
 const palette = {
   floor: 0xe9d6ae,
@@ -15,6 +17,8 @@ const palette = {
   lavender: 0xbba6eb,
   peach: 0xffab92,
 };
+const billboardYaw = Math.atan2(12, 20);
+const coreDisplay = { x: -3.8, z: -2.2 };
 
 function material(color: number, emissive = 0, intensity = 0) {
   return new THREE.MeshStandardMaterial({
@@ -30,6 +34,25 @@ function block(
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material(color, emissive, intensity));
   mesh.position.set(x, y, z);
   mesh.castShadow = height > 0.17;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+function cutout(
+  parent: THREE.Object3D, map: THREE.Texture, x: number, y: number, z: number,
+  width: number, height: number,
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshStandardMaterial({
+      map, alphaTest: 0.38, side: THREE.DoubleSide, roughness: 1,
+      emissiveMap: map, emissive: 0xffffff, emissiveIntensity: 0.24,
+    }),
+  );
+  mesh.position.set(x, y, z);
+  mesh.rotation.y = billboardYaw;
+  mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
   return mesh;
@@ -59,25 +82,21 @@ function label(text: string, color = "#4e4762") {
   return sprite;
 }
 
-function terminal(scene: THREE.Scene) {
+function terminal(scene: THREE.Scene, art: THREE.Texture) {
   block(scene, 3.45, 0.38, 1.75, 0.95, 0.75, 0.75, palette.wood);
   block(scene, 3.45, 0.86, 1.75, 0.79, 0.13, 0.64, palette.cream);
-  block(scene, 3.45, 1.35, 1.66, 0.79, 0.82, 0.18, palette.ink);
-  block(scene, 3.45, 1.35, 1.77, 0.57, 0.57, 0.035, palette.mint, palette.mint, 0.55);
-  block(scene, 3.45, 1.28, 1.8, 0.31, 0.05, 0.04, palette.ink);
+  cutout(scene, art, 3.45, 1.37, 1.72, 0.89, 1.05);
   const sign = label("INCOMING");
   sign.position.set(3.45, 2.5, 1.75);
   scene.add(sign);
 }
 
-function desk(scene: THREE.Object3D, x: number, z: number, index: number) {
+function desk(scene: THREE.Object3D, x: number, z: number, art: THREE.Texture) {
   block(scene, x, 0.53, z - 0.62, 1.35, 0.13, 0.7, palette.wood);
   for (const offset of [-0.53, 0.53]) {
     block(scene, x + offset, 0.27, z - 0.62, 0.12, 0.47, 0.56, palette.edge);
   }
-  block(scene, x, 0.9, z - 0.8, 0.68, 0.61, 0.15, palette.ink);
-  block(scene, x, 0.9, z - 0.71, 0.52, 0.42, 0.035, index % 2 ? palette.lavender : palette.mint,
-    index % 2 ? palette.lavender : palette.mint, 0.3);
+  cutout(scene, art, x, 0.95, z - 0.8, 0.84, 0.84);
   block(scene, x, 0.62, z - 0.34, 0.62, 0.04, 0.19, palette.cream);
   block(scene, x + 0.5, 0.65, z - 0.55, 0.16, 0.13, 0.16, palette.peach);
   block(scene, x + 0.47, 0.87, z - 0.65, 0.06, 0.35, 0.06, palette.edge);
@@ -85,32 +104,25 @@ function desk(scene: THREE.Object3D, x: number, z: number, index: number) {
   block(scene, x, 0.13, z + 0.49, 0.7, 0.17, 0.65, palette.edge);
 }
 
-function createAgent(id: number, shadowTexture: THREE.Texture) {
+function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt) {
   const group = new THREE.Group();
-  const colors = [palette.mint, palette.lavender, palette.peach, 0xf0d17b];
-  const coat = colors[id % colors.length];
-  block(group, 0, 0.55, 0, 0.44, 0.59, 0.38, coat);
-  block(group, 0, 1.04, 0, 0.56, 0.51, 0.48, palette.cream);
-  block(group, 0, 1.34, 0, 0.68, 0.18, 0.56, coat);
-  block(group, -0.17, 1.06, 0.256, 0.09, 0.1, 0.02, palette.ink);
-  block(group, 0.17, 1.06, 0.256, 0.09, 0.1, 0.02, palette.ink);
-  block(group, 0, 1.56, 0, 0.09, 0.3, 0.09, palette.ink);
-  block(group, 0, 1.74, 0, 0.2, 0.18, 0.2, coat, coat, 0.4);
-  block(group, -0.32, 0.56, 0, 0.18, 0.4, 0.23, coat);
-  block(group, 0.32, 0.56, 0, 0.18, 0.4, 0.23, coat);
-  const legs = [
-    block(group, -0.14, 0.17, 0, 0.16, 0.31, 0.2, palette.ink),
-    block(group, 0.14, 0.17, 0, 0.16, 0.31, 0.2, palette.ink),
-  ];
-  const packet = block(group, 0.4, 0.66, 0.32, 0.24, 0.3, 0.09, palette.cream);
-  packet.visible = false;
+  const backing = cutout(group, frames.idle, 0.045, 0.88, -0.085, 1.26, 1.76);
+  (backing.material as THREE.MeshStandardMaterial).color.setHex(0x766577);
+  (backing.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
+  backing.castShadow = false;
+  backing.receiveShadow = false;
+  const figure = cutout(group, frames.idle, 0, 0.87, 0, 1.22, 1.73);
+  (figure.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
+  backing.rotation.y = 0;
+  figure.rotation.y = 0;
+  group.rotation.y = billboardYaw;
   const shadow = new THREE.Mesh(
     new THREE.PlaneGeometry(0.9, 0.67),
     new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false, opacity: 0.66, toneMapped: false }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.renderOrder = 3;
-  return { group, legs, packet, shadow };
+  return { group, backing, figure, frames, pose: "idle" as keyof AgentArt, shadow };
 }
 
 export type World = {
@@ -120,6 +132,11 @@ export type World = {
 
 export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const scene = new THREE.Scene();
+  const artTextures: THREE.Texture[] = [];
+  const track = <T extends THREE.Texture>(art: T): T => {
+    artTextures.push(art);
+    return art;
+  };
   const camera = new THREE.OrthographicCamera(-7.3, 7.3, 5.5, -5.5, 0.1, 100);
   camera.position.set(12, 15, 20);
   camera.lookAt(0, 0.3, 0);
@@ -206,7 +223,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   sunlight.shadow.normalBias = 0.025;
   scene.add(sunlight);
   const coreGlow = new THREE.PointLight(0x8af6d8, 1.5, 5, 2);
-  coreGlow.position.set(-2.9, 1.9, -1.25);
+  coreGlow.position.set(coreDisplay.x, 1.9, coreDisplay.z);
   const terminalGlow = new THREE.PointLight(0xffb8a7, 0.65, 3, 2);
   terminalGlow.position.set(3.45, 1.5, 1.75);
   const deskGlow = new THREE.PointLight(0xffb488, 1.1, 7, 2);
@@ -220,7 +237,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         (x + z) % 2 ? palette.floor : palette.floorAlt);
     }
   }
-  // Real openings let the exterior WebGPU sky show through. Three's sun and
+  // Real openings let the sky dome show through. Three's sun and
   // shadow map alone decide which parts of the interior receive direct light.
   block(scene, 0, 0.47, -3.9, 10.5, 0.94, 0.2, palette.wall);
   block(scene, 0, 2.01, -3.9, 10.5, 0.31, 0.2, palette.wall);
@@ -252,23 +269,25 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const rug = new THREE.Mesh(
     new THREE.CylinderGeometry(1.13, 1.13, 0.04, 12), material(0xb6a6af),
   );
-  rug.position.set(-2.9, 0.05, -1.25);
+  rug.position.set(coreDisplay.x, 0.05, coreDisplay.z);
   rug.receiveShadow = true;
   scene.add(rug);
-  block(scene, -2.9, 0.56, -1.25, 1.4, 0.95, 1.35, palette.ink);
-  block(scene, -2.9, 1.15, -1.25, 1.15, 0.26, 1.09, palette.edge);
-  const core = block(scene, -2.9, 1.77, -1.25, 0.88, 0.88, 0.88,
+  block(scene, coreDisplay.x, 0.56, coreDisplay.z, 1.4, 0.95, 1.35, palette.ink);
+  block(scene, coreDisplay.x, 1.15, coreDisplay.z, 1.15, 0.26, 1.09, palette.edge);
+  const core = block(scene, coreDisplay.x, 1.77, coreDisplay.z, 0.88, 0.88, 0.88,
     palette.mint, palette.mint, 0.65);
-  const coreCap = block(scene, -2.9, 2.24, -1.25, 1.07, 0.11, 1.07, palette.cream);
+  const coreCap = block(scene, coreDisplay.x, 2.24, coreDisplay.z, 1.07, 0.11, 1.07, palette.cream);
+  cutout(scene, track(coreSigilArt()), coreDisplay.x, 1.72, coreDisplay.z + 0.63, 0.61, 0.61);
   for (let i = 0; i < 4; i++) {
-    block(scene, -3.37 + (i % 2) * 0.94, 0.77, -1.73 + Math.floor(i / 2) * 0.94,
+    block(scene, coreDisplay.x - 0.47 + (i % 2) * 0.94, 0.77,
+      coreDisplay.z - 0.48 + Math.floor(i / 2) * 0.94,
       0.13, 1.44, 0.13, palette.cream);
   }
   const coreLabel = label("AI CORE");
-  coreLabel.position.set(-2.9, 3.08, -1.25);
+  coreLabel.position.set(coreDisplay.x, 3.08, coreDisplay.z);
   scene.add(coreLabel);
 
-  terminal(scene);
+  terminal(scene, track(terminalArt()));
   const shadowCanvas = document.createElement("canvas");
   shadowCanvas.width = 64;
   shadowCanvas.height = 64;
@@ -281,11 +300,14 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   shadowContext.fillStyle = shadowGradient;
   shadowContext.fillRect(0, 0, 64, 64);
   const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
-  const agentMeshes = simulation.agents.map((agent) => {
-    const model = createAgent(agent.id, shadowTexture);
+  const makeAgentModel = (id: number) => {
+    const frames = agentArt(id);
+    Object.values(frames).forEach(track);
+    const model = createAgent(id, shadowTexture, frames);
     scene.add(model.group, model.shadow);
     return model;
-  });
+  };
+  const agentMeshes = simulation.agents.map((agent) => makeAgentModel(agent.id));
   const contextRoom = new THREE.Group();
   contextRoom.visible = simulation.progress.context;
   block(contextRoom, 3, 0.08, -1.8, 3.05, 0.12, 2.85, palette.lavender);
@@ -315,7 +337,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const deskPoints = [
     [-0.75, 0.15], [1.2, 0.15], [-0.75, 1.75], [1.2, 1.75],
   ];
-  deskPoints.forEach(([x, z], index) => desk(desks, x, z, index));
+  deskPoints.forEach(([x, z], index) => desk(desks, x, z, track(monitorArt(index))));
   // Unused stations are built but unlit, making added capacity legible at a glance.
   const stationLights = deskPoints.map(([x, z]) => {
     const mesh = block(desks, x, 1.27, z - 0.65, 0.25, 0.1, 0.1, palette.mint, palette.mint, 0.6);
@@ -326,14 +348,16 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       i % 2 ? palette.peach : palette.cream);
   }
   block(scene, -4.37, 0.3, 2.9, 0.44, 0.6, 0.44, palette.wood);
-  const plant = new THREE.Mesh(new THREE.IcosahedronGeometry(0.38, 0), material(0x81bca0));
-  plant.position.set(-4.37, 0.86, 2.9);
-  plant.castShadow = true;
-  scene.add(plant);
+  const leaves = track(plantArt());
+  const plantBack = cutout(scene, leaves, -4.42, 0.84, 2.83, 0.94, 1.14);
+  plantBack.rotation.y += 0.48;
+  (plantBack.material as THREE.MeshStandardMaterial).color.setHex(0x8a9c94);
+  cutout(scene, leaves, -4.37, 0.84, 2.99, 0.98, 1.16);
   const specks: THREE.Mesh[] = [];
   for (let i = 0; i < 9; i++) {
-    const speck = block(scene, -3.22 + (i % 3) * 0.32, 2.65 + (i % 2) * 0.2,
-      -1.58 + Math.floor(i / 3) * 0.31, 0.08, 0.08, 0.08, palette.cream, palette.cream, 0.8);
+    const speck = block(scene, coreDisplay.x - 0.32 + (i % 3) * 0.32, 2.65 + (i % 2) * 0.2,
+      coreDisplay.z - 0.33 + Math.floor(i / 3) * 0.31,
+      0.08, 0.08, 0.08, palette.cream, palette.cream, 0.8);
     specks.push(speck);
   }
   const beamTextureCanvas = document.createElement("canvas");
@@ -460,9 +484,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         pool.position.set(endX, 0.067, endZ);
       }
       while (agentMeshes.length < simulation.agents.length) {
-        const model = createAgent(agentMeshes.length, shadowTexture);
-        scene.add(model.group, model.shadow);
-        agentMeshes.push(model);
+        agentMeshes.push(makeAgentModel(agentMeshes.length));
       }
       const busy = simulation.agents.some((a) => a.state !== "idle");
       (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + (reducedMotion ? 0 : Math.sin(elapsed * 3) * 0.15);
@@ -481,13 +503,23 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
             ? Math.abs(Math.sin(elapsed * 12 + index)) * 0.09 : Math.sin(elapsed * 2 + index) * 0.025, agent.z);
         model.shadow.position.set(agent.x, 0.095, agent.z);
         if (agent.state === "walking" || agent.state === "returning") {
-          model.group.rotation.y = Math.atan2(agent.target.x - agent.x, agent.target.z - agent.z);
+          if (Math.abs(agent.target.x - agent.x) > 0.2) {
+            model.group.scale.x = agent.target.x < agent.x ? -1 : 1;
+          }
         } else {
-          model.group.rotation.y = 0;
+          model.group.scale.x = 1;
         }
-        model.legs[0].position.z = reducedMotion ? 0 : Math.sin(elapsed * 11 + index) * (agent.state === "walking" || agent.state === "returning" ? 0.11 : 0);
-        model.legs[1].position.z = -model.legs[0].position.z;
-        model.packet.visible = agent.carrying;
+        const pose: keyof AgentArt = agent.state === "working" ? "working" :
+          agent.carrying ? "carrying" :
+          agent.state === "walking" || agent.state === "returning"
+            ? !reducedMotion && Math.sin(elapsed * 11 + index) > 0 ? "stepA" : "stepB" : "idle";
+        if (pose !== model.pose) {
+          (model.figure.material as THREE.MeshStandardMaterial).map = model.frames[pose];
+          (model.figure.material as THREE.MeshStandardMaterial).emissiveMap = model.frames[pose];
+          (model.backing.material as THREE.MeshStandardMaterial).map = model.frames[pose];
+          (model.backing.material as THREE.MeshStandardMaterial).emissiveMap = model.frames[pose];
+          model.pose = pose;
+        }
         if (agent.state === "working" && !reducedMotion) model.group.rotation.z = Math.sin(elapsed * 16 + index) * 0.038;
         else model.group.rotation.z = 0;
       });
@@ -528,6 +560,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       });
       beamTexture.dispose();
       shadowTexture.dispose();
+      artTextures.forEach((art) => art.dispose());
       renderer.dispose();
       canvas.remove();
     },

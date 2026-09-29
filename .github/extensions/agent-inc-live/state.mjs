@@ -10,7 +10,15 @@ export function toolKind(name = "") {
 }
 
 export function createState(sessionId) {
-  return { sessionId, status: "idle", activity: "At the coffee counter", tools: [], subagents: [], updatedAt: Date.now() };
+  return {
+    sessionId, status: "idle", activity: "At the coffee counter",
+    tools: [], subagents: [], messages: 0, events: [], updatedAt: Date.now(),
+  };
+}
+
+function record(state, kind, label, now) {
+  state.events.unshift({ kind, label, at: now });
+  state.events = state.events.slice(0, 8);
 }
 
 export function applyEvent(state, event, now = Date.now()) {
@@ -45,11 +53,18 @@ export function applyEvent(state, event, now = Date.now()) {
           worker.activity = data.success === false ? "Tool needs attention" : "Thinking";
         }
       } else {
+        const kind = state.tools.find((tool) => tool.id === data.toolCallId)?.kind ?? "Working";
         state.tools = state.tools.filter((tool) => tool.id !== data.toolCallId);
         state.status = data.success === false ? "blocked" : state.tools.length ? "tool" : "thinking";
         state.activity = data.success === false ? "Tool needs attention" :
           state.tools.length ? state.tools.at(-1).kind : "Reviewing the result";
+        record(state, data.success === false ? "error" : "tool",
+          `${kind} ${data.success === false ? "needs attention" : "finished"}`, now);
       }
+      break;
+    case "assistant.message":
+      state.messages++;
+      record(state, "message", agentId ? "Helper replied" : "Assistant replied", now);
       break;
     case "subagent.started": {
       const id = agentId || data.toolCallId;
@@ -60,6 +75,7 @@ export function applyEvent(state, event, now = Date.now()) {
         });
         state.subagents = state.subagents.slice(-12);
       }
+      record(state, "helper", "Helper joined the room", now);
       break;
     }
     case "subagent.completed":
@@ -70,9 +86,19 @@ export function applyEvent(state, event, now = Date.now()) {
         worker.activity = type === "subagent.failed" ? "Needs attention" : "Finished";
         worker.finishedAt = now;
       }
+      record(state, type === "subagent.failed" ? "error" : "helper",
+        type === "subagent.failed" ? "Helper needs attention" : "Helper finished", now);
       break;
     }
     case "assistant.turn_end":
+      if (state.tools.length || state.subagents.some((agent) => !agent.finishedAt)) {
+        state.status = state.tools.length ? "tool" : "thinking";
+        state.activity = state.tools.length ? state.tools.at(-1).kind : "Helpers at work";
+        break;
+      }
+      state.status = "idle";
+      state.activity = "At the coffee counter";
+      break;
     case "session.idle":
       state.tools = [];
       state.status = "idle";
@@ -81,6 +107,7 @@ export function applyEvent(state, event, now = Date.now()) {
     case "session.error":
       state.status = "blocked";
       state.activity = "Needs attention";
+      record(state, "error", "Session needs attention", now);
       break;
     case "session.shutdown":
       state.status = "offline";
@@ -99,6 +126,8 @@ export function publicSnapshot(state, now = Date.now()) {
     status: state.status,
     activity: state.activity,
     tools: state.tools.map(({ kind }) => kind),
+    messages: state.messages,
+    events: state.events.map(({ kind, label, at }) => ({ kind, label, at })),
     subagents: state.subagents
       .filter((agent) => !agent.finishedAt || now - agent.finishedAt < 15_000)
       .map(({ status, activity }) => ({ status, activity })),
@@ -113,9 +142,14 @@ export function isPublicSnapshot(value) {
     value.activity.length <= 80 && Number.isFinite(value.seenAt) &&
     Number.isFinite(value.updatedAt) &&
     Object.keys(value).every((key) =>
-      ["sessionId", "status", "activity", "tools", "subagents", "updatedAt", "seenAt"].includes(key)) &&
+      ["sessionId", "status", "activity", "tools", "subagents", "messages", "events", "updatedAt", "seenAt"].includes(key)) &&
     Array.isArray(value.tools) && value.tools.length <= 12 &&
     value.tools.every((tool) => typeof tool === "string" && tool.length <= 80) &&
+    (value.messages === undefined || (Number.isSafeInteger(value.messages) && value.messages >= 0)) &&
+    (value.events === undefined || (Array.isArray(value.events) && value.events.length <= 8 &&
+      value.events.every((event) => ["message", "tool", "helper", "error"].includes(event.kind) &&
+        typeof event.label === "string" && event.label.length <= 80 && Number.isFinite(event.at) &&
+        Object.keys(event).every((key) => ["kind", "label", "at"].includes(key))))) &&
     Array.isArray(value.subagents) && value.subagents.length <= 12 &&
     value.subagents.every((agent) => STATUSES.has(agent.status) &&
       typeof agent.activity === "string" && agent.activity.length <= 80 &&

@@ -1,0 +1,16 @@
+.live-detail { display: flex; flex-wrap: wrap; gap: 6px; }
+.live-detail span { padding: 5px 7px; border-radius: 5px; background: #e7f1e9; color: #4c746d; font: 700 9px var(--mono); }
+.live-detail .attention { background: #f9e5dc; color: #9e5968; }
+.live-descriptor { font-size: 11px; color: #817887; line-height: 1.5; }
+.live-card { display: flex; flex-direction: column; gap: 9px; }
+.live-card .upgrade-name { align-items: baseline; }
+.live-card .buy-button[aria-pressed="true"] { background: #655b7c; }
+.live-card .buy-button[aria-pressed="true"]:hover { background: #514660; }
+.live-callout { pointer-events: none; }
+.live-status-error { color: #9d5960; }
+.feed-panel:not(.feed-open) .feed-empty { display: block; }
+@media (max-width: 700px) {
+  .top-stats { gap: 6px; }
+  .stat-label { font-size: 8px; }
+  .stat strong { font-size: 14px; }
+}

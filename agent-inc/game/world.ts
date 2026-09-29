@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import { DESKS } from "./simulation";
-import type { Agent, Simulation } from "./simulation";
+import type { Agent, RequestStatus, Simulation } from "./simulation";
 import { sampleDaylight } from "./lighting";
 import {
   agentArt, chairArt, contextConsoleArt, coreBodyArt, deskArt,
-  monitorArt, plantArt, posterArt, stackArt, statusLightArt, terminalArt, workflowKitArt,
+  monitorArt, plantArt, posterArt, stackArt, statusLightArt, workflowKitArt,
+  chatRoomTitleArt, coffeeCounterArt, stationNoticeArt,
 } from "./sprite-art";
 import type { AgentArt, Facing } from "./sprite-art";
 
@@ -156,17 +157,11 @@ function label(text: string, color = "#4e4762") {
   return sprite;
 }
 
-function terminal(scene: THREE.Scene, art: THREE.Texture) {
-  cutout(scene, art, 3.45, 0.99, 1.75, 1.05, 1.75);
-  const sign = label("INCOMING");
-  sign.position.set(3.45, 2.5, 1.75);
-  scene.add(sign);
-}
-
 function desk(scene: THREE.Object3D, x: number, z: number, index: number, track: (art: THREE.CanvasTexture) => THREE.CanvasTexture) {
   cutout(scene, track(deskArt(index)), x, 0.58, z - 0.56, 1.55, 1.23);
-  cutout(scene, track(monitorArt(index)), x - 0.1, 1.08, z - 0.67, 0.77, 0.77);
+  const monitor = cutout(scene, track(monitorArt(index)), x - 0.1, 1.08, z - 0.67, 0.77, 0.77);
   cutout(scene, track(chairArt()), x + 0.35, 0.49, z + 0.37, 0.66, 0.94);
+  return monitor;
 }
 
 function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt) {
@@ -259,9 +254,9 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       void main() {
         vec3 direction = normalize(vDirection);
         float horizon = smoothstep(-0.48, 0.65, direction.y);
-        vec3 upper = mix(vec3(0.12, 0.08, 0.24), vec3(0.14, 0.64, 0.64), uDay);
+        vec3 upper = mix(vec3(0.08, 0.055, 0.16), vec3(0.14, 0.64, 0.64), uDay);
         upper = mix(upper, uSkyTint, 0.2 * uDay);
-        vec3 lower = mix(vec3(0.35, 0.16, 0.33), vec3(0.89, 0.48, 0.37), uDay);
+        vec3 lower = mix(vec3(0.21, 0.09, 0.22), vec3(0.89, 0.48, 0.37), uDay);
         vec3 color = mix(lower, upper, horizon);
         color += vec3(0.06, 0.015, 0.0) * uWarm * uDay * (1.0 - horizon);
         float corona = pow(max(dot(direction, normalize(uSun)), 0.0), 16.0);
@@ -296,11 +291,11 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   scene.add(sunlight);
   const coreGlow = new THREE.PointLight(0x8af6d8, 1.5, 5, 2);
   coreGlow.position.set(coreDisplay.x, 1.55, coreDisplay.z);
-  const terminalGlow = new THREE.PointLight(0xffae7b, 0.9, 4, 2);
-  terminalGlow.position.set(3.45, 1.5, 1.75);
+  const coffeeGlow = new THREE.PointLight(0xffae7b, 0.9, 4, 2);
+  coffeeGlow.position.set(0, 1.35, 3.65);
   const deskGlow = new THREE.PointLight(0xffb577, 1.1, 8, 2);
   deskGlow.position.set(0.3, 2.4, 0.55);
-  scene.add(coreGlow, terminalGlow, deskGlow);
+  scene.add(coreGlow, coffeeGlow, deskGlow);
 
   block(scene, 0, -0.3, 0, room.halfWidth * 2, 0.55, room.front - room.back, palette.edge);
   const floorMap = track(woodFloorTexture());
@@ -356,6 +351,13 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   block(scene, (wallStart + room.halfWidth) / 2, room.windowY, room.back,
     room.halfWidth - wallStart, 1.14, 0.2, palette.wall);
   block(scene, 0, 2.75, room.back, room.halfWidth * 2, 0.17, 0.3, palette.wallTop);
+  const titleMap = track(chatRoomTitleArt());
+  const title = new THREE.Mesh(
+    new THREE.PlaneGeometry(3.35, 0.82),
+    new THREE.MeshBasicMaterial({ map: titleMap, transparent: true, alphaTest: 0.2, side: THREE.DoubleSide }),
+  );
+  title.position.set(0, 3.22, room.back + 0.2);
+  scene.add(title);
   block(scene, 0, 0.38, room.back + 0.12, room.halfWidth * 2 - 0.2, 0.55, 0.06, 0x775d66);
   block(scene, 0, 0.74, room.back + 0.16, room.halfWidth * 2 - 0.1, 0.08, 0.1, 0xd2a07c);
   const foliageMaterial = new THREE.MeshBasicMaterial({
@@ -407,7 +409,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   coreLabel.position.set(coreDisplay.x, 2.38, coreDisplay.z);
   scene.add(coreLabel);
 
-  terminal(scene, track(terminalArt()));
+  cutout(scene, track(coffeeCounterArt()), 0, 0.68, 3.55, 4.6, 1.25);
   const shadowCanvas = document.createElement("canvas");
   shadowCanvas.width = 64;
   shadowCanvas.height = 64;
@@ -435,7 +437,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     contacts.push({ mesh, opacity });
   };
   contact(scene, coreDisplay.x, coreDisplay.z, 1.05, 0.85, 0.076);
-  contact(scene, 3.45, 1.75, 0.95, 0.65);
+  contact(scene, 0, 3.55, 4.1, 0.82);
   const makeAgentModel = (id: number) => {
     const frames = agentArt(id);
     Object.values(frames).flatMap((directions) => Object.values(directions)).forEach(track);
@@ -464,10 +466,17 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   scene.add(lockedContext);
   const desks = new THREE.Group();
   scene.add(desks);
-  DESKS.forEach(({ x, z }, index) => {
-    desk(desks, x, z, index, track);
+  const monitors = DESKS.map(({ x, z }, index) => {
+    const monitor = desk(desks, x, z, index, track);
     contact(desks, x, z - 0.56, 1.3, 0.65);
     contact(desks, x + 0.35, z + 0.37, 0.55, 0.45, 0.065, 0.5);
+    return monitor;
+  });
+  const screenGlows = DESKS.map(({ x, z }, index) => {
+    const glow = new THREE.PointLight(index % 2 ? 0xc2a0ed : 0x75e3cd, 0, 3.1, 2);
+    glow.position.set(x, 1.35, z - 0.54);
+    scene.add(glow);
+    return glow;
   });
   // Unused stations are built but unlit, making added capacity legible at a glance.
   const stationLights = DESKS.map(({ x, z }) => {
@@ -477,6 +486,25 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const workflowKits = DESKS.map(({ x, z }) =>
     cutout(desks, track(workflowKitArt()), x - 0.58, 0.79, z - 0.49, 0.36, 0.34),
   );
+  const noticeFrames: Record<RequestStatus, THREE.CanvasTexture[]> = {
+    queued: [track(stationNoticeArt("queued"))],
+    assigned: [track(stationNoticeArt("assigned"))],
+    working: Array.from({ length: 17 }, (_, step) => track(stationNoticeArt("working", step))),
+    complete: [track(stationNoticeArt("complete"))],
+    failed: [track(stationNoticeArt("failed"))],
+  };
+  const notices = DESKS.map(({ x, z }) => {
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.58, 0.58),
+      new THREE.MeshBasicMaterial({
+        map: noticeFrames.queued[0], transparent: true, alphaTest: 0.25,
+        depthWrite: false, side: THREE.DoubleSide,
+      }),
+    );
+    mesh.position.set(x, 2.06, z - 0.57);
+    scene.add(mesh);
+    return mesh;
+  });
   for (let i = 0; i < 2; i++) {
     cutout(scene, track(stackArt(i)), -4.6 + i * 0.35, 0.43, 2.2, 0.65, 0.81);
     contact(scene, -4.6 + i * 0.35, 2.2, 0.55, 0.4, 0.065, 0.52);
@@ -618,7 +646,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       const light = sampleDaylight(simulation.time, previewOffset);
       const direct = light.sun + light.moon;
       const moonShare = direct > 0 ? light.moon / direct : 0;
-      const moonStrength = light.moon / 0.62;
+      const moonStrength = light.moon / 0.45;
+      const night = THREE.MathUtils.clamp(1 - light.sun / 2, 0, 1);
       foliageMaterial.color.setHex(0xffffff).lerp(nightFoliage, moonStrength * 0.7);
       sunlight.color.setHex(light.sunColor).lerp(moonColor, moonShare);
       sunlight.intensity = direct;
@@ -636,18 +665,18 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       const daylightShadow = Math.min(1, light.sun / 3.2);
       const shadeMaterial = floorShade.material as THREE.ShaderMaterial;
       shadeMaterial.uniforms.uSunSide.value = THREE.MathUtils.clamp(light.sunX / 6, -1, 1) * daylightShadow;
-      shadeMaterial.uniforms.uNight.value = moonStrength;
+      shadeMaterial.uniforms.uNight.value = night;
       contacts.forEach(({ mesh, opacity }) => {
         mesh.material.opacity = opacity * (0.72 + daylightShadow * 0.28);
       });
-      coreGlow.intensity = 0.85 + light.lamp * 0.7;
-      terminalGlow.intensity = light.lamp * 0.5;
-      deskGlow.intensity = 0.4 + light.lamp * 2.3;
+      coreGlow.intensity = 0.9 + night * 1.35 + light.lamp * 0.35;
+      coffeeGlow.intensity = 0.25 + night * 1.4;
+      deskGlow.intensity = 0.25 + light.lamp * 1.1;
       sconces.forEach(({ bulb, glow }) => {
         (bulb.material as THREE.MeshStandardMaterial).emissiveIntensity = light.lamp * 0.75;
         glow.intensity = light.lamp * 1.25;
       });
-      renderer.toneMappingExposure = 1.32 + light.lamp * 0.12;
+      renderer.toneMappingExposure = 1.34 - night * 0.16;
       skyMaterial.uniforms.uDay.value = Math.min(1, light.sun / 3.2);
       skyMaterial.uniforms.uWarm.value = light.warmth;
       (skyMaterial.uniforms.uSkyTint.value as THREE.Color).setHex(light.skyColor);
@@ -698,16 +727,35 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         (light.material as THREE.MeshStandardMaterial).emissiveIntensity = i < simulation.progress.capacity ? active ? 1.1 : 0.45 : 0;
         (light.material as THREE.MeshStandardMaterial).color.setHex(i < simulation.progress.capacity ? active ? 0xffffff : 0xa6c9be : palette.edge);
       });
+      monitors.forEach((monitor, i) => {
+        (monitor.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.24 + night * 0.58;
+        screenGlows[i].intensity = i < simulation.progress.capacity ?
+          0.12 + night * 1.45 + (simulation.agents[i]?.state === "working" ? 0.3 : 0) : 0;
+      });
       workflowKits.forEach((kit, i) => {
         kit.visible = i < simulation.progress.capacity && simulation.progress.workflow > 0;
         (kit.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.18 + simulation.progress.workflow * 0.1;
       });
+      notices.forEach((notice, i) => {
+        const request = simulation.requests.find((r) => r.stationId === i &&
+          (r.status === "queued" || r.status === "assigned" || r.status === "working")) ??
+          simulation.requests.find((r) => r.stationId === i && r.resolvedAt !== undefined &&
+            simulation.time - r.resolvedAt < 2.5);
+        notice.visible = !!request && i < simulation.progress.capacity;
+        if (!request) return;
+        const step = request.status === "working" ? Math.min(16, Math.floor(request.progress * 16)) : 0;
+        (notice.material as THREE.MeshBasicMaterial).map = noticeFrames[request.status][step];
+        notice.position.y = 2.06 + (reducedMotion ? 0 : Math.sin(elapsed * 2.6 + i) * 0.06);
+      });
       agentMeshes.forEach((model, index) => {
         const agent: Agent = simulation.agents[index];
-        model.group.position.set(agent.x, 0, agent.z);
+        model.group.position.set(agent.x,
+          agent.state === "idle" && !reducedMotion ? Math.sin(elapsed * 2.4 + index) * 0.026 : 0, agent.z);
         model.shadow.position.set(agent.x, 0.095, agent.z);
         (model.shadow.material as THREE.MeshBasicMaterial).opacity = 0.62 + daylightShadow * 0.18;
-        if (agent.state === "idle" || agent.state === "working" || agent.state === "inspecting") {
+        if (agent.state === "idle") {
+          model.facing = index < 2 ? "right" : "left";
+        } else if (agent.state === "working") {
           model.facing = "away";
         } else {
           const dx = agent.target.x - agent.x;
@@ -716,10 +764,9 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
           else if (Math.abs(dx) > 0.2) model.facing = dx < 0 ? "left" : "right";
           else if (dz > 0.2) model.facing = "left";
         }
-        const pose: keyof AgentArt = agent.state === "working" || agent.state === "inspecting" ? "working" :
-          agent.carrying ? "carrying" :
-          agent.state === "walking" || agent.state === "returning" || agent.state === "upkeep" || agent.state === "resetting"
-            ? !reducedMotion && Math.sin(elapsed * 11 + index) > 0 ? "stepA" : "stepB" : "idle";
+        const pose: keyof AgentArt = agent.state === "working" ? "working" :
+          agent.state === "idle" ? "coffee" :
+          !reducedMotion && Math.sin(elapsed * 11 + index) > 0 ? "stepA" : "stepB";
         const frame = model.frames[pose][model.facing];
         if (frame !== (model.figure.material as THREE.MeshStandardMaterial).map) {
           (model.figure.material as THREE.MeshStandardMaterial).map = frame;

@@ -88,6 +88,7 @@ button:focus-visible { outline: 3px solid #638c8e; outline-offset: 3px; }
 .feed-item:nth-child(odd) { border-right: 1px solid #eee4d9; }
 .feed-icon { color: #8e82a4; font-size: 17px; }
 .feed-complete .feed-icon { color: #5aa889; }
+.feed-failed .feed-icon, .feed-failed .feed-status { color: #bf6976; }
 .feed-task { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
 .feed-status { margin-left: auto; flex: none; color: #978b9a; font: 700 9px var(--mono); }
 .feed-complete .feed-status { color: #4c9b79; }
@@ -172,9 +173,32 @@ html, body { height: 100%; overflow: hidden; }
 .scene-live { white-space: nowrap; }
 .scene-controls { gap: 4px; }
 .scene-controls button { min-width: 30px; padding: 4px 5px; font-size: 11px; }
-.sidebar { display: none; top: 58px; right: 16px; bottom: 60px; width: min(315px, calc(100vw - 32px)); padding: 16px; overflow-y: auto; scrollbar-width: thin; }
-.sidebar.sidebar-open { display: flex; }
+.sidebar { display: none; top: 58px; right: 16px; bottom: 60px; width: min(410px, calc(100vw - 32px)); padding: 16px; overflow-y: auto; scrollbar-width: thin; }
+.sidebar.sidebar-open { display: flex; z-index: 4; }
 .sidebar-close { display: block; border: 0; background: none; font-size: 23px; line-height: 15px; }
+.sidebar-tabs { position: sticky; z-index: 2; top: -16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 9px 0; background: #fffbf3; }
+.sidebar-tabs button { min-width: 0; padding: 9px 3px; border: 1px solid #dfd5cb; border-radius: 6px; background: #f4efe8; color: #817786; font: 700 10px var(--mono); text-transform: uppercase; cursor: pointer; }
+.sidebar-tabs button[aria-selected="true"] { border-color: #77a798; background: #dcefe4; color: #3e766d; }
+.sidebar-tabs button:focus-visible, .buy-button:focus-visible { outline: 2px solid #4c9588; outline-offset: 2px; }
+.upgrade-pane { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pane-intro { display: flex; flex-direction: column; gap: 7px; padding: 15px; border: 1px solid #ded5cb; border-radius: 9px; background: #f2e8e5; }
+.pane-intro strong { font-size: 15px; }
+.pane-intro span { color: #786f7d; font-size: 11px; line-height: 1.5; }
+.station-card { width: 100%; }
+.station-number { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 6px; background: #d9ecdf; color: #4a887c; font: 800 14px var(--mono); }
+.persona-card { display: flex; flex-direction: column; gap: 12px; padding: 13px; border: 1px solid #d8d1bd; border-radius: 9px; background: #f4f6e8; }
+.persona-locked { background: #faf4ec; }
+.persona-heading { display: flex; align-items: center; gap: 10px; }
+.persona-heading > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.persona-heading strong { font-size: 13px; }
+.persona-heading small { color: #817887; font-size: 10px; }
+.persona-avatar { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border: 2px solid #5a5268; border-radius: 8px; color: #29283f; font: 800 17px var(--mono); box-shadow: 2px 2px 0 #5a5268; }
+.persona-lock { color: #a18f98; font: 700 9px var(--mono); }
+.persona-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.persona-stats div { display: flex; flex-direction: column; gap: 3px; padding: 8px; border-radius: 5px; background: #fffcf3; }
+.persona-stats span { color: #928692; font: 700 9px var(--mono); }
+.persona-stats strong { font-size: 12px; }
+.persona-buy { min-height: 31px; align-items: center; }
 .upgrade-list { display: flex; }
 .feed-panel { bottom: 14px; left: 16px; width: min(310px, 37vw); max-height: 67px; overflow: hidden; display: flex; flex-direction: column; }
 .feed-panel.feed-open { max-height: min(290px, 43dvh); }

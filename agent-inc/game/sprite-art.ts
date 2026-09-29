@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-type Pose = "idle" | "stepA" | "stepB" | "working" | "carrying";
+type Pose = "idle" | "stepA" | "stepB" | "working" | "coffee";
 export type Facing = "left" | "right" | "away";
 export type AgentArt = Record<Pose, Record<Facing, THREE.CanvasTexture>>;
 
@@ -92,9 +92,10 @@ function drawAgent(ctx: CanvasRenderingContext2D, id: number, pose: Pose, facing
       pixel(ctx, hairLight, 10, 5, 6, 2);
       pixel(ctx, hair, 8, 12, 5, 5);
     }
-    if (pose === "carrying") {
-      pixel(ctx, outline, 2, 24, 6, 8);
-      pixel(ctx, "#fff2d3", 3, 25, 4, 6);
+    if (pose === "coffee") {
+      pixel(ctx, outline, 23, 24, 6, 7);
+      pixel(ctx, "#fff2d3", 24, 25, 4, 5);
+      pixel(ctx, shade, 25, 26, 2, 2);
     }
     if (working) pixel(ctx, accent, 12, 29, 8, 1);
     return;
@@ -142,10 +143,10 @@ function drawAgent(ctx: CanvasRenderingContext2D, id: number, pose: Pose, facing
   pixel(ctx, outline, left ? 19 : 12, 16, 1, working ? 1 : 2);
   pixel(ctx, shade, left ? 11 : 21, 18, 1, 1);
   pixel(ctx, "#bd7979", left ? 14 : 16, 20, 3, 1);
-  if (pose === "carrying") {
-    pixel(ctx, outline, left ? 1 : 25, 23, 6, 9);
-    pixel(ctx, "#fff2d3", left ? 2 : 26, 24, 4, 7);
-    pixel(ctx, shade, left ? 3 : 27, 27, 3, 1);
+  if (pose === "coffee") {
+    pixel(ctx, outline, left ? 1 : 25, 23, 6, 7);
+    pixel(ctx, "#fff2d3", left ? 2 : 26, 24, 4, 5);
+    pixel(ctx, shade, left ? 3 : 27, 26, 3, 1);
   }
   if (working) {
     pixel(ctx, accent, 12, 29, 8, 1);
@@ -163,8 +164,77 @@ export function agentArt(id: number): AgentArt {
     stepA: draw("stepA"),
     stepB: draw("stepB"),
     working: draw("working"),
-    carrying: draw("carrying"),
+    coffee: draw("coffee"),
   };
+}
+
+export function coffeeCounterArt(): THREE.CanvasTexture {
+  return texture(96, 56, (ctx) => {
+    pixel(ctx, outline, 6, 22, 84, 31);
+    pixel(ctx, "#775d70", 8, 27, 80, 23);
+    pixel(ctx, "#a17b80", 10, 30, 75, 13);
+    pixel(ctx, "#d9ac8e", 12, 30, 70, 3);
+    pixel(ctx, "#3c384e", 30, 34, 36, 9);
+    pixel(ctx, "#5aa59a", 33, 36, 30, 3);
+    pixel(ctx, "#e4c391", 36, 39, 24, 2);
+    pixel(ctx, "#f0d3ae", 9, 20, 79, 9);
+    pixel(ctx, "#fff0d1", 13, 21, 69, 2);
+    pixel(ctx, outline, 35, 3, 27, 18);
+    pixel(ctx, "#777087", 38, 5, 21, 14);
+    pixel(ctx, "#b9a2aa", 39, 5, 14, 3);
+    pixel(ctx, "#3b5260", 42, 9, 13, 8);
+    pixel(ctx, "#8be0bd", 44, 11, 9, 3);
+    pixel(ctx, outline, 41, 18, 16, 3);
+    for (const x of [17, 70]) {
+      pixel(ctx, outline, x, 14, 9, 8);
+      pixel(ctx, "#f8e6cd", x + 1, 15, 6, 5);
+      pixel(ctx, "#82bbad", x + 2, 16, 3, 2);
+      pixel(ctx, "#f4d5af", x + 2, 11, 2, 3);
+    }
+    pixel(ctx, outline, 10, 50, 14, 4);
+    pixel(ctx, outline, 73, 50, 14, 4);
+  });
+}
+
+export function chatRoomTitleArt(): THREE.CanvasTexture {
+  return texture(256, 64, (ctx) => {
+    pixel(ctx, "#3b344d", 5, 8, 246, 49);
+    pixel(ctx, "#d5a989", 8, 11, 240, 43);
+    pixel(ctx, "#51445c", 13, 15, 230, 35);
+    pixel(ctx, "#bce7cd", 18, 20, 6, 25);
+    pixel(ctx, "#bce7cd", 232, 20, 6, 25);
+    ctx.fillStyle = "#fff0ce";
+    ctx.font = "bold 31px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("CHAT ROOM", 128, 34);
+  });
+}
+
+export function stationNoticeArt(status: "queued" | "assigned" | "working" | "complete" | "failed", progressStep = 0): THREE.CanvasTexture {
+  return texture(48, 48, (ctx) => {
+    pixel(ctx, "#31334c", 5, 5, 38, 38);
+    pixel(ctx, "#f7e9cc", 8, 8, 32, 32);
+    pixel(ctx, status === "failed" ? "#d2828c" : "#8bbda9", 10, 10, 28, 3);
+    pixel(ctx, "#4a465d", 14, 18, 21, 13);
+    pixel(ctx, "#fff2d7", 17, 20, 15, 8);
+    pixel(ctx, status === "failed" ? "#d2828c" : "#72b4a5", 20, 22, 9, 2);
+    pixel(ctx, "#4a465d", 18, 30, 5, 4);
+    pixel(ctx, "#fff0d1", 25, 31, 5, 2);
+    const filled = status === "working" ? progressStep : status === "complete" || status === "failed" ? 16 : 0;
+    for (let i = 0; i < 16; i++) {
+      const side = Math.floor(i / 4);
+      const offset = i % 4;
+      const x = side === 0 ? 6 + offset * 9 : side === 1 ? 41 : side === 2 ? 33 - offset * 9 : 4;
+      const y = side === 0 ? 3 : side === 1 ? 6 + offset * 9 : side === 2 ? 41 : 33 - offset * 9;
+      pixel(ctx, i < filled ? status === "failed" ? "#f2a3a3" : "#95f2cc" : "#74617d",
+        x, y, side % 2 === 0 ? 8 : 3, side % 2 === 0 ? 3 : 8);
+    }
+    if (status === "queued" || status === "assigned") {
+      pixel(ctx, "#f5b978", 22, 15, 4, 5);
+      pixel(ctx, "#f5b978", 22, 33, 4, 3);
+    }
+  });
 }
 
 export function monitorArt(index: number): THREE.CanvasTexture {

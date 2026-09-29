@@ -1,8 +1,9 @@
 # Agent Inc.
 
 A self-contained, local-first playable prototype of a cozy AI office. You are
-the intelligence: simulated requests arrive, tiny agents carry them from the
-inbox to processing desks and back to the core, and completed work earns tokens.
+the intelligence: each chat station receives simulated requests, tiny agents
+leave the coffee counter to answer at their own desks, and accurate replies
+earn tokens.
 
 ## Run locally
 
@@ -18,23 +19,29 @@ Run `npm test`, `npm run typecheck`, and `npm run build` to validate.
 
 ## Play
 
-Requests start arriving roughly every ten simulated seconds. Wait for tokens,
-then activate another capacity node (28 tokens) to add an agent at its own
-desk; more agents attract more incoming signals (up to four agents and a
-four-second arrival interval). When free, agents return to their desks, tend
-plants/equipment, and can be interrupted to take a new request. At capacity
-2, save 64 tokens to unlock the Context chamber: the room appears, longer
-requests enter the queue, and agents visit it before processing. Alternatively,
-buy up to three workstation kit tiers (46, 92, 138 tokens): every tier places
-tools on each staffed desk, speeds desk work by 10%, adds one token per new
-request, and slightly increases signal traffic. These are the first
-reinvestment branches: capacity for parallel labor, kits for throughput, and
-context for higher-value work. Drag the scene to pan, scroll to zoom, pause, or
-switch to 2× speed. The office fills the viewport, with a small request feed
-and token/capacity chips overlaid as a HUD. Click **UPGRADES** to open the
-system panel on any screen, or **SIGNALS** to expand the request feed. The
-compact controls at the bottom right pause, change speed, and show debug
-metrics. Drag the office to explore its edges.
+The first desk receives a question about every 16 simulated seconds when
+available. Its pixel notification appears above the monitor; the border fills
+as its agent responds. Agents wait at the coffee counter between requests.
+**UPGRADES** opens a right-side panel with **Office**, **Stations**, and
+**Agents** tabs:
+
+- **Office:** spend 28 tokens to activate each additional agent/station (up to
+  four). Unlock Context at capacity 2 for 64 tokens; context questions visit
+  its room first and pay more. Existing workstation kits (46, 92, 138 tokens)
+  speed all agents' desk work by 10% and add one token per successful reply
+  per tier.
+- **Stations:** invest 42, 78, then 114 tokens per station to shorten its
+  arrival interval from 16 to about 7.8 seconds. One unresolved question per
+  desk keeps requests bounded; a short cooldown leaves time for coffee.
+- **Agents:** each named persona has independently trainable response speed
+  and accuracy (three levels each). Starting accuracy is 82%; each accuracy
+  level adds 5.5 percentage points. Inaccurate replies lose up to 3 tokens
+  (5 for Context), never below zero.
+
+The office fills the viewport, with a small request feed and token/capacity
+chips overlaid as a HUD. **SIGNALS** expands the request feed; drag to pan,
+scroll to zoom, pause, or switch to 2× speed. The compact controls at bottom
+right can also show debug metrics.
 
 The small clock in the HUD previews lighting six hours ahead without
 changing simulation time, rewards, or the save file. A full office day takes
@@ -57,10 +64,10 @@ air and floor highlights: feathered beam edges and a few slow drifting motes
 fade with the sunlight, while a floor-local shade deepens the near corners and
 the side opposite the sun. These art-directed layers are not physically accurate
 volumetric occlusion or indirect lighting; nearby geometry still receives actual
-directional shadows through the window openings. At night a weaker cool directional moonlight
-casts shadows through the same real window openings; warmer desk/core lights
-remain visible. The walls, floor, and windows remain 3D;
-agents, desks, chairs, monitors, the inbox, core, and decor are original
+directional shadows through the window openings. At night reduced ambient
+and weaker cool moonlight deepen the room while local monitor, coffee, core,
+and sconce lights illuminate nearby surfaces. The walls, floor, and windows
+remain 3D; agents, desks, chairs, monitors, the coffee counter, core, and decor are original
 canvas-drawn pixel art on lit, alpha-cutout planes parallel to the back wall.
 Changes in travel direction swap original left/right/back illustrated views
 inside the unchanging planes instead of rotating or mirroring their meshes.
@@ -98,9 +105,11 @@ and upgrades remain playable through the feed/UI with a static backdrop and
 an explicit warning. Narrow/mobile displays render at a lower internal
 resolution, and reduced-motion users get still decorative animations.
 
-Progress (tokens, capacity, workstation kits, context unlock and totals) is saved locally in this
-browser. On return, up to two hours of approximate, bounded offline progress
-is awarded without replaying thousands of request animations. No account,
+Progress (tokens, capacity, station tiers, each agent's training, shared kits,
+context unlock, and response totals) is saved locally in this browser. Earlier
+prototype saves migrate without resetting earned progress. On return, up to
+two hours of approximate, bounded net offline progress is awarded without
+replaying thousands of request animations. No account,
 database, server-side economy, real model inference, audio, or later specialist
 rooms exist in this slice. Local saves are not authoritative and can be edited
 by the browser user. The scene is built from lightweight geometry rather than

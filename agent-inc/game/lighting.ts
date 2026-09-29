@@ -20,10 +20,10 @@ type Keyframe = { time: number; sun: number; ambient: number; lamp: number; warm
 
 const keys: Keyframe[] = [
   { time: 0, sun: 0, ambient: 0.78, lamp: 1.5, warmth: 0.35, sunColor: 0x9ba5d4, skyColor: 0x423053, bounceColor: 0xa0788d },
-  { time: 0.19, sun: 0.08, ambient: 0.82, lamp: 1.2, warmth: 0.55, sunColor: 0xff916a, skyColor: 0xbd7183, bounceColor: 0xd5968d },
-  { time: 0.32, sun: 2.65, ambient: 1.1, lamp: 0.55, warmth: 0.9, sunColor: 0xffb46f, skyColor: 0x85bfc0, bounceColor: 0xc7b29a },
-  { time: 0.5, sun: 3.2, ambient: 1.25, lamp: 0.25, warmth: 0.72, sunColor: 0xffd39a, skyColor: 0x93cdd0, bounceColor: 0xd5c1a0 },
-  { time: 0.67, sun: 2.5, ambient: 1.02, lamp: 0.72, warmth: 1, sunColor: 0xffa267, skyColor: 0xd28d99, bounceColor: 0xd7a08b },
+  { time: 0.19, sun: 0.08, ambient: 0.82, lamp: 1.2, warmth: 0.7, sunColor: 0xff8665, skyColor: 0xdc7895, bounceColor: 0xe5a18b },
+  { time: 0.32, sun: 2.75, ambient: 1.08, lamp: 0.55, warmth: 0.95, sunColor: 0xffae68, skyColor: 0x83d2cb, bounceColor: 0xe6b891 },
+  { time: 0.5, sun: 3.25, ambient: 1.18, lamp: 0.32, warmth: 0.76, sunColor: 0xffd08a, skyColor: 0x89d9d0, bounceColor: 0xebc5a0 },
+  { time: 0.67, sun: 2.65, ambient: 1.02, lamp: 0.72, warmth: 1, sunColor: 0xff9366, skyColor: 0xe19ba2, bounceColor: 0xedaa8e },
   { time: 0.79, sun: 0.09, ambient: 0.8, lamp: 1.4, warmth: 0.8, sunColor: 0xf47b83, skyColor: 0x664167, bounceColor: 0xa47888 },
   { time: 1, sun: 0, ambient: 0.78, lamp: 1.5, warmth: 0.35, sunColor: 0x9ba5d4, skyColor: 0x423053, bounceColor: 0xa0788d },
 ];

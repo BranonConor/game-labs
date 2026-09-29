@@ -214,22 +214,54 @@ export function terminalArt(): THREE.CanvasTexture {
 
 export function plantArt(): THREE.CanvasTexture {
   return texture(42, 50, (ctx) => {
-    pixel(ctx, "#364f55", 19, 18, 3, 23);
-    pixel(ctx, "#4e897d", 21, 21, 2, 12);
-    oval(ctx, "#365866", 12, 17, 9, 13);
-    oval(ctx, "#568e7d", 11, 15, 7, 11);
-    oval(ctx, "#8fc8a0", 9, 12, 4, 7);
-    oval(ctx, "#375963", 30, 18, 8, 14);
-    oval(ctx, "#4a9b89", 28, 15, 7, 11);
-    oval(ctx, "#a8d4a1", 27, 11, 4, 7);
-    oval(ctx, "#3d6a6b", 20, 23, 6, 9);
-    oval(ctx, "#91c7a1", 18, 20, 4, 5);
+    pixel(ctx, "#293f50", 18, 15, 5, 23);
+    pixel(ctx, "#456b65", 20, 18, 2, 16);
+    pixel(ctx, "#293f50", 9, 13, 9, 19);
+    pixel(ctx, "#293f50", 6, 18, 16, 11);
+    pixel(ctx, "#293f50", 4, 15, 5, 8);
+    pixel(ctx, "#293f50", 11, 7, 6, 9);
+    pixel(ctx, "#293f50", 14, 4, 5, 6);
+    pixel(ctx, "#4f897a", 8, 16, 12, 12);
+    pixel(ctx, "#5a9a83", 10, 12, 7, 13);
+    pixel(ctx, "#82bb91", 12, 9, 4, 9);
+    pixel(ctx, "#91c8a0", 6, 20, 5, 4);
+    pixel(ctx, "#74ad8e", 10, 23, 8, 3);
+    pixel(ctx, "#b0d5a4", 12, 14, 2, 4);
+    pixel(ctx, "#293f50", 25, 10, 7, 22);
+    pixel(ctx, "#293f50", 22, 17, 15, 11);
+    pixel(ctx, "#293f50", 31, 13, 6, 9);
+    pixel(ctx, "#293f50", 27, 5, 5, 8);
+    pixel(ctx, "#4f897a", 24, 15, 11, 13);
+    pixel(ctx, "#5a9a83", 27, 11, 7, 13);
+    pixel(ctx, "#82bb91", 28, 8, 4, 9);
+    pixel(ctx, "#a9d6a2", 33, 17, 4, 4);
+    pixel(ctx, "#74ad8e", 28, 23, 6, 3);
+    pixel(ctx, "#b0d5a4", 28, 13, 2, 4);
+    pixel(ctx, "#293f50", 17, 21, 8, 12);
+    pixel(ctx, "#599784", 17, 20, 7, 11);
+    pixel(ctx, "#9ac69a", 18, 19, 4, 7);
+    speckle(ctx, "#b6d9a5", [[9, 15], [13, 12], [15, 7], [27, 13], [31, 9], [29, 21]]);
+    speckle(ctx, "#294c58", [[8, 26], [17, 18], [34, 24], [23, 28]]);
     pixel(ctx, outline, 13, 35, 17, 4);
     pixel(ctx, "#e8bb96", 15, 38, 14, 8);
     pixel(ctx, "#c78980", 20, 40, 9, 6);
     pixel(ctx, "#f6d7aa", 16, 39, 6, 2);
     pixel(ctx, outline, 15, 46, 15, 2);
-    speckle(ctx, "#d8e6b1", [[7, 10], [11, 7], [14, 18], [28, 7], [32, 14]]);
+  });
+}
+
+export function workflowKitArt(): THREE.CanvasTexture {
+  return texture(28, 24, (ctx) => {
+    pixel(ctx, outline, 3, 10, 23, 11);
+    pixel(ctx, "#72617c", 4, 11, 20, 8);
+    pixel(ctx, "#9c83a1", 5, 11, 15, 3);
+    pixel(ctx, "#d1a58c", 7, 6, 13, 6);
+    pixel(ctx, "#f2d5a1", 8, 7, 10, 3);
+    pixel(ctx, "#eff5d3", 11, 3, 11, 7);
+    pixel(ctx, "#77b9a4", 12, 4, 7, 2);
+    pixel(ctx, "#f7deaa", 13, 7, 6, 1);
+    pixel(ctx, "#aad4b0", 6, 16, 14, 2);
+    pixel(ctx, outline, 4, 21, 21, 2);
   });
 }
 

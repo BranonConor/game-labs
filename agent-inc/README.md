@@ -18,11 +18,18 @@ Run `npm test`, `npm run typecheck`, and `npm run build` to validate.
 
 ## Play
 
-Requests arrive roughly every ten simulated seconds. Wait for tokens, then
-activate a second capacity node (28 tokens) to see a second agent work in
-parallel. At capacity 2, save 64 tokens to unlock the Context chamber: the
-room appears, longer requests enter the queue, and their agents physically
-visit it before processing. Drag the scene to pan, scroll to zoom, pause, or
+Requests start arriving roughly every ten simulated seconds. Wait for tokens,
+then activate another capacity node (28 tokens) to add an agent at its own
+desk; more agents attract more incoming signals (up to four agents and a
+four-second arrival interval). When free, agents return to their desks, tend
+plants/equipment, and can be interrupted to take a new request. At capacity
+2, save 64 tokens to unlock the Context chamber: the room appears, longer
+requests enter the queue, and agents visit it before processing. Alternatively,
+buy up to three workstation kit tiers (46, 92, 138 tokens): every tier places
+tools on each staffed desk, speeds desk work by 10%, adds one token per new
+request, and slightly increases signal traffic. These are the first
+reinvestment branches: capacity for parallel labor, kits for throughput, and
+context for higher-value work. Drag the scene to pan, scroll to zoom, pause, or
 switch to 2× speed. The office fills the viewport, with a small request feed
 and token/capacity chips overlaid as a HUD. Click **UPGRADES** to open the
 system panel on any screen, or **SIGNALS** to expand the request feed. The
@@ -91,7 +98,7 @@ and upgrades remain playable through the feed/UI with a static backdrop and
 an explicit warning. Narrow/mobile displays render at a lower internal
 resolution, and reduced-motion users get still decorative animations.
 
-Progress (tokens, capacity, context unlock and totals) is saved locally in this
+Progress (tokens, capacity, workstation kits, context unlock and totals) is saved locally in this
 browser. On return, up to two hours of approximate, bounded offline progress
 is awarded without replaying thousands of request animations. No account,
 database, server-side economy, real model inference, audio, or later specialist

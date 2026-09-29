@@ -1,4 +1,4 @@
-export type AgentState = "idle" | "walking" | "working" | "returning";
+export type AgentState = "idle" | "walking" | "working" | "returning" | "resetting" | "upkeep" | "inspecting";
 export type RequestStatus = "queued" | "assigned" | "working" | "complete";
 export type RequestKind = "chat" | "context";
 export type Point = { x: number; z: number };
@@ -25,6 +25,7 @@ export type Agent = {
   workTotal: number;
   carrying: boolean;
   visitedContext: boolean;
+  idleFor: number;
 };
 
 export type Progress = {
@@ -32,6 +33,7 @@ export type Progress = {
   tokens: number;
   capacity: number;
   context: boolean;
+  workflow: number;
   completed: number;
   earned: number;
   seed: number;
@@ -68,13 +70,19 @@ const CONTEXT_REQUESTS = [
 export const CAPACITY_COST = 28;
 export const CONTEXT_COST = 64;
 export const MAX_CAPACITY = 4;
+export const MAX_WORKFLOW = 3;
+export const workflowCost = (level: number) => 46 * (level + 1);
 export const SAVE_KEY = "agent-inc-progress-v1";
 export const OFFLINE_LIMIT_SECONDS = 2 * 60 * 60;
 const SPAWN_INTERVAL = 10;
 
+function requestInterval(capacity: number, workflow: number): number {
+  return SPAWN_INTERVAL / (1 + (capacity - 1) * 0.5 + workflow * 0.1);
+}
+
 export function initialProgress(now = Date.now()): Progress {
   return {
-    version: 1, tokens: 0, capacity: 1, context: false,
+    version: 1, tokens: 0, capacity: 1, context: false, workflow: 0,
     completed: 0, earned: 0, seed: 41729, nextId: 1, savedAt: now,
   };
 }
@@ -85,18 +93,20 @@ export function parseProgress(raw: string | null): Progress | null {
     const value: unknown = JSON.parse(raw);
     if (!value || typeof value !== "object") return null;
     const p = value as Record<string, unknown>;
+    const workflow = p.workflow === undefined ? 0 : p.workflow;
     if (
       p.version !== 1 ||
       !Number.isSafeInteger(p.tokens) || (p.tokens as number) < 0 ||
       !Number.isInteger(p.capacity) || (p.capacity as number) < 1 || (p.capacity as number) > MAX_CAPACITY ||
       typeof p.context !== "boolean" ||
+      !Number.isInteger(workflow) || (workflow as number) < 0 || (workflow as number) > MAX_WORKFLOW ||
       !Number.isSafeInteger(p.completed) || (p.completed as number) < 0 ||
       !Number.isSafeInteger(p.earned) || (p.earned as number) < 0 ||
       !Number.isInteger(p.seed) || (p.seed as number) < 0 || (p.seed as number) > 0xffffffff ||
       !Number.isSafeInteger(p.nextId) || (p.nextId as number) < 1 ||
       !Number.isFinite(p.savedAt) || (p.savedAt as number) < 0
     ) return null;
-    return p as Progress;
+    return { ...p, workflow } as Progress;
   } catch {
     return null;
   }
@@ -106,7 +116,10 @@ export function applyOffline(progress: Progress, now: number): OfflineReport {
   const seconds = Math.min(OFFLINE_LIMIT_SECONDS, Math.max(0, (now - progress.savedAt) / 1000));
   // A conservative estimate: arrivals are every ten seconds, but travel and work
   // impose a throughput limit. Offline work never creates an unbounded task queue.
-  const throughput = Math.min(1 / SPAWN_INTERVAL, progress.capacity / 17);
+  const throughput = Math.min(
+    1 / requestInterval(progress.capacity, progress.workflow),
+    progress.capacity / (17 - progress.workflow * 0.8),
+  );
   const completed = Math.floor(seconds * throughput);
   const tokens = completed * (progress.context ? 12 : 9);
   progress.completed += completed;
@@ -132,11 +145,10 @@ export class Simulation {
 
   private addAgent() {
     const id = this.agents.length;
-    const x = CORE.x + 0.55 + (id % 2) * 0.35;
-    const z = CORE.z + 0.65 + Math.floor(id / 2) * 0.35;
+    const { x, z } = DESKS[id];
     this.agents.push({
       id, state: "idle", x, z, target: { x, z }, route: [],
-      workLeft: 0, workTotal: 0, carrying: false, visitedContext: false,
+      workLeft: 0, workTotal: 0, carrying: false, visitedContext: false, idleFor: -id * 0.8,
     });
   }
 
@@ -150,7 +162,7 @@ export class Simulation {
     const kind: RequestKind = this.progress.context && this.random() < 0.38 ? "context" : "chat";
     const titles = kind === "context" ? CONTEXT_REQUESTS : CHAT_REQUESTS;
     const title = titles[Math.floor(this.random() * titles.length)];
-    const reward = kind === "context" ? 14 + Math.floor(this.random() * 4) : 9 + Math.floor(this.random() * 4);
+    const reward = (kind === "context" ? 14 : 9) + Math.floor(this.random() * 4) + this.progress.workflow;
     this.requests.unshift({
       id: this.progress.nextId++, title, kind, status: "queued", reward, progress: 0,
     });
@@ -160,7 +172,7 @@ export class Simulation {
 
   private assign() {
     for (const agent of this.agents) {
-      if (agent.state !== "idle") continue;
+      if (agent.taskId !== undefined) continue;
       const request = [...this.requests].reverse().find((r) => r.status === "queued");
       if (!request) break;
       request.status = "assigned";
@@ -169,9 +181,10 @@ export class Simulation {
       agent.state = "walking";
       agent.carrying = false;
       agent.visitedContext = false;
+      agent.idleFor = 0;
       agent.route = [{ ...INBOX }, ...(request.kind === "context" ? [{ ...CONTEXT }] : []), { ...DESKS[agent.id] }];
       agent.target = agent.route.shift()!;
-      agent.workTotal = request.kind === "context" ? 7.2 : 5.4 + this.random() * 1.4;
+      agent.workTotal = (request.kind === "context" ? 7.2 : 5.4 + this.random() * 1.4) * (1 - this.progress.workflow * 0.1);
       agent.workLeft = agent.workTotal;
     }
   }
@@ -198,8 +211,20 @@ export class Simulation {
         this.progress.completed++;
       }
       agent.taskId = undefined;
-      agent.state = "idle";
+      agent.state = "resetting";
+      agent.target = { ...DESKS[agent.id] };
       agent.carrying = false;
+      return;
+    }
+    if (agent.state === "resetting") {
+      agent.state = "idle";
+      agent.idleFor = 0;
+      return;
+    }
+    if (agent.state === "upkeep") {
+      agent.state = agent.route.length ? "inspecting" : "idle";
+      agent.workLeft = 1.4;
+      if (agent.state === "idle") agent.idleFor = -4;
       return;
     }
     if (agent.target.x === INBOX.x && agent.target.z === INBOX.z) agent.carrying = true;
@@ -225,11 +250,32 @@ export class Simulation {
       this.untilNextRequest -= step;
       if (this.untilNextRequest <= 0) {
         this.spawnRequest();
-        this.untilNextRequest += SPAWN_INTERVAL;
+        this.untilNextRequest += requestInterval(this.progress.capacity, this.progress.workflow);
       }
       this.assign();
       for (const agent of this.agents) {
-        if (agent.state === "walking" || agent.state === "returning") this.move(agent, step);
+        if (agent.state === "idle") {
+          agent.idleFor += step;
+          if (agent.idleFor >= 3 + agent.id * 0.8) {
+            const stops: Point[] = [
+              { x: -4.37, z: 2.8 }, { ...CORE },
+              this.progress.context ? { ...CONTEXT } : { ...INBOX },
+              { x: 5.8, z: 3.2 },
+            ];
+            agent.state = "upkeep";
+            agent.target = stops[agent.id];
+            agent.route = [{ ...DESKS[agent.id] }];
+            agent.idleFor = 0;
+          }
+        }
+        if (agent.state === "walking" || agent.state === "returning" || agent.state === "resetting" || agent.state === "upkeep") this.move(agent, step);
+        else if (agent.state === "inspecting") {
+          agent.workLeft = Math.max(0, agent.workLeft - step);
+          if (agent.workLeft === 0) {
+            agent.target = agent.route.shift()!;
+            agent.state = "upkeep";
+          }
+        }
         else if (agent.state === "working") {
           agent.workLeft = Math.max(0, agent.workLeft - step);
           const request = this.requests.find((r) => r.id === agent.taskId);
@@ -248,6 +294,16 @@ export class Simulation {
     this.progress.tokens -= CAPACITY_COST;
     this.progress.capacity++;
     this.addAgent();
+    this.untilNextRequest = Math.min(this.untilNextRequest, requestInterval(this.progress.capacity, this.progress.workflow));
+    return true;
+  }
+
+  buyWorkflow() {
+    if (this.progress.capacity < 2 || this.progress.workflow >= MAX_WORKFLOW ||
+      this.progress.tokens < workflowCost(this.progress.workflow)) return false;
+    this.progress.tokens -= workflowCost(this.progress.workflow);
+    this.progress.workflow++;
+    this.untilNextRequest = Math.min(this.untilNextRequest, requestInterval(this.progress.capacity, this.progress.workflow));
     return true;
   }
 

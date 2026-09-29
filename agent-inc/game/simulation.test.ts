@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   applyOffline, CAPACITY_COST, CONTEXT_COST, initialProgress, MAX_CAPACITY,
-  OFFLINE_LIMIT_SECONDS, parseProgress, Simulation,
+  MAX_WORKFLOW, OFFLINE_LIMIT_SECONDS, parseProgress, Simulation, workflowCost, DESKS,
 } from "./simulation.ts";
 import { DAY_LENGTH_SECONDS, sampleDaylight } from "./lighting.ts";
 
@@ -47,6 +47,61 @@ test("capacity adds a second agent and processes two requests concurrently", () 
   assert.ok(sim.progress.completed >= 3);
 });
 
+test("extra desks bring proportionate demand; free agents tend stations and can be dispatched mid-errand", () => {
+  const solo = new Simulation();
+  const progress = initialProgress();
+  progress.capacity = MAX_CAPACITY;
+  const team = new Simulation(progress);
+  team.agents.forEach((agent, index) => {
+    assert.deepEqual({ x: agent.x, z: agent.z }, DESKS[index]);
+  });
+  run(team, 5);
+  const tending = team.agents.find((agent) => agent.state === "upkeep");
+  assert.ok(tending);
+  assert.equal(tending.taskId, undefined);
+  const requestId = team.progress.nextId++;
+  team.requests.push({ id: requestId, title: "An urgent signal", kind: "chat", status: "queued", progress: 0, reward: 9 });
+  team.update(1 / 30);
+  assert.equal(team.requests.find((request) => request.id === requestId)?.status, "assigned");
+  assert.equal(team.agents.find((agent) => agent.id === tending.id)?.state, "walking");
+
+  const usedDesks = new Set<number>();
+  for (let i = 0; i < 150 * 30; i++) {
+    team.update(1 / 30);
+    team.agents.filter((agent) => agent.state === "working").forEach((agent) => usedDesks.add(agent.id));
+  }
+  run(solo, 155);
+  assert.equal(usedDesks.size, MAX_CAPACITY);
+  assert.ok(team.progress.nextId - 1 > (solo.progress.nextId - 1) * 2);
+  assert.ok(team.progress.completed > solo.progress.completed * 2);
+  assert.ok(team.requests.filter((request) => request.status === "queued").length <= 12);
+});
+
+test("workstation kits save, speed desk work, and increase earned reward", () => {
+  const progress = initialProgress(1000);
+  progress.capacity = 2;
+  progress.tokens = 500;
+  const upgraded = new Simulation(progress);
+  assert.equal(upgraded.buyWorkflow(), true);
+  assert.equal(upgraded.progress.tokens, 500 - workflowCost(0));
+  assert.equal(upgraded.buyWorkflow(), true);
+  assert.equal(upgraded.buyWorkflow(), true);
+  assert.equal(upgraded.buyWorkflow(), false);
+  assert.equal(upgraded.progress.workflow, MAX_WORKFLOW);
+  assert.deepEqual(parseProgress(JSON.stringify(upgraded.save(2000))), upgraded.save(2000));
+
+  const basic = new Simulation(progress);
+  run(basic, 2);
+  run(upgraded, 2);
+  assert.ok(upgraded.agents[0].workTotal < basic.agents[0].workTotal);
+  assert.equal(upgraded.requests[0].reward, basic.requests[0].reward + MAX_WORKFLOW);
+  const legacy = { ...initialProgress(1000) } as Partial<typeof progress>;
+  delete legacy.workflow;
+  assert.equal(parseProgress(JSON.stringify(legacy))?.workflow, 0);
+  assert.equal(parseProgress(JSON.stringify({ ...legacy, workflow: -1 })), null);
+  assert.equal(parseProgress(JSON.stringify({ ...legacy, workflow: MAX_WORKFLOW + 1 })), null);
+});
+
 test("the context unlock costs tokens and routes requests through its room", () => {
   const sim = new Simulation(initialProgress(1000));
   sim.progress.tokens = CONTEXT_COST + CAPACITY_COST;
@@ -75,8 +130,8 @@ test("saves validate shape, offline progress is bounded and future timestamps do
   assert.equal(parseProgress(JSON.stringify({ ...progress, tokens: -1 })), null);
   const report = applyOffline(progress, 1000 + 24 * 60 * 60 * 1000);
   assert.equal(report.seconds, OFFLINE_LIMIT_SECONDS);
-  assert.equal(report.completed, 720);
-  assert.equal(report.tokens, 720 * 12);
+  assert.equal(report.completed, Math.floor(OFFLINE_LIMIT_SECONDS * Math.min(1 / 4, MAX_CAPACITY / 17)));
+  assert.equal(report.tokens, report.completed * 12);
   assert.equal(applyOffline(progress, progress.savedAt - 1000).tokens, 0);
 });
 

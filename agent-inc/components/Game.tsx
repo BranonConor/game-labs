@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   applyOffline, CAPACITY_COST, CONTEXT_COST, initialProgress, MAX_CAPACITY,
-  parseProgress, SAVE_KEY, Simulation,
+  MAX_WORKFLOW, parseProgress, SAVE_KEY, Simulation, workflowCost,
 } from "../game/simulation";
 import type { OfflineReport, Request } from "../game/simulation";
 import { createWorld } from "../game/world";
@@ -135,7 +135,7 @@ export default function Game() {
 
   const buyCapacity = () => {
     if (!simulation?.buyCapacity()) return;
-    setMessage("Another little process comes online. Two minds, two desks, one growing intelligence.");
+    setMessage("A new desk comes online. More signals are finding their way to the team.");
     setRevision((value) => value + 1);
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(simulation.save())); }
     catch { setStorageError("Progress could not be saved. Check browser storage permissions or available space."); }
@@ -143,6 +143,13 @@ export default function Game() {
   const buyContext = () => {
     if (!simulation?.unlockContext()) return;
     setMessage("The context chamber materializes. Agents can now carry longer thoughts through it.");
+    setRevision((value) => value + 1);
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify(simulation.save())); }
+    catch { setStorageError("Progress could not be saved. Check browser storage permissions or available space."); }
+  };
+  const buyWorkflow = () => {
+    if (!simulation?.buyWorkflow()) return;
+    setMessage("New tools on every desk. Agents finish richer work a little faster.");
     setRevision((value) => value + 1);
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(simulation.save())); }
     catch { setStorageError("Progress could not be saved. Check browser storage permissions or available space."); }
@@ -167,6 +174,7 @@ export default function Game() {
   const progress = simulation?.progress;
   const queued = simulation?.requests.filter((request) => request.status === "queued").length ?? 0;
   const active = simulation?.requests.filter((request) => request.status === "working" || request.status === "assigned").length ?? 0;
+  const tending = simulation?.agents.filter((agent) => agent.state === "upkeep" || agent.state === "inspecting").length ?? 0;
   const feed = simulation
     ? [
         ...simulation.requests.filter((request) => request.status !== "complete").reverse(),
@@ -213,7 +221,7 @@ export default function Game() {
             </div>
           </div>
           <div className="scene-footer">
-            <div className="scene-live"><span className="tiny-pulse" /> <span className="live-label">{simulation?.paused ? "SIMULATION PAUSED" : "SIMULATING"}</span><span className="live-count"> <span className="footer-sep">·</span> {active} processing <span className="footer-sep">·</span> {queued} in queue</span></div>
+            <div className="scene-live"><span className="tiny-pulse" /> <span className="live-label">{simulation?.paused ? "SIMULATION PAUSED" : "SIMULATING"}</span><span className="live-count"> <span className="footer-sep">·</span> {active} processing {tending > 0 && <> <span className="footer-sep">·</span> {tending} tending</>} <span className="footer-sep">·</span> {queued} in queue</span></div>
             <div className="scene-controls">
               <button type="button" onClick={togglePause} title={simulation?.paused ? "Resume simulation" : "Pause simulation"}
                 aria-label={simulation?.paused ? "Resume simulation" : "Pause simulation"}>{simulation?.paused ? "▶" : "Ⅱ"}</button>
@@ -236,13 +244,13 @@ export default function Game() {
             <div><span>TOTAL EARNED</span><strong>{progress?.earned.toLocaleString() ?? 0}</strong></div>
           </div>
 
-          <div className="section-title"><span>✦ &nbsp;GROW YOUR MIND</span><span>01 / 02</span></div>
+          <div className="section-title"><span>✦ &nbsp;GROW YOUR MIND</span><span>01 / 03</span></div>
           <div className="upgrade-list">
             <div className="upgrade">
               <div className="upgrade-symbol">✳</div>
               <div className="upgrade-info">
                 <div className="upgrade-name">Expand capacity <span>LVL {progress?.capacity ?? 1}</span></div>
-                <p>Activate another tiny agent and processing station. Handle requests side by side.</p>
+                <p>Activate another agent and desk. More incoming signals keep the growing team busy.</p>
                 <button type="button" className="buy-button" onClick={buyCapacity}
                   disabled={!progress || progress.tokens < CAPACITY_COST || progress.capacity >= MAX_CAPACITY}>
                   {progress?.capacity === MAX_CAPACITY ? "CAPACITY MAXED" : <>ACTIVATE <span>✧ {CAPACITY_COST}</span></>}
@@ -260,8 +268,19 @@ export default function Game() {
                 </button>
               </div>
             </div>
+            <div className={`upgrade ${contextAvailable ? "" : "upgrade-locked"}`}>
+              <div className="upgrade-symbol">▤</div>
+              <div className="upgrade-info">
+                <div className="upgrade-name">Workstation kits <span>LVL {progress?.workflow ?? 0} / {MAX_WORKFLOW}</span></div>
+                <p>Equip every active desk. Each kit tier speeds up desk work by 10%, adds a token per request, and invites more signals.</p>
+                <button type="button" className="buy-button" onClick={buyWorkflow}
+                  disabled={!progress || !contextAvailable || progress.workflow >= MAX_WORKFLOW || progress.tokens < workflowCost(progress.workflow)}>
+                  {progress?.workflow === MAX_WORKFLOW ? "KITS MAXED" : contextAvailable ? <>EQUIP <span>✧ {workflowCost(progress?.workflow ?? 0)}</span></> : "REQUIRES CAPACITY 2"}
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="side-hint">✧ &nbsp;The architecture is the world. Every new capability becomes a place.</div>
+          <div className="side-hint">✧ &nbsp;More desks bring more work. Free agents tend the office until the next signal arrives.</div>
         </aside>
       </div>
 

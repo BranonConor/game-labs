@@ -4,7 +4,7 @@ import type { Agent, Simulation } from "./simulation";
 import { sampleDaylight } from "./lighting";
 import {
   agentArt, chairArt, contextConsoleArt, coreBodyArt, deskArt,
-  monitorArt, plantArt, posterArt, stackArt, statusLightArt, terminalArt,
+  monitorArt, plantArt, posterArt, stackArt, statusLightArt, terminalArt, workflowKitArt,
 } from "./sprite-art";
 import type { AgentArt, Facing } from "./sprite-art";
 
@@ -237,6 +237,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       uWarm: { value: 0.8 },
       uTime: { value: 0 },
       uSun: { value: new THREE.Vector3(1, 1, -1) },
+      uSkyTint: { value: new THREE.Color(0x89d9d0) },
     },
     vertexShader: `
       varying vec3 vDirection;
@@ -251,15 +252,18 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       uniform float uWarm;
       uniform float uTime;
       uniform vec3 uSun;
+      uniform vec3 uSkyTint;
       float hash(vec3 p) {
         return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
       }
       void main() {
         vec3 direction = normalize(vDirection);
         float horizon = smoothstep(-0.48, 0.65, direction.y);
-        vec3 upper = mix(vec3(0.12, 0.08, 0.24), vec3(0.18, 0.55, 0.59), uDay);
-        vec3 lower = mix(vec3(0.35, 0.16, 0.33), vec3(0.79, 0.49, 0.43), uDay);
+        vec3 upper = mix(vec3(0.12, 0.08, 0.24), vec3(0.14, 0.64, 0.64), uDay);
+        upper = mix(upper, uSkyTint, 0.2 * uDay);
+        vec3 lower = mix(vec3(0.35, 0.16, 0.33), vec3(0.89, 0.48, 0.37), uDay);
         vec3 color = mix(lower, upper, horizon);
+        color += vec3(0.06, 0.015, 0.0) * uWarm * uDay * (1.0 - horizon);
         float corona = pow(max(dot(direction, normalize(uSun)), 0.0), 16.0);
         color += corona * mix(vec3(0.12, 0.15, 0.22), vec3(0.65, 0.41, 0.24), uDay) * (0.5 + uWarm * 0.5);
         vec3 cell = floor(direction * 180.0);
@@ -470,6 +474,9 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     const mesh = cutout(desks, track(statusLightArt()), x + 0.43, 0.82, z - 0.55, 0.18, 0.27);
     return mesh;
   });
+  const workflowKits = DESKS.map(({ x, z }) =>
+    cutout(desks, track(workflowKitArt()), x - 0.58, 0.79, z - 0.49, 0.36, 0.34),
+  );
   for (let i = 0; i < 2; i++) {
     cutout(scene, track(stackArt(i)), -4.6 + i * 0.35, 0.43, 2.2, 0.65, 0.81);
     contact(scene, -4.6 + i * 0.35, 2.2, 0.55, 0.4, 0.065, 0.52);
@@ -643,6 +650,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       renderer.toneMappingExposure = 1.32 + light.lamp * 0.12;
       skyMaterial.uniforms.uDay.value = Math.min(1, light.sun / 3.2);
       skyMaterial.uniforms.uWarm.value = light.warmth;
+      (skyMaterial.uniforms.uSkyTint.value as THREE.Color).setHex(light.skyColor);
       skyMaterial.uniforms.uTime.value = reducedMotion ? 0 : simulation.time;
       (skyMaterial.uniforms.uSun.value as THREE.Vector3).copy(sunlight.position).normalize();
       for (const { x, shaft, pool, dust } of beams) {
@@ -680,21 +688,26 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       while (agentMeshes.length < simulation.agents.length) {
         agentMeshes.push(makeAgentModel(agentMeshes.length));
       }
-      const busy = simulation.agents.some((a) => a.state !== "idle");
+      const busy = simulation.agents.some((a) => a.taskId !== undefined);
       (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + (reducedMotion ? 0 : Math.sin(elapsed * 3) * 0.15);
       core.position.y = 0.95 + (reducedMotion ? 0 : Math.sin(elapsed * 2.5) * 0.025);
       contextRoom.visible = simulation.progress.context;
       lockedContext.visible = !simulation.progress.context;
       stationLights.forEach((light, i) => {
-        (light.material as THREE.MeshStandardMaterial).emissiveIntensity = i < simulation.progress.capacity ? 0.8 : 0;
-        (light.material as THREE.MeshStandardMaterial).color.setHex(i < simulation.progress.capacity ? 0xffffff : palette.edge);
+        const active = simulation.agents[i]?.state === "working";
+        (light.material as THREE.MeshStandardMaterial).emissiveIntensity = i < simulation.progress.capacity ? active ? 1.1 : 0.45 : 0;
+        (light.material as THREE.MeshStandardMaterial).color.setHex(i < simulation.progress.capacity ? active ? 0xffffff : 0xa6c9be : palette.edge);
+      });
+      workflowKits.forEach((kit, i) => {
+        kit.visible = i < simulation.progress.capacity && simulation.progress.workflow > 0;
+        (kit.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.18 + simulation.progress.workflow * 0.1;
       });
       agentMeshes.forEach((model, index) => {
         const agent: Agent = simulation.agents[index];
         model.group.position.set(agent.x, 0, agent.z);
         model.shadow.position.set(agent.x, 0.095, agent.z);
         (model.shadow.material as THREE.MeshBasicMaterial).opacity = 0.62 + daylightShadow * 0.18;
-        if (agent.state === "idle" || agent.state === "working") {
+        if (agent.state === "idle" || agent.state === "working" || agent.state === "inspecting") {
           model.facing = "away";
         } else {
           const dx = agent.target.x - agent.x;
@@ -703,9 +716,9 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
           else if (Math.abs(dx) > 0.2) model.facing = dx < 0 ? "left" : "right";
           else if (dz > 0.2) model.facing = "left";
         }
-        const pose: keyof AgentArt = agent.state === "working" ? "working" :
+        const pose: keyof AgentArt = agent.state === "working" || agent.state === "inspecting" ? "working" :
           agent.carrying ? "carrying" :
-          agent.state === "walking" || agent.state === "returning"
+          agent.state === "walking" || agent.state === "returning" || agent.state === "upkeep" || agent.state === "resetting"
             ? !reducedMotion && Math.sin(elapsed * 11 + index) > 0 ? "stepA" : "stepB" : "idle";
         const frame = model.frames[pose][model.facing];
         if (frame !== (model.figure.material as THREE.MeshStandardMaterial).map) {

@@ -46,6 +46,7 @@ async function readRoom() {
 
 async function startServer(instanceId) {
   const clients = new Set();
+  let expectedHost;
   const files = {
     "/": ["office.html", "text/html; charset=utf-8"],
     "/office.css": ["office.css", "text/css; charset=utf-8"],
@@ -54,7 +55,7 @@ async function startServer(instanceId) {
   const server = createServer(async (req, res) => {
     const origin = req.headers.origin;
     const host = req.headers.host;
-    if (req.method !== "GET" || host !== `127.0.0.1:${server.address().port}` ||
+    if (req.method !== "GET" || host !== expectedHost ||
       (origin && origin !== `http://${host}`)) {
       res.writeHead(403).end();
       return;
@@ -98,6 +99,7 @@ async function startServer(instanceId) {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", resolve);
   });
+  expectedHost = `127.0.0.1:${server.address().port}`;
   const timer = setInterval(async () => {
     if (!clients.size) return;
     try {
@@ -109,7 +111,7 @@ async function startServer(instanceId) {
     }
   }, 2000);
   return {
-    url: `http://127.0.0.1:${server.address().port}/`,
+    url: `http://${expectedHost}/`,
     async close() {
       clearInterval(timer);
       for (const client of clients) client.end();

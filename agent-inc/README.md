@@ -112,6 +112,9 @@ Moving shadow maps refresh on simulation ticks rather than every display
 frame, leaving GPU time for the smoother scene motion. Cosmetic bobbing is
 time-based and eases through occasional dropped frames; it never changes
 rewards or agent decisions.
+Sprite props and agents use shared soft floor contacts and short near-floor
+shadow casters rather than casting long shadows from their upright cutout
+planes. Walls and window frames still cast directional scene shadows.
 
 Progress (tokens, capacity, station tiers, each agent's training, shared kits,
 context unlock, and response totals) is saved locally in this browser. Earlier

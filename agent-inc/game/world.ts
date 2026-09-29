@@ -128,9 +128,19 @@ function cutout(
   );
   mesh.position.set(x, y, z);
   mesh.rotation.y = cutoutYaw;
-  mesh.castShadow = true;
+  mesh.castShadow = false;
   mesh.receiveShadow = true;
   parent.add(mesh);
+  return mesh;
+}
+
+function groundCaster(width: number, depth: number) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 10, 6),
+    new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
+  );
+  mesh.scale.set(width * 0.38, 0.12, depth * 0.3);
+  mesh.castShadow = true;
   return mesh;
 }
 
@@ -183,7 +193,8 @@ function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt)
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.renderOrder = 3;
-  return { group, backing, figure, frames, facing: "away" as Facing, shadow };
+  const caster = groundCaster(0.68, 0.52);
+  return { group, backing, figure, frames, facing: "away" as Facing, shadow, caster };
 }
 
 export type World = {
@@ -439,6 +450,9 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     mesh.position.set(x, y, z);
     mesh.renderOrder = 3;
     parent.add(mesh);
+    const caster = groundCaster(width, depth);
+    caster.position.set(x, y + 0.12, z);
+    parent.add(caster);
     contacts.push({ mesh, opacity });
   };
   contact(scene, coreDisplay.x, coreDisplay.z, 1.05, 0.85, 0.076);
@@ -447,7 +461,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     const frames = agentArt(id);
     Object.values(frames).flatMap((directions) => Object.values(directions)).forEach(track);
     const model = createAgent(id, shadowTexture, frames);
-    scene.add(model.group, model.shadow);
+    scene.add(model.group, model.shadow, model.caster);
     return model;
   };
   const agentMeshes = simulation.agents.map((agent) => makeAgentModel(agent.id));
@@ -774,7 +788,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         model.group.position.set(position.x,
           agent.state === "idle" && !reducedMotion ? Math.sin(animationTime * 1.65 + index) * 0.038 : 0, position.z);
         model.shadow.position.set(position.x, 0.095, position.z);
-        (model.shadow.material as THREE.MeshBasicMaterial).opacity = 0.62 + daylightShadow * 0.18;
+        model.caster.position.set(position.x, 0.18, position.z);
+        (model.shadow.material as THREE.MeshBasicMaterial).opacity = 0.68 * (0.72 + daylightShadow * 0.28);
         if (agent.state === "idle") {
           model.facing = index < 2 ? "right" : "left";
         } else if (agent.state === "working") {

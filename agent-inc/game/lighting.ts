@@ -5,6 +5,7 @@ export type Daylight = {
   hour: number;
   label: string;
   sun: number;
+  moon: number;
   ambient: number;
   lamp: number;
   warmth: number;
@@ -43,10 +44,14 @@ export function sampleDaylight(simulationSeconds: number, previewOffset = 0): Da
   const minutes = Math.floor(time * 1440 + 1e-7);
   const hour = Math.floor(minutes / 60);
   const minute = minutes % 60;
+  const night = Math.max(
+    Math.min(1, Math.max(0, (0.19 - time) / 0.12)),
+    Math.min(1, Math.max(0, (time - 0.79) / 0.12)),
+  );
   return {
     time, hour,
     label: `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`,
-    sun: lerp("sun"), ambient: lerp("ambient"), lamp: lerp("lamp"), warmth: lerp("warmth"),
+    sun: lerp("sun"), moon: night * 0.62, ambient: lerp("ambient"), lamp: lerp("lamp"), warmth: lerp("warmth"),
     sunColor: blendColor(start.sunColor, end.sunColor, smooth),
     skyColor: blendColor(start.skyColor, end.skyColor, smooth),
     bounceColor: blendColor(start.bounceColor, end.bounceColor, smooth),

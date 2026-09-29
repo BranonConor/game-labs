@@ -23,10 +23,11 @@ activate a second capacity node (28 tokens) to see a second agent work in
 parallel. At capacity 2, save 64 tokens to unlock the Context chamber: the
 room appears, longer requests enter the queue, and their agents physically
 visit it before processing. Drag the scene to pan, scroll to zoom, pause, or
-switch to 2× speed. The office fills the viewport, with the request feed and
-system upgrades overlaid as a HUD. On narrow screens, open **UPGRADES** to
-access the system panel; drag the office to explore its edges. The debug toggle
-reveals simulation metrics.
+switch to 2× speed. The office fills the viewport, with a small request feed
+and token/capacity chips overlaid as a HUD. Click **UPGRADES** to open the
+system panel on any screen, or **SIGNALS** to expand the request feed. The
+compact controls at the bottom right pause, change speed, and show debug
+metrics. Drag the office to explore its edges.
 
 The small clock in the HUD previews lighting six hours ahead without
 changing simulation time, rewards, or the save file. A full office day takes
@@ -41,14 +42,17 @@ map cast geometry-aware shadows through the window frames; hemisphere bounce,
 desk/core lights, soft contact shadows, and translucent shafts/pools convey
 morning, afternoon, dusk, and night. Shafts and pools approximate illuminated
 air and floor highlights; they are not physically accurate volumetric
-occlusion or indirect lighting. The walls, floor, and windows remain 3D;
+occlusion or indirect lighting. At night a weaker cool directional moonlight
+casts shadows through the same real window openings; warmer desk/core lights
+remain visible. The walls, floor, and windows remain 3D;
 agents, desks, chairs, monitors, the inbox, core, and decor are original
 canvas-drawn pixel art on lit, alpha-cutout planes. All cutout planes share
-the camera-facing scene angle; changes in travel direction swap left/right
+the back-wall-aligned scene angle with a slight left-facing tilt; changes in
+travel direction swap left/right
 illustrated views instead of rotating or mirroring their meshes. Distinct
-machine silhouettes, poses, shallow backing layers, ground contact shadows,
-and sun-cast silhouettes give the characters depth without modeling them
-as people. The original 64×80 agent frames and small prop textures use
+human-like workers with unique hair/clothes, poses, shallow backing layers,
+ground contact shadows, and directional silhouettes give the characters depth
+without modeling them as 3D people. The original 64×80 agent frames and small prop textures use
 hand-placed pixel clusters, stepped curves, selective dark contours, and
 short color ramps instead of smooth vector gradients or block-only shapes.
 This takes inspiration from the *fidelity and technique* of handheld-era
@@ -59,9 +63,9 @@ simulation state. No external texture assets or network-fetched fonts are
 required.
 
 Three.js's shadow depth pass honors the cutout materials' alpha test, so the
-directional sun casts the illustrated silhouettes rather than rectangular
+directional sun or moon casts the illustrated silhouettes rather than rectangular
 planes. Small, translucent floor-contact textures ground agents and furniture
-even at night; a tighter PCF shadow map supplies the longer moving daytime
+even at night; a tighter PCF shadow map supplies longer moving directional
 shadows. The map is smaller on narrow or coarse-pointer devices. These layers
 are deliberately restrained: there is no screen-space ambient occlusion or
 depth-of-field pass that would blur the pixel art or add an extra GPU context.

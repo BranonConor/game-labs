@@ -4,14 +4,13 @@ type Pose = "idle" | "stepA" | "stepB" | "working" | "carrying";
 export type Facing = "left" | "right";
 export type AgentArt = Record<Pose, Record<Facing, THREE.CanvasTexture>>;
 
-const chassis = [
-  { main: "#69cdb2", shade: "#398b93", deep: "#436279", trim: "#e7f6c5", glow: "#c6ffed" },
-  { main: "#c29ce0", shade: "#776cae", deep: "#594c83", trim: "#ffe5a9", glow: "#e3d5ff" },
-  { main: "#eda78c", shade: "#af6885", deep: "#785375", trim: "#b9f5d4", glow: "#ffe1ba" },
-  { main: "#dfc677", shade: "#9b806c", deep: "#6b6477", trim: "#a5e9dc", glow: "#fff0a9" },
+const workers = [
+  { coat: "#79bda5", shade: "#568b8d", deep: "#426a7e", hair: "#49445e", hairLight: "#756480", skin: "#e7af8f", skinLight: "#ffd2a6", accent: "#f5e2a2" },
+  { coat: "#b29acb", shade: "#80759f", deep: "#60577f", hair: "#65516a", hairLight: "#9e7887", skin: "#c99074", skinLight: "#eab997", accent: "#f5c39b" },
+  { coat: "#d99683", shade: "#ab727d", deep: "#755d78", hair: "#34374f", hairLight: "#65647b", skin: "#aa745b", skinLight: "#d4a27d", accent: "#d5efbc" },
+  { coat: "#d9bc78", shade: "#a78673", deep: "#786b78", hair: "#a87962", hairLight: "#d2a477", skin: "#ddab85", skinLight: "#f7caa3", accent: "#a7ddd1" },
 ];
 const outline = "#2d3049";
-const reflected = "#739dab";
 
 function pixel(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, width: number, height: number) {
   ctx.fillStyle = color;
@@ -45,130 +44,106 @@ function texture(width: number, height: number, paint: (ctx: CanvasRenderingCont
 }
 
 function drawAgent(ctx: CanvasRenderingContext2D, id: number, pose: Pose, facing: Facing) {
-  const { main, shade, deep, trim, glow } = chassis[id % chassis.length];
+  const { coat, shade, deep, hair, hairLight, skin, skinLight, accent } = workers[id % workers.length];
   const step = pose === "stepA" ? -3 : pose === "stepB" ? 3 : 0;
   const working = pose === "working";
   const left = facing === "left";
-  const eyeX = left ? 19 : 31;
-  const armY = working ? 46 : 51;
+  const nearEye = left ? 24 : 36;
+  const farEye = left ? 36 : 24;
+  const nose = left ? 25 : 38;
+  const armY = working ? 44 : 50;
 
-  // Shared articulated chassis stays at the same pixel origin in every pose.
-  oval(ctx, outline, 32, 49, 18, 15);
-  oval(ctx, deep, 34, 51, 14, 12);
-  oval(ctx, shade, 29, 47, 12, 10);
-  oval(ctx, main, 27, 44, 9, 6);
-  pixel(ctx, trim, 25, 40, 9, 2);
-  pixel(ctx, outline, 26, 49, 13, 8);
-  pixel(ctx, deep, 28, 51, 9, 4);
-  pixel(ctx, glow, 29, 50, 7, 2);
-  speckle(ctx, trim, [[23, 54], [42, 45], [41, 54]]);
-
-  for (const [x, foot] of [[21 + step, 16 + step], [39 - step, 37 - step]]) {
-    pixel(ctx, outline, x, 60, 9, 11);
-    pixel(ctx, deep, x + 2, 61, 6, 8);
-    pixel(ctx, main, x + 1, 61, 4, 5);
-    pixel(ctx, outline, foot, 69, 16, 7);
-    pixel(ctx, shade, foot + 2, 71, 12, 3);
-    pixel(ctx, trim, foot + 2, 70, 5, 1);
+  for (const [legX, footX] of [[23 + step, 17 + step], [38 - step, 35 - step]]) {
+    pixel(ctx, outline, legX, 59, 9, 13);
+    pixel(ctx, deep, legX + 2, 61, 5, 9);
+    pixel(ctx, outline, footX, 70, 16, 6);
+    pixel(ctx, shade, footX + 2, 71, 11, 3);
   }
+  for (const x of [14, 47]) {
+    pixel(ctx, outline, x, armY, 7, 13);
+    pixel(ctx, shade, x + 1, armY + 1, 5, 9);
+    pixel(ctx, coat, x + 1, armY + 1, 3, 5);
+    oval(ctx, outline, x + 3, armY + 13, 5, 4);
+    oval(ctx, skin, x + 2, armY + 12, 3, 2);
+    pixel(ctx, skinLight, x + 1, armY + 11, 2, 1);
+  }
+  oval(ctx, outline, 32, 50, 18, 15);
+  oval(ctx, deep, 35, 51, 14, 12);
+  oval(ctx, shade, 30, 48, 13, 11);
+  oval(ctx, coat, 27, 45, 10, 7);
+  pixel(ctx, accent, 25, 40, 13, 3);
+  pixel(ctx, outline, 30, 44, 2, 16);
+  pixel(ctx, skinLight, 32, 44, 4, 3);
+  pixel(ctx, deep, 21, 53, 8, 5);
+  pixel(ctx, accent, 23, 54, 4, 1);
+  pixel(ctx, "#f9e9c9", 38, 55, 2, 2);
 
-  // The four silhouettes are original little machines with different profiles.
+  oval(ctx, outline, 32, 26, 20, 19);
+  oval(ctx, hair, 32, 23, 18, 17);
+  oval(ctx, skin, 32, 30, 15, 13);
+  oval(ctx, skinLight, left ? 27 : 29, 26, 10, 8);
+  oval(ctx, skin, left ? 48 : 16, 31, 4, 6);
+  pixel(ctx, skinLight, left ? 46 : 15, 29, 3, 2);
+
   switch (id % 4) {
     case 0:
-      pixel(ctx, outline, 26, 4, 4, 10);
-      pixel(ctx, reflected, 27, 5, 2, 8);
-      oval(ctx, outline, 28, 4, 5, 3);
-      oval(ctx, trim, 27, 3, 3, 2);
-      oval(ctx, outline, 32, 26, 23, 20);
-      oval(ctx, deep, 35, 27, 19, 17);
-      oval(ctx, shade, 30, 23, 19, 15);
-      oval(ctx, main, 27, 19, 14, 9);
-      pixel(ctx, trim, 17, 14, 17, 2);
-      pixel(ctx, reflected, 47, 23, 4, 10);
-      oval(ctx, outline, left ? 12 : 52, 30, 6, 9);
-      oval(ctx, shade, left ? 12 : 52, 29, 4, 6);
-      pixel(ctx, trim, left ? 9 : 50, 27, 4, 2);
-      oval(ctx, outline, eyeX + 6, 26, 13, 11);
-      oval(ctx, glow, eyeX + 4, 25, 10, 8);
-      oval(ctx, trim, eyeX + 2, 22, 5, 3);
-      oval(ctx, outline, eyeX + 6, 26, 4, working ? 1 : 5);
-      pixel(ctx, "#f5ffed", eyeX + 4, 23, 2, 2);
-      pixel(ctx, reflected, eyeX + 16, 31, 2, 3);
+      oval(ctx, hair, 28, 14, 18, 8);
+      oval(ctx, hairLight, 24, 11, 10, 4);
+      pixel(ctx, hair, left ? 14 : 36, 18, 14, 11);
+      pixel(ctx, hairLight, left ? 16 : 39, 17, 6, 2);
+      pixel(ctx, accent, 19, 45, 4, 2);
       break;
     case 1:
-      pixel(ctx, outline, 32, 3, 3, 16);
-      pixel(ctx, shade, 33, 4, 1, 11);
-      oval(ctx, outline, 32, 3, 6, 3);
-      oval(ctx, trim, 31, 2, 4, 2);
-      oval(ctx, outline, 32, 28, 23, 17);
-      oval(ctx, deep, 36, 29, 18, 14);
-      oval(ctx, shade, 30, 25, 18, 13);
-      oval(ctx, main, 28, 23, 15, 9);
-      pixel(ctx, trim, 18, 17, 13, 2);
-      oval(ctx, outline, left ? 11 : 53, 27, 6, 7);
-      oval(ctx, trim, left ? 11 : 53, 27, 3, 4);
-      pixel(ctx, outline, eyeX - 1, 20, 22, 17);
-      pixel(ctx, reflected, eyeX + 1, 22, 18, 12);
-      oval(ctx, glow, eyeX + 9, 27, 8, 6);
-      oval(ctx, outline, eyeX + 8, 28, 4, working ? 1 : 4);
-      pixel(ctx, "#fff7e0", eyeX + 5, 24, 2, 2);
-      pixel(ctx, deep, left ? 43 : 20, 30, 4, 6);
+      oval(ctx, hair, 32, 16, 18, 11);
+      oval(ctx, hairLight, 27, 13, 11, 6);
+      pixel(ctx, hair, 15, 19, 6, 15);
+      pixel(ctx, hair, 44, 18, 5, 15);
+      pixel(ctx, accent, 22, 42, 18, 4);
+      pixel(ctx, "#fff2d4", 26, 43, 6, 1);
       break;
     case 2:
-      pixel(ctx, outline, 31, 2, 5, 20);
-      pixel(ctx, main, 32, 3, 2, 15);
-      oval(ctx, outline, 35, 4, 6, 4);
-      oval(ctx, glow, 34, 3, 3, 2);
-      oval(ctx, outline, 30, 30, 22, 14);
-      oval(ctx, deep, 35, 31, 17, 11);
-      oval(ctx, shade, 27, 28, 16, 11);
-      oval(ctx, main, 26, 26, 12, 7);
-      oval(ctx, outline, left ? 10 : 53, 25, 5, 6);
-      oval(ctx, trim, left ? 10 : 53, 24, 3, 3);
-      for (const offset of [0, 7, 14]) {
-        oval(ctx, outline, eyeX + offset, 29, 4, 5);
-        oval(ctx, glow, eyeX + offset - 1, 27, 2, working ? 1 : 3);
-        pixel(ctx, "#ffffff", eyeX + offset - 1, 25, 1, 1);
-      }
-      pixel(ctx, trim, 22, 36, 13, 2);
+      oval(ctx, hair, 32, 18, 19, 14);
+      oval(ctx, hairLight, 27, 11, 11, 5);
+      pixel(ctx, hair, left ? 14 : 41, 20, 9, 14);
+      pixel(ctx, accent, 16, 18, 7, 2);
+      pixel(ctx, outline, nearEye - 3, 27, 10, 8);
+      pixel(ctx, outline, farEye - 3, 27, 9, 7);
+      pixel(ctx, skinLight, nearEye - 2, 28, 8, 5);
+      pixel(ctx, skinLight, farEye - 2, 28, 7, 4);
+      pixel(ctx, outline, Math.min(nearEye, farEye) + 6, 29, 5, 1);
       break;
     default:
-      oval(ctx, outline, 32, 25, 21, 20);
-      oval(ctx, deep, 35, 27, 17, 17);
-      oval(ctx, shade, 29, 22, 17, 15);
-      oval(ctx, main, 27, 19, 13, 10);
-      pixel(ctx, trim, 21, 13, 13, 2);
-      pixel(ctx, outline, left ? 10 : 49, 17, 6, 4);
-      pixel(ctx, trim, left ? 7 : 53, 14, 4, 4);
-      pixel(ctx, outline, left ? 46 : 12, 7, 4, 11);
-      oval(ctx, trim, left ? 48 : 14, 7, 4, 3);
-      oval(ctx, outline, eyeX + 8, 26, 13, 11);
-      oval(ctx, reflected, eyeX + 8, 25, 10, 8);
-      oval(ctx, glow, eyeX + 7, 24, 7, 5);
-      oval(ctx, outline, eyeX + 7, 26, working ? 5 : 4, working ? 1 : 4);
-      pixel(ctx, "#f9ffe8", eyeX + 4, 21, 2, 2);
+      oval(ctx, hair, 31, 15, 18, 10);
+      oval(ctx, hairLight, 28, 10, 10, 5);
+      pixel(ctx, hair, 17, 19, 7, 8);
+      pixel(ctx, outline, 14, 17, 36, 5);
+      pixel(ctx, accent, 17, 17, 29, 3);
+      pixel(ctx, hair, 23, 21, 10, 5);
+      pixel(ctx, accent, 41, 44, 5, 2);
       break;
   }
 
-  // Offset claws and a document card read clearly at the game's native scale.
-  for (const [x, direction] of [[12, -1], [49, 1]]) {
-    pixel(ctx, outline, x, armY, 5, 12);
-    pixel(ctx, deep, x + 1, armY + 1, 3, 8);
-    pixel(ctx, main, x + 1, armY, 2, 5);
-    oval(ctx, outline, x + direction, armY + 11, 5, 4);
-    pixel(ctx, trim, x + direction - 2, armY + 9, 3, 2);
+  pixel(ctx, outline, nearEye, 30, 3, working ? 1 : 3);
+  pixel(ctx, outline, farEye, 30, 2, working ? 1 : 2);
+  pixel(ctx, "#fff9e4", nearEye, 30, 1, 1);
+  pixel(ctx, shade, nose, 35, 2, 2);
+  pixel(ctx, "#bd7979", left ? 28 : 33, 38, 5, 1);
+  pixel(ctx, "#df8b91", left ? 19 : 40, 35, 3, 2);
+  speckle(ctx, skinLight, [[21, 24], [22, 24], [41, 25]]);
+
+  if (id % 4 === 2) {
+    pixel(ctx, outline, nearEye, 30, 3, 2);
+    pixel(ctx, outline, farEye, 30, 2, 2);
   }
   if (pose === "carrying") {
-    pixel(ctx, outline, left ? 3 : 51, 43, 11, 17);
-    pixel(ctx, "#fff3d5", left ? 5 : 53, 45, 7, 12);
-    pixel(ctx, shade, left ? 6 : 54, 49, 5, 1);
-    pixel(ctx, shade, left ? 6 : 54, 53, 4, 1);
-    pixel(ctx, trim, left ? 7 : 55, 43, 3, 3);
+    pixel(ctx, outline, left ? 4 : 50, 43, 11, 16);
+    pixel(ctx, "#fff2d3", left ? 6 : 52, 45, 7, 12);
+    pixel(ctx, shade, left ? 7 : 53, 49, 5, 1);
+    pixel(ctx, shade, left ? 7 : 53, 53, 4, 1);
   }
   if (working) {
-    pixel(ctx, outline, 20, 59, 23, 4);
-    pixel(ctx, glow, 23, 60, 17, 1);
-    speckle(ctx, trim, [[10, 40], [54, 38], [57, 43]]);
+    pixel(ctx, outline, 23, 60, 18, 3);
+    pixel(ctx, accent, 26, 60, 12, 1);
   }
 }
 

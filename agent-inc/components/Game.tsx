@@ -24,6 +24,7 @@ export default function Game() {
   const [storageError, setStorageError] = useState("");
   const [debug, setDebug] = useState(false);
   const [systemOpen, setSystemOpen] = useState(false);
+  const [feedOpen, setFeedOpen] = useState(false);
   const [fps, setFps] = useState(0);
   const [previewOffset, setPreviewOffset] = useState(0);
   const previewRef = useRef(0);
@@ -182,7 +183,6 @@ export default function Game() {
           <span className="brand-icon" aria-hidden="true">✦</span>
           <div>
             <div className="brand">agent<span>inc.</span></div>
-            <div className="brand-caption">a little intelligence, growing</div>
           </div>
         </div>
         <div className="top-stats">
@@ -197,12 +197,11 @@ export default function Game() {
       <div className="layout">
         <section className="world-panel" aria-label="Office simulation">
           <div className="scene-header">
-            <div><span className="online-dot" /> SYSTEM ONLINE <span className="scene-title"><span className="scene-divider">/</span> THE LITTLE OFFICE</span></div>
+            <div><span className="online-dot" /> ONLINE</div>
             <div className="scene-tools">
-              <span className="scene-subtitle">drag to pan · scroll to zoom</span>
               <button type="button" className="time-preview" onClick={previewNextLight}
                 title="Preview the next six hours of office lighting" aria-label={`Office time ${daylight.label}; preview next six hours`}>
-                <span aria-hidden="true">{daylight.sun > 1 ? "☼" : daylight.sun > 0.1 ? "◑" : "✦"}</span> {daylight.label} <span className="time-arrow">↻</span>
+                <span aria-hidden="true">{daylight.sun > 1 ? "☼" : daylight.moon > 0.2 ? "☾" : "◑"}</span> {daylight.label} <span className="time-arrow">↻</span>
               </button>
             </div>
           </div>
@@ -216,9 +215,12 @@ export default function Game() {
           <div className="scene-footer">
             <div className="scene-live"><span className="tiny-pulse" /> <span className="live-label">{simulation?.paused ? "SIMULATION PAUSED" : "SIMULATING"}</span><span className="live-count"> <span className="footer-sep">·</span> {active} processing <span className="footer-sep">·</span> {queued} in queue</span></div>
             <div className="scene-controls">
-              <button type="button" onClick={togglePause} aria-label={simulation?.paused ? "Resume simulation" : "Pause simulation"}>{simulation?.paused ? "▶ RESUME" : "Ⅱ PAUSE"}</button>
-              <button type="button" onClick={toggleSpeed} aria-label={`Set simulation to ${simulation?.speed === 1 ? "double" : "normal"} speed`}>{simulation?.speed ?? 1}× SPEED</button>
-              <button type="button" onClick={() => setDebug(!debug)} aria-expanded={debug}>{debug ? "HIDE" : "SHOW"} DEBUG</button>
+              <button type="button" onClick={togglePause} title={simulation?.paused ? "Resume simulation" : "Pause simulation"}
+                aria-label={simulation?.paused ? "Resume simulation" : "Pause simulation"}>{simulation?.paused ? "▶" : "Ⅱ"}</button>
+              <button type="button" onClick={toggleSpeed} title="Toggle simulation speed"
+                aria-label={`Set simulation to ${simulation?.speed === 1 ? "double" : "normal"} speed`}>{simulation?.speed ?? 1}×</button>
+              <button type="button" onClick={() => setDebug(!debug)} title="Toggle debug metrics"
+                aria-label={debug ? "Hide debug metrics" : "Show debug metrics"} aria-expanded={debug}>⋯</button>
             </div>
           </div>
         </section>
@@ -263,9 +265,13 @@ export default function Game() {
         </aside>
       </div>
 
-      <section className="feed-panel" aria-label="Request feed">
-        <div className="feed-top"><div><span className="feed-glyph">◈</span> INCOMING SIGNALS <span className="feed-count">{queued + active} LIVE</span></div><span className="feed-caption">human requests · simulated locally</span></div>
-        <div className="feed-list" aria-live="off">
+      <section className={`feed-panel ${feedOpen ? "feed-open" : ""}`} aria-label="Request feed">
+        <button type="button" className="feed-top" onClick={() => setFeedOpen((open) => !open)}
+          aria-expanded={feedOpen} aria-controls="signal-list">
+          <span><span className="feed-glyph">◈</span> SIGNALS <span className="feed-count">{queued + active} LIVE</span></span>
+          <span className="feed-chevron" aria-hidden="true">{feedOpen ? "⌄" : "⌃"}</span>
+        </button>
+        <div id="signal-list" className="feed-list" aria-live="off">
           {feed.length === 0 && <div className="feed-empty"><span>◌</span> Listening for the first hello…</div>}
           {feed.map((request) => (
             <div className={`feed-item feed-${request.status}`} key={request.id}>

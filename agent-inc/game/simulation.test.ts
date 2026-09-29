@@ -96,6 +96,8 @@ test("cosmetic daylight is deterministic, cyclical, and independent of the simul
   const night = sampleDaylight(0, 0.5);
   assert.ok(morning.sun > night.sun);
   assert.ok(night.lamp > morning.lamp);
+  assert.ok(night.moon > 0 && night.moon < morning.sun);
+  assert.equal(sampleDaylight(DAY_LENGTH_SECONDS * 0.15).moon, 0);
   assert.equal(sampleDaylight(0, 0.25).label, "14:24");
   const sim = new Simulation();
   const before = sim.save(1000);

@@ -16,8 +16,12 @@ const palette = {
   cream: 0xffebcc,
   lavender: 0xbba6eb,
 };
-const billboardYaw = Math.atan2(12, 20);
+const cutoutYaw = 0.14;
 const coreDisplay = { x: -3.8, z: -2.2 };
+const moonColor = new THREE.Color(0xa9c9ff);
+const moonAmbient = new THREE.Color(0xb8cbea);
+const moonBounce = new THREE.Color(0xb4ccf4);
+const warmAmbient = new THREE.Color(0xffdac1);
 
 function material(color: number, emissive = 0, intensity = 0) {
   return new THREE.MeshStandardMaterial({
@@ -50,7 +54,7 @@ function cutout(
     }),
   );
   mesh.position.set(x, y, z);
-  mesh.rotation.y = billboardYaw;
+  mesh.rotation.y = cutoutYaw;
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
@@ -96,23 +100,23 @@ function desk(scene: THREE.Object3D, x: number, z: number, index: number, track:
 
 function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt) {
   const group = new THREE.Group();
-  const backing = cutout(group, frames.idle.right, 0.045, 0.88, -0.085, 1.26, 1.76);
+  const backing = cutout(group, frames.idle.left, 0.045, 0.88, -0.085, 1.26, 1.76);
   (backing.material as THREE.MeshStandardMaterial).color.setHex(0x766577);
   (backing.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
   backing.castShadow = false;
   backing.receiveShadow = false;
-  const figure = cutout(group, frames.idle.right, 0, 0.87, 0, 1.22, 1.73);
+  const figure = cutout(group, frames.idle.left, 0, 0.87, 0, 1.22, 1.73);
   (figure.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
   backing.rotation.y = 0;
   figure.rotation.y = 0;
-  group.rotation.y = billboardYaw;
+  group.rotation.y = cutoutYaw;
   const shadow = new THREE.Mesh(
     new THREE.PlaneGeometry(0.9, 0.67),
     new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false, opacity: 0.66, toneMapped: false }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.renderOrder = 3;
-  return { group, backing, figure, frames, facing: "right" as Facing, shadow };
+  return { group, backing, figure, frames, facing: "left" as Facing, shadow };
 }
 
 export type World = {
@@ -448,12 +452,20 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   return {
     render(elapsed: number, previewOffset: number) {
       const light = sampleDaylight(simulation.time, previewOffset);
-      sunlight.color.setHex(light.sunColor);
-      sunlight.intensity = light.sun;
-      sunlight.position.set(light.sunX, light.sunY, -9);
-      ambient.color.setHex(light.skyColor).lerp(new THREE.Color(0xffdac1), light.lamp * 0.33);
+      const direct = light.sun + light.moon;
+      const moonShare = direct > 0 ? light.moon / direct : 0;
+      const moonStrength = light.moon / 0.62;
+      sunlight.color.setHex(light.sunColor).lerp(moonColor, moonShare);
+      sunlight.intensity = direct;
+      sunlight.position.set(
+        THREE.MathUtils.lerp(light.sunX, -3.4, moonShare),
+        THREE.MathUtils.lerp(light.sunY, 6.6, moonShare), -9,
+      );
+      ambient.color.setHex(light.skyColor)
+        .lerp(moonAmbient, moonStrength * 0.45)
+        .lerp(warmAmbient, light.lamp * (0.26 - moonStrength * 0.16));
       ambient.intensity = light.ambient;
-      skyBounce.color.setHex(light.bounceColor);
+      skyBounce.color.setHex(light.bounceColor).lerp(moonBounce, moonStrength * 0.55);
       skyBounce.groundColor.setHex(0xb47976);
       skyBounce.intensity = light.ambient * 0.95;
       const daylightShadow = Math.min(1, light.sun / 3.2);
@@ -469,8 +481,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       skyMaterial.uniforms.uTime.value = reducedMotion ? 0 : simulation.time;
       (skyMaterial.uniforms.uSun.value as THREE.Vector3).copy(sunlight.position).normalize();
       for (const { x, shaft, pool } of beams) {
-        const fall = 1.58 / (light.sunY - 1.4);
-        const endX = x + (x - light.sunX) * fall;
+        const fall = 1.58 / (sunlight.position.y - 1.4);
+        const endX = x + (x - sunlight.position.x) * fall;
         const endZ = -3.77 + 5.23 * fall;
         const vertices = (shaft.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
         vertices.set([
@@ -479,10 +491,10 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         ]);
         shaft.geometry.attributes.position.needsUpdate = true;
         shaft.geometry.computeBoundingSphere();
-        (shaft.material as THREE.MeshBasicMaterial).color.setHex(light.sunColor);
-        (shaft.material as THREE.MeshBasicMaterial).opacity = light.sun / 3.2 * 0.13;
-        (pool.material as THREE.MeshBasicMaterial).color.setHex(light.sunColor);
-        (pool.material as THREE.MeshBasicMaterial).opacity = light.sun / 3.2 * 0.22;
+        (shaft.material as THREE.MeshBasicMaterial).color.copy(sunlight.color);
+        (shaft.material as THREE.MeshBasicMaterial).opacity = light.sun / 3.2 * 0.13 + moonStrength * 0.035;
+        (pool.material as THREE.MeshBasicMaterial).color.copy(sunlight.color);
+        (pool.material as THREE.MeshBasicMaterial).opacity = light.sun / 3.2 * 0.22 + moonStrength * 0.12;
         pool.position.set(endX, 0.067, endZ);
       }
       while (agentMeshes.length < simulation.agents.length) {

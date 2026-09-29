@@ -38,9 +38,12 @@ four simulated minutes; pause and speed affect the clock as they affect work.
 The office uses one Three.js WebGL scene and a fixed, front-facing orthographic
 camera elevated enough to show the floor and room depth. Its sky
 and subtle grain are a shader on a sky dome **in the same scene**, visible
-through actual openings in the back wall. A moving directional sun and shadow
+through actual openings in the back wall, with original painted garden
+silhouettes in the lower window panes. The expanded office has a procedurally
+grained wood floor, raised window frames, wall trim, and practical sconces.
+A moving directional sun and shadow
 map cast geometry-aware shadows through the window frames; hemisphere bounce,
-desk/core lights, soft contact shadows, and translucent shafts/pools convey
+desk/core/sconce lights, soft contact shadows, and translucent shafts/pools convey
 morning, afternoon, dusk, and night. Shafts and pools approximate illuminated
 air and floor highlights; they are not physically accurate volumetric
 occlusion or indirect lighting. At night a weaker cool directional moonlight
@@ -51,14 +54,16 @@ canvas-drawn pixel art on lit, alpha-cutout planes parallel to the back wall.
 Changes in travel direction swap left/right illustrated views inside the
 unchanging planes instead of rotating or mirroring their meshes. The two rows
 of processing stations are staggered so agents remain visible while working.
-Distinct human-like workers with unique hair/clothes, poses, shallow backing layers,
-ground contact shadows, and directional silhouettes give the characters depth
-without modeling them as 3D people. The original 64×80 agent frames and small prop textures use
-hand-placed pixel clusters, stepped curves, selective dark contours, and
-short color ramps instead of smooth vector gradients or block-only shapes.
+Distinct human-like workers with unique hair/clothes, poses, shallow backing
+layers, ground contact shadows, and directional silhouettes give the characters
+depth without modeling them as 3D people. Their original 32×40 frames use
+coarse stepped silhouettes and short color ramps; the matching 48×64 AI core
+has a wood-and-metal cabinet instead of an oversized luminous screen. Desk
+and other prop textures retain their finer hand-placed pixel clusters.
 This takes inspiration from the *fidelity and technique* of handheld-era
 pixel sprites, not any existing character designs or assets. Nearest-neighbor
-textures preserve their edges; modest emissive fill keeps faces readable when
+filtering preserves sprite edges, while the floor uses smoother texture filtering.
+Modest emissive fill keeps faces readable when
 backlit. This cutout system lives in `game/sprite-art.ts` and does not drive
 simulation state. No external texture assets or network-fetched fonts are
 required.

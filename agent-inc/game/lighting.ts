@@ -19,13 +19,13 @@ export type Daylight = {
 type Keyframe = { time: number; sun: number; ambient: number; lamp: number; warmth: number; sunColor: number; skyColor: number; bounceColor: number };
 
 const keys: Keyframe[] = [
-  { time: 0, sun: 0, ambient: 0.72, lamp: 1.4, warmth: 0.12, sunColor: 0x9ba5d4, skyColor: 0x302b57, bounceColor: 0x7474aa },
-  { time: 0.19, sun: 0.08, ambient: 0.78, lamp: 1.1, warmth: 0.48, sunColor: 0xff9176, skyColor: 0xb96e82, bounceColor: 0xc97e9c },
-  { time: 0.32, sun: 2.65, ambient: 1.05, lamp: 0.5, warmth: 0.85, sunColor: 0xffbe82, skyColor: 0x7eaabc, bounceColor: 0x90b9bb },
-  { time: 0.5, sun: 3.2, ambient: 1.25, lamp: 0.25, warmth: 0.62, sunColor: 0xffebc0, skyColor: 0x8ec6cd, bounceColor: 0xa5c9b5 },
-  { time: 0.67, sun: 2.5, ambient: 0.97, lamp: 0.65, warmth: 1, sunColor: 0xffa474, skyColor: 0xbe82a5, bounceColor: 0xb99db5 },
-  { time: 0.79, sun: 0.09, ambient: 0.75, lamp: 1.35, warmth: 0.7, sunColor: 0xf47b83, skyColor: 0x564474, bounceColor: 0x867ea9 },
-  { time: 1, sun: 0, ambient: 0.72, lamp: 1.4, warmth: 0.12, sunColor: 0x9ba5d4, skyColor: 0x302b57, bounceColor: 0x7474aa },
+  { time: 0, sun: 0, ambient: 0.78, lamp: 1.5, warmth: 0.35, sunColor: 0x9ba5d4, skyColor: 0x423053, bounceColor: 0xa0788d },
+  { time: 0.19, sun: 0.08, ambient: 0.82, lamp: 1.2, warmth: 0.55, sunColor: 0xff916a, skyColor: 0xbd7183, bounceColor: 0xd5968d },
+  { time: 0.32, sun: 2.65, ambient: 1.1, lamp: 0.55, warmth: 0.9, sunColor: 0xffb46f, skyColor: 0x85bfc0, bounceColor: 0xc7b29a },
+  { time: 0.5, sun: 3.2, ambient: 1.25, lamp: 0.25, warmth: 0.72, sunColor: 0xffd39a, skyColor: 0x93cdd0, bounceColor: 0xd5c1a0 },
+  { time: 0.67, sun: 2.5, ambient: 1.02, lamp: 0.72, warmth: 1, sunColor: 0xffa267, skyColor: 0xd28d99, bounceColor: 0xd7a08b },
+  { time: 0.79, sun: 0.09, ambient: 0.8, lamp: 1.4, warmth: 0.8, sunColor: 0xf47b83, skyColor: 0x664167, bounceColor: 0xa47888 },
+  { time: 1, sun: 0, ambient: 0.78, lamp: 1.5, warmth: 0.35, sunColor: 0x9ba5d4, skyColor: 0x423053, bounceColor: 0xa0788d },
 ];
 
 function blendColor(a: number, b: number, mix: number): number {

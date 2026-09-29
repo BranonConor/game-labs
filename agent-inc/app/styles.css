@@ -27,12 +27,19 @@ button:focus-visible { outline: 3px solid #638c8e; outline-offset: 3px; }
 .world-panel { min-width: 0; overflow: hidden; background: #fffaf0; border: 1px solid #d9c9b5; border-radius: 13px; box-shadow: 0 4px 0 #e3d7c9, 0 10px 28px #7a556e0d; }
 .scene-header, .scene-footer { height: 45px; padding: 0 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff9ed; }
 .scene-header { border-bottom: 1px solid #e8dac9; font: 700 10px var(--mono); letter-spacing: .07em; }
+.scene-tools { display: flex; align-items: center; gap: 14px; }
 .scene-subtitle { font: 500 11px var(--sans); color: #a397a0; letter-spacing: 0; }
+.time-preview { min-width: 84px; border: 1px solid #e0c7ad; border-radius: 5px; padding: 5px 8px; background: #fff3df; color: #906782; font: 700 10px var(--mono); white-space: nowrap; }
+.time-preview:hover { background: #fce4d3; }
+.time-preview span:first-child { font-size: 14px; color: #ce8863; }
+.time-preview .time-arrow { margin-left: 4px; color: #b2a2a3; }
 .scene-divider { margin: 0 8px; color: #c5b5b6; }
 .online-dot, .tiny-pulse { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #59bd9b; box-shadow: 0 0 0 3px #73d4aa33; }
-.world-host { position: relative; height: clamp(430px, 49vw, 670px); min-height: 430px; overflow: hidden; background: radial-gradient(circle at 50% 35%, #555773, #292c48); }
+.world-host { position: relative; height: clamp(430px, 49vw, 670px); min-height: 430px; overflow: hidden; background: radial-gradient(circle at 50% 35%, #728d97, #393a61 75%, #302d50); }
 .world-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; touch-action: none; cursor: grab; }
 .world-canvas:active { cursor: grabbing; }
+.world-host.context-lost::after { content: "LIGHTING TEMPORARILY UNAVAILABLE · RESTORING THE OFFICE…"; position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: #fff1db; background: #2b2947e8; font: 700 12px var(--mono); pointer-events: none; }
+.world-host.static-fallback::after { content: "3D UNAVAILABLE · REQUESTS AND UPGRADES CONTINUE BELOW"; position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: #fff1db; background: radial-gradient(circle at 50% 42%, #586e79, #302d50); font: 700 13px var(--mono); pointer-events: none; }
 .boot-message { position: absolute; top: 50%; width: 100%; text-align: center; color: #d0e9d4; font: 700 13px var(--mono); }
 .world-callout { position: absolute; left: 18px; bottom: 17px; max-width: min(430px, 85%); display: flex; gap: 12px; align-items: center; padding: 10px 14px; color: #f5e9d6; font-size: 12px; font-weight: 600; background: #34314cdd; border: 1px solid #c6b1a26b; border-radius: 8px; pointer-events: none; box-shadow: 0 4px 14px #18132536; }
 .callout-star { font-size: 20px; color: #b6efc8; }
@@ -127,8 +134,9 @@ button:focus-visible { outline: 3px solid #638c8e; outline-offset: 3px; }
   .stat-label { font-size: 8px; }
   .world-host { height: 390px; min-height: 0; }
   .scene-subtitle { display: none; }
+  .scene-title { display: none; }
   .scene-footer { padding: 0 8px; }
-  .scene-live { font-size: 9px; }
+  .scene-live { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .scene-controls button { padding: 5px; font-size: 9px; }
   .upgrade-list, .feed-list { grid-template-columns: 1fr; }
   .feed-item:nth-child(odd) { border-right: 0; }

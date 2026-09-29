@@ -7,6 +7,7 @@ import {
 } from "../game/simulation";
 import type { OfflineReport, Request } from "../game/simulation";
 import { createWorld } from "../game/world";
+import { sampleDaylight } from "../game/lighting";
 
 function requestSymbol(request: Request) {
   if (request.status === "complete") return "✓";
@@ -23,6 +24,8 @@ export default function Game() {
   const [storageError, setStorageError] = useState("");
   const [debug, setDebug] = useState(false);
   const [fps, setFps] = useState(0);
+  const [previewOffset, setPreviewOffset] = useState(0);
+  const previewRef = useRef(0);
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,12 +47,12 @@ export default function Game() {
 
   useEffect(() => {
     if (!simulation || !host.current) return;
-    let world: ReturnType<typeof createWorld>;
+    let world: ReturnType<typeof createWorld> | null = null;
     try {
       world = createWorld(host.current, simulation);
     } catch (error) {
-      setStorageError(`The 3D office could not start: ${error instanceof Error ? error.message : String(error)}`);
-      return;
+      host.current.classList.add("static-fallback");
+      setStorageError(`The 3D office could not start; requests and upgrades still run. ${error instanceof Error ? error.message : String(error)}`);
     }
     let raf = 0;
     let last = performance.now();
@@ -91,7 +94,7 @@ export default function Game() {
           simulation.update(1 / 30);
           accumulator -= 1 / 30;
         }
-        world.render(now / 1000);
+        world?.render(now / 1000, previewRef.current);
         frames++;
         if (now - fpsStart > 1000) {
           setFps(Math.round(frames * 1000 / (now - fpsStart)));
@@ -123,7 +126,8 @@ export default function Game() {
       save();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("pagehide", save);
-      world.dispose();
+      world?.dispose();
+      host.current?.classList.remove("static-fallback");
     };
   }, [simulation]);
 
@@ -151,6 +155,10 @@ export default function Game() {
     simulation.speed = simulation.speed === 1 ? 2 : 1;
     setRevision((value) => value + 1);
   };
+  const previewNextLight = () => {
+    previewRef.current = (previewRef.current + 0.25) % 1;
+    setPreviewOffset(previewRef.current);
+  };
 
   // React receives coarse snapshots; agent positions are read directly by Three.js.
   void revision;
@@ -164,6 +172,7 @@ export default function Game() {
       ].slice(0, 7)
     : [];
   const contextAvailable = (progress?.capacity ?? 0) >= 2;
+  const daylight = sampleDaylight(simulation?.time ?? 0, previewOffset);
 
   return (
     <main className="shell">
@@ -185,8 +194,14 @@ export default function Game() {
       <div className="layout">
         <section className="world-panel" aria-label="Office simulation">
           <div className="scene-header">
-            <div><span className="online-dot" /> SYSTEM ONLINE <span className="scene-divider">/</span> THE LITTLE OFFICE</div>
-            <span className="scene-subtitle">drag to look around · scroll to zoom</span>
+            <div><span className="online-dot" /> SYSTEM ONLINE <span className="scene-title"><span className="scene-divider">/</span> THE LITTLE OFFICE</span></div>
+            <div className="scene-tools">
+              <span className="scene-subtitle">drag to look around · scroll to zoom</span>
+              <button type="button" className="time-preview" onClick={previewNextLight}
+                title="Preview the next six hours of office lighting" aria-label={`Office time ${daylight.label}; preview next six hours`}>
+                <span aria-hidden="true">{daylight.sun > 1 ? "☼" : daylight.sun > 0.1 ? "◑" : "✦"}</span> {daylight.label} <span className="time-arrow">↻</span>
+              </button>
+            </div>
           </div>
           <div ref={host} className="world-host">
             {!simulation && <div className="boot-message">WAKING UP THE OFFICE…</div>}

@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import type { Agent, Simulation } from "./simulation";
+import { sampleDaylight } from "./lighting";
 
 const palette = {
-  floor: 0xe7d9ba,
-  floorAlt: 0xe1d1b2,
-  edge: 0x8a7280,
-  wall: 0xb7a9b6,
-  wallTop: 0xe8d9ce,
-  wood: 0x907a80,
+  floor: 0xe9d6ae,
+  floorAlt: 0xdfc9a3,
+  edge: 0x75677f,
+  wall: 0x9989a6,
+  wallTop: 0xf2caaa,
+  wood: 0x856979,
   cream: 0xffebcc,
   ink: 0x302d49,
   mint: 0x77dfc6,
@@ -79,10 +80,12 @@ function desk(scene: THREE.Object3D, x: number, z: number, index: number) {
     index % 2 ? palette.lavender : palette.mint, 0.3);
   block(scene, x, 0.62, z - 0.34, 0.62, 0.04, 0.19, palette.cream);
   block(scene, x + 0.5, 0.65, z - 0.55, 0.16, 0.13, 0.16, palette.peach);
+  block(scene, x + 0.47, 0.87, z - 0.65, 0.06, 0.35, 0.06, palette.edge);
+  block(scene, x + 0.47, 1.06, z - 0.65, 0.21, 0.12, 0.21, palette.cream, 0xffb986, 0.8);
   block(scene, x, 0.13, z + 0.49, 0.7, 0.17, 0.65, palette.edge);
 }
 
-function createAgent(id: number) {
+function createAgent(id: number, shadowTexture: THREE.Texture) {
   const group = new THREE.Group();
   const colors = [palette.mint, palette.lavender, palette.peach, 0xf0d17b];
   const coat = colors[id % colors.length];
@@ -101,28 +104,98 @@ function createAgent(id: number) {
   ];
   const packet = block(group, 0.4, 0.66, 0.32, 0.24, 0.3, 0.09, palette.cream);
   packet.visible = false;
-  return { group, legs, packet };
+  const shadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.9, 0.67),
+    new THREE.MeshBasicMaterial({ map: shadowTexture, transparent: true, depthWrite: false, opacity: 0.66, toneMapped: false }),
+  );
+  shadow.rotation.x = -Math.PI / 2;
+  shadow.renderOrder = 3;
+  return { group, legs, packet, shadow };
 }
 
-export type World = { render: (elapsed: number) => void; dispose: () => void };
+export type World = {
+  render: (elapsed: number, previewOffset: number) => void;
+  dispose: () => void;
+};
 
 export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x2e2d48);
   const camera = new THREE.OrthographicCamera(-7.3, 7.3, 5.5, -5.5, 0.1, 100);
   camera.position.set(12, 15, 20);
   camera.lookAt(0, 0.3, 0);
-  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "low-power" });
+  const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "low-power" });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.35;
+  renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.domElement.className = "world-canvas";
   renderer.domElement.setAttribute("aria-label", "Isometric view of the little AI office");
   renderer.domElement.setAttribute("role", "img");
   host.appendChild(renderer.domElement);
-  scene.add(new THREE.AmbientLight(0xf6e8d9, 2.2));
-  const sunlight = new THREE.DirectionalLight(0xffebce, 3.2);
-  sunlight.position.set(1, 11, 7);
+  let contextLost = false;
+  const onContextLost = (event: Event) => {
+    event.preventDefault();
+    contextLost = true;
+    host.classList.add("context-lost");
+  };
+  const onContextRestored = () => {
+    contextLost = false;
+    host.classList.remove("context-lost");
+  };
+  renderer.domElement.addEventListener("webglcontextlost", onContextLost);
+  renderer.domElement.addEventListener("webglcontextrestored", onContextRestored);
+  const skyMaterial = new THREE.ShaderMaterial({
+    depthWrite: false,
+    side: THREE.BackSide,
+    toneMapped: false,
+    uniforms: {
+      uDay: { value: 0.7 },
+      uWarm: { value: 0.8 },
+      uTime: { value: 0 },
+      uSun: { value: new THREE.Vector3(1, 1, -1) },
+    },
+    vertexShader: `
+      varying vec3 vDirection;
+      void main() {
+        vDirection = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec3 vDirection;
+      uniform float uDay;
+      uniform float uWarm;
+      uniform float uTime;
+      uniform vec3 uSun;
+      float hash(vec3 p) {
+        return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453);
+      }
+      void main() {
+        vec3 direction = normalize(vDirection);
+        float horizon = smoothstep(-0.48, 0.65, direction.y);
+        vec3 upper = mix(vec3(0.075, 0.07, 0.19), vec3(0.22, 0.49, 0.57), uDay);
+        vec3 lower = mix(vec3(0.22, 0.14, 0.28), vec3(0.71, 0.53, 0.52), uDay);
+        vec3 color = mix(lower, upper, horizon);
+        float corona = pow(max(dot(direction, normalize(uSun)), 0.0), 16.0);
+        color += corona * mix(vec3(0.12, 0.15, 0.22), vec3(0.65, 0.41, 0.24), uDay) * (0.5 + uWarm * 0.5);
+        vec3 cell = floor(direction * 180.0);
+        float star = step(0.999, hash(cell)) * pow(1.0 - uDay, 3.0) * 0.2;
+        color += vec3(star);
+        float dust = (hash(floor(direction * 380.0 + uTime * 0.14)) - 0.5) * 0.018;
+        gl_FragColor = vec4(clamp(color + dust, 0.0, 1.0), 1.0);
+      }
+    `,
+  });
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(45, 24, 14), skyMaterial);
+  sky.renderOrder = -1;
+  scene.add(sky);
+  const ambient = new THREE.AmbientLight(0xe7d5dc, 0.75);
+  const skyBounce = new THREE.HemisphereLight(0xb6c9ce, 0x966c80, 0.9);
+  scene.add(ambient, skyBounce);
+  const sunlight = new THREE.DirectionalLight(0xffd9a2, 2.4);
+  sunlight.position.set(2, 9, -9);
   sunlight.castShadow = true;
   sunlight.shadow.mapSize.set(1024, 1024);
   sunlight.shadow.camera.left = -9;
@@ -130,7 +203,15 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   sunlight.shadow.camera.top = 9;
   sunlight.shadow.camera.bottom = -9;
   sunlight.shadow.bias = -0.001;
+  sunlight.shadow.normalBias = 0.025;
   scene.add(sunlight);
+  const coreGlow = new THREE.PointLight(0x8af6d8, 1.5, 5, 2);
+  coreGlow.position.set(-2.9, 1.9, -1.25);
+  const terminalGlow = new THREE.PointLight(0xffb8a7, 0.65, 3, 2);
+  terminalGlow.position.set(3.45, 1.5, 1.75);
+  const deskGlow = new THREE.PointLight(0xffb488, 1.1, 7, 2);
+  deskGlow.position.set(0.3, 2.4, 0.55);
+  scene.add(coreGlow, terminalGlow, deskGlow);
 
   block(scene, 0, -0.3, 0, 10.5, 0.55, 7.9, palette.edge);
   for (let x = -5; x < 5; x++) {
@@ -139,15 +220,28 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         (x + z) % 2 ? palette.floor : palette.floorAlt);
     }
   }
-  block(scene, 0, 1.04, -3.9, 10.5, 2, 0.2, palette.wall);
+  // Real openings let the exterior WebGPU sky show through. Three's sun and
+  // shadow map alone decide which parts of the interior receive direct light.
+  block(scene, 0, 0.47, -3.9, 10.5, 0.94, 0.2, palette.wall);
+  block(scene, 0, 2.01, -3.9, 10.5, 0.31, 0.2, palette.wall);
+  for (const [from, to] of [[-5.25, -4.12], [-2.68, -0.72], [0.72, 2.68], [4.12, 5.25]]) {
+    block(scene, (from + to) / 2, 1.4, -3.9, to - from, 0.94, 0.2, palette.wall);
+  }
   block(scene, -5.15, 1.04, 0, 0.2, 2, 7.9, palette.wall);
   block(scene, 0, 2.13, -3.9, 10.5, 0.19, 0.3, palette.wallTop);
   block(scene, -5.15, 2.13, 0, 0.3, 0.19, 7.9, palette.wallTop);
   for (const x of [-3.4, 0, 3.4]) {
-    block(scene, x, 1.39, -3.74, 1.43, 0.97, 0.04, palette.cream);
-    block(scene, x, 1.39, -3.7, 1.18, 0.73, 0.05, 0x83babb, 0x83babb, 0.12);
-    block(scene, x, 1.39, -3.64, 0.07, 0.8, 0.06, palette.wallTop);
-    block(scene, x, 1.39, -3.64, 1.25, 0.07, 0.06, palette.wallTop);
+    const glass = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.33, 0.82),
+      new THREE.MeshBasicMaterial({ color: 0xaadfe2, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    glass.position.set(x, 1.4, -3.88);
+    scene.add(glass);
+    block(scene, x, 0.94, -3.69, 1.55, 0.11, 0.36, palette.cream);
+    block(scene, x, 1.87, -3.77, 1.52, 0.11, 0.22, palette.cream).castShadow = true;
+    for (const offset of [-0.72, 0, 0.72]) {
+      block(scene, x + offset, 1.4, -3.77, 0.08, 0.93, 0.15, palette.cream);
+    }
   }
   for (let z = -2; z <= 2; z += 2) {
     block(scene, -4.98, 0.93, z, 0.07, 0.73, 0.84, palette.ink);
@@ -175,9 +269,21 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   scene.add(coreLabel);
 
   terminal(scene);
+  const shadowCanvas = document.createElement("canvas");
+  shadowCanvas.width = 64;
+  shadowCanvas.height = 64;
+  const shadowContext = shadowCanvas.getContext("2d");
+  if (!shadowContext) throw new Error("Canvas 2D is required for contact shadows.");
+  const shadowGradient = shadowContext.createRadialGradient(32, 32, 3, 32, 32, 31);
+  shadowGradient.addColorStop(0, "#292335aa");
+  shadowGradient.addColorStop(0.55, "#29233566");
+  shadowGradient.addColorStop(1, "#29233500");
+  shadowContext.fillStyle = shadowGradient;
+  shadowContext.fillRect(0, 0, 64, 64);
+  const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
   const agentMeshes = simulation.agents.map((agent) => {
-    const model = createAgent(agent.id);
-    scene.add(model.group);
+    const model = createAgent(agent.id, shadowTexture);
+    scene.add(model.group, model.shadow);
     return model;
   });
   const contextRoom = new THREE.Group();
@@ -230,6 +336,42 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       -1.58 + Math.floor(i / 3) * 0.31, 0.08, 0.08, 0.08, palette.cream, palette.cream, 0.8);
     specks.push(speck);
   }
+  const beamTextureCanvas = document.createElement("canvas");
+  beamTextureCanvas.width = 64;
+  beamTextureCanvas.height = 64;
+  const context = beamTextureCanvas.getContext("2d");
+  if (!context) throw new Error("Canvas 2D is required for sunlight pools.");
+  const gradient = context.createRadialGradient(32, 32, 4, 32, 32, 32);
+  gradient.addColorStop(0, "#ffffffbb");
+  gradient.addColorStop(0.7, "#ffffff77");
+  gradient.addColorStop(1, "#ffffff00");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, 64, 64);
+  const beamTexture = new THREE.CanvasTexture(beamTextureCanvas);
+  beamTexture.minFilter = THREE.LinearFilter;
+  const beams = [-3.4, 0, 3.4].map((x) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(12), 3));
+    geometry.setIndex([0, 1, 2, 1, 3, 2]);
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffc990, transparent: true, opacity: 0, depthWrite: false,
+      side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    });
+    const shaft = new THREE.Mesh(geometry, material);
+    shaft.renderOrder = 2;
+    scene.add(shaft);
+    const pool = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.8, 1.9),
+      new THREE.MeshBasicMaterial({
+        map: beamTexture, transparent: true, opacity: 0, depthWrite: false,
+        color: 0xffd6ad, blending: THREE.AdditiveBlending,
+      }),
+    );
+    pool.rotation.x = -Math.PI / 2;
+    pool.renderOrder = 2;
+    scene.add(pool);
+    return { x, shaft, pool };
+  });
 
   let zoom = 1;
   let panX = 0;
@@ -267,7 +409,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const resize = () => {
     const width = Math.max(1, host.clientWidth);
     const height = Math.max(1, host.clientHeight);
-    renderer.setSize(Math.ceil(width * 0.72), Math.ceil(height * 0.72), false);
+    renderer.setSize(Math.ceil(width * (width < 700 ? 0.68 : 0.8)), Math.ceil(height * (width < 700 ? 0.68 : 0.8)), false);
     const aspect = width / height;
     const span = 6.1;
     camera.left = -span * aspect;
@@ -279,18 +421,53 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const observer = new ResizeObserver(resize);
   observer.observe(host);
   resize();
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   return {
-    render(elapsed: number) {
+    render(elapsed: number, previewOffset: number) {
+      const light = sampleDaylight(simulation.time, previewOffset);
+      sunlight.color.setHex(light.sunColor);
+      sunlight.intensity = light.sun;
+      sunlight.position.set(light.sunX, light.sunY, -9);
+      ambient.color.setHex(light.skyColor).lerp(new THREE.Color(0xffdac1), light.lamp * 0.33);
+      ambient.intensity = light.ambient;
+      skyBounce.color.setHex(light.bounceColor);
+      skyBounce.groundColor.setHex(0xb47976);
+      skyBounce.intensity = light.ambient * 0.95;
+      coreGlow.intensity = 0.85 + light.lamp * 0.7;
+      terminalGlow.intensity = light.lamp * 0.5;
+      deskGlow.intensity = 0.3 + light.lamp * 1.8;
+      renderer.toneMappingExposure = 1.32 + light.lamp * 0.12;
+      skyMaterial.uniforms.uDay.value = Math.min(1, light.sun / 3.2);
+      skyMaterial.uniforms.uWarm.value = light.warmth;
+      skyMaterial.uniforms.uTime.value = reducedMotion ? 0 : simulation.time;
+      (skyMaterial.uniforms.uSun.value as THREE.Vector3).copy(sunlight.position).normalize();
+      for (const { x, shaft, pool } of beams) {
+        const fall = 1.58 / (light.sunY - 1.4);
+        const endX = x + (x - light.sunX) * fall;
+        const endZ = -3.77 + 5.23 * fall;
+        const vertices = (shaft.geometry.attributes.position as THREE.BufferAttribute).array as Float32Array;
+        vertices.set([
+          x - 0.62, 1.78, -3.7, x + 0.62, 1.78, -3.7,
+          endX - 0.75, 0.08, endZ, endX + 0.75, 0.08, endZ,
+        ]);
+        shaft.geometry.attributes.position.needsUpdate = true;
+        shaft.geometry.computeBoundingSphere();
+        (shaft.material as THREE.MeshBasicMaterial).color.setHex(light.sunColor);
+        (shaft.material as THREE.MeshBasicMaterial).opacity = light.sun / 3.2 * 0.13;
+        (pool.material as THREE.MeshBasicMaterial).color.setHex(light.sunColor);
+        (pool.material as THREE.MeshBasicMaterial).opacity = light.sun / 3.2 * 0.22;
+        pool.position.set(endX, 0.067, endZ);
+      }
       while (agentMeshes.length < simulation.agents.length) {
-        const model = createAgent(agentMeshes.length);
-        scene.add(model.group);
+        const model = createAgent(agentMeshes.length, shadowTexture);
+        scene.add(model.group, model.shadow);
         agentMeshes.push(model);
       }
       const busy = simulation.agents.some((a) => a.state !== "idle");
-      (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + Math.sin(elapsed * 3) * 0.15;
-      core.rotation.y = elapsed * 0.25;
-      coreCap.position.y = 2.24 + Math.sin(elapsed * 2.5) * 0.035;
+      (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + (reducedMotion ? 0 : Math.sin(elapsed * 3) * 0.15);
+      core.rotation.y = reducedMotion ? 0 : elapsed * 0.25;
+      coreCap.position.y = 2.24 + (reducedMotion ? 0 : Math.sin(elapsed * 2.5) * 0.035);
       contextRoom.visible = simulation.progress.context;
       lockedContext.visible = !simulation.progress.context;
       stationLights.forEach((light, i) => {
@@ -299,28 +476,31 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       });
       agentMeshes.forEach((model, index) => {
         const agent: Agent = simulation.agents[index];
-        model.group.position.set(agent.x, agent.state === "walking" || agent.state === "returning"
-          ? Math.abs(Math.sin(elapsed * 12 + index)) * 0.09 : Math.sin(elapsed * 2 + index) * 0.025, agent.z);
+        model.group.position.set(agent.x, reducedMotion ? 0 :
+          agent.state === "walking" || agent.state === "returning"
+            ? Math.abs(Math.sin(elapsed * 12 + index)) * 0.09 : Math.sin(elapsed * 2 + index) * 0.025, agent.z);
+        model.shadow.position.set(agent.x, 0.095, agent.z);
         if (agent.state === "walking" || agent.state === "returning") {
           model.group.rotation.y = Math.atan2(agent.target.x - agent.x, agent.target.z - agent.z);
         } else {
           model.group.rotation.y = 0;
         }
-        model.legs[0].position.z = Math.sin(elapsed * 11 + index) * (agent.state === "walking" || agent.state === "returning" ? 0.11 : 0);
+        model.legs[0].position.z = reducedMotion ? 0 : Math.sin(elapsed * 11 + index) * (agent.state === "walking" || agent.state === "returning" ? 0.11 : 0);
         model.legs[1].position.z = -model.legs[0].position.z;
         model.packet.visible = agent.carrying;
-        if (agent.state === "working") model.group.rotation.z = Math.sin(elapsed * 16 + index) * 0.038;
+        if (agent.state === "working" && !reducedMotion) model.group.rotation.z = Math.sin(elapsed * 16 + index) * 0.038;
         else model.group.rotation.z = 0;
       });
       specks.forEach((speck, i) => {
-        speck.position.y = 2.5 + Math.sin(elapsed * 1.7 + i * 2.1) * 0.34;
+        speck.position.y = 2.5 + (reducedMotion ? 0 : Math.sin(elapsed * 1.7 + i * 2.1) * 0.34);
         speck.visible = busy || i % 3 === 0;
       });
       camera.zoom = zoom;
       camera.position.set(12 + panX, 15, 20 + panZ);
       camera.lookAt(panX, 0.3, panZ);
       camera.updateProjectionMatrix();
-      renderer.render(scene, camera);
+      sky.position.copy(camera.position);
+      if (!contextLost) renderer.render(scene, camera);
     },
     dispose() {
       observer.disconnect();
@@ -329,9 +509,15 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       canvas.removeEventListener("pointerup", onUp);
       canvas.removeEventListener("pointercancel", onUp);
       canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("webglcontextlost", onContextLost);
+      canvas.removeEventListener("webglcontextrestored", onContextRestored);
+      host.classList.remove("context-lost");
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
+          if (object.material instanceof THREE.MeshBasicMaterial && object.material.map === beamTexture) {
+            object.material.map = null;
+          }
           const materials = Array.isArray(object.material) ? object.material : [object.material];
           materials.forEach((item) => item.dispose());
         }
@@ -340,6 +526,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
           object.material.dispose();
         }
       });
+      beamTexture.dispose();
+      shadowTexture.dispose();
       renderer.dispose();
       canvas.remove();
     },

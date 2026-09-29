@@ -4,6 +4,7 @@ import {
   applyOffline, CAPACITY_COST, CONTEXT_COST, initialProgress, MAX_CAPACITY,
   OFFLINE_LIMIT_SECONDS, parseProgress, Simulation,
 } from "./simulation.ts";
+import { DAY_LENGTH_SECONDS, sampleDaylight } from "./lighting.ts";
 
 function run(simulation: Simulation, seconds: number) {
   for (let i = 0; i < seconds * 30; i++) simulation.update(1 / 30);
@@ -86,4 +87,18 @@ test("queues stay bounded during long single-agent runs without losing in-flight
   for (const agent of sim.agents) {
     if (agent.taskId !== undefined) assert.ok(sim.requests.some((request) => request.id === agent.taskId));
   }
+});
+
+test("cosmetic daylight is deterministic, cyclical, and independent of the simulation state", () => {
+  const morning = sampleDaylight(0);
+  assert.deepEqual(morning, sampleDaylight(DAY_LENGTH_SECONDS));
+  assert.deepEqual(morning, sampleDaylight(0));
+  const night = sampleDaylight(0, 0.5);
+  assert.ok(morning.sun > night.sun);
+  assert.ok(night.lamp > morning.lamp);
+  assert.equal(sampleDaylight(0, 0.25).label, "14:24");
+  const sim = new Simulation();
+  const before = sim.save(1000);
+  sampleDaylight(sim.time, 0.75);
+  assert.deepEqual(sim.save(1000), before);
 });

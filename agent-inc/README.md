@@ -24,6 +24,32 @@ parallel. At capacity 2, save 64 tokens to unlock the Context chamber: the
 room appears, longer requests enter the queue, and their agents physically
 visit it before processing. Drag the scene to pan, scroll to zoom, pause, or
 switch to 2× speed. The debug toggle reveals simulation metrics.
+The small clock in the scene header previews lighting six hours ahead without
+changing simulation time, rewards, or the save file. A full office day takes
+four simulated minutes; pause and speed affect the clock as they affect work.
+
+## Renderer and fallback
+
+The office uses one Three.js WebGL scene and an orthographic camera. Its sky
+and subtle grain are a shader on a sky dome **in the same scene**, visible
+through actual openings in the back wall. A moving directional sun and shadow
+map cast geometry-aware shadows through the window frames; hemisphere bounce,
+desk/core lights, soft contact shadows, and translucent shafts/pools convey
+morning, afternoon, dusk, and night. Shafts and pools approximate illuminated
+air and floor highlights; they are not physically accurate volumetric
+occlusion or indirect lighting. Furniture and agents retain hard-edged,
+low-resolution silhouettes. No external texture assets or network-fetched
+fonts are required.
+
+Use a browser with WebGL 2 and working GPU drivers for the 3D office; WebGPU
+is **not** required. vGPU was evaluated, but it would add another GPU context
+for a backdrop that Three.js can render inside the existing scene, so the app
+intentionally does not use it. If WebGL context is lost, the canvas shows a
+restoration message while the request loop keeps running; Three.js restores
+its resources when the context returns. If WebGL cannot initialize, requests
+and upgrades remain playable through the feed/UI with a static backdrop and
+an explicit warning. Narrow/mobile displays render at a lower internal
+resolution, and reduced-motion users get still decorative animations.
 
 Progress (tokens, capacity, context unlock and totals) is saved locally in this
 browser. On return, up to two hours of approximate, bounded offline progress

@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 type Pose = "idle" | "stepA" | "stepB" | "working" | "carrying";
-export type Facing = "left" | "right";
+export type Facing = "left" | "right" | "away";
 export type AgentArt = Record<Pose, Record<Facing, THREE.CanvasTexture>>;
 
 const workers = [
@@ -70,6 +70,36 @@ function drawAgent(ctx: CanvasRenderingContext2D, id: number, pose: Pose, facing
   pixel(ctx, shade, 11, 28, 3, 2);
   pixel(ctx, outline, 16, 24, 1, 7);
 
+  if (facing === "away") {
+    oval(ctx, coat, 16, 25, 7, 6);
+    pixel(ctx, shade, 10, 24, 3, 6);
+    pixel(ctx, accent, 15, 24, 2, 5);
+    oval(ctx, outline, 16, 13, 10, 10);
+    oval(ctx, hair, 16, 12, 9, 8);
+    oval(ctx, hairLight, 13, 9, 5, 3);
+    pixel(ctx, skin, 6, 16, 2, 3);
+    pixel(ctx, skin, 24, 16, 2, 3);
+    if (id % 4 === 1) {
+      pixel(ctx, hair, 7, 16, 4, 7);
+      pixel(ctx, hair, 22, 16, 4, 7);
+    } else if (id % 4 === 2) {
+      pixel(ctx, hair, 7, 16, 5, 4);
+      pixel(ctx, hairLight, 19, 8, 5, 2);
+    } else if (id % 4 === 3) {
+      pixel(ctx, accent, 10, 8, 14, 3);
+      pixel(ctx, hair, 7, 11, 18, 3);
+    } else {
+      pixel(ctx, hairLight, 10, 5, 6, 2);
+      pixel(ctx, hair, 8, 12, 5, 5);
+    }
+    if (pose === "carrying") {
+      pixel(ctx, outline, 2, 24, 6, 8);
+      pixel(ctx, "#fff2d3", 3, 25, 4, 6);
+    }
+    if (working) pixel(ctx, accent, 12, 29, 8, 1);
+    return;
+  }
+
   oval(ctx, outline, 16, 13, 10, 10);
   oval(ctx, hair, 16, 11, 9, 8);
   oval(ctx, skin, 16, 16, 7, 6);
@@ -126,6 +156,7 @@ export function agentArt(id: number): AgentArt {
   const draw = (pose: Pose): Record<Facing, THREE.CanvasTexture> => ({
     left: texture(32, 40, (ctx) => drawAgent(ctx, id, pose, "left")),
     right: texture(32, 40, (ctx) => drawAgent(ctx, id, pose, "right")),
+    away: texture(32, 40, (ctx) => drawAgent(ctx, id, pose, "away")),
   });
   return {
     idle: draw("idle"),

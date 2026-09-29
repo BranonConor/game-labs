@@ -35,8 +35,9 @@ four simulated minutes; pause and speed affect the clock as they affect work.
 
 ## Renderer and fallback
 
-The office uses one Three.js WebGL scene and a fixed, front-facing orthographic
-camera elevated enough to show the floor and room depth. Its sky
+The office uses one Three.js WebGL scene and a fixed, center-facing perspective
+camera elevated above an open-sided room. The back wall recedes and the floor
+widens toward the viewer; the left wall is deliberately absent. Its sky
 and subtle grain are a shader on a sky dome **in the same scene**, visible
 through actual openings in the back wall, with original painted garden
 silhouettes in the lower window panes. The expanded office has a procedurally
@@ -51,8 +52,9 @@ casts shadows through the same real window openings; warmer desk/core lights
 remain visible. The walls, floor, and windows remain 3D;
 agents, desks, chairs, monitors, the inbox, core, and decor are original
 canvas-drawn pixel art on lit, alpha-cutout planes parallel to the back wall.
-Changes in travel direction swap left/right illustrated views inside the
-unchanging planes instead of rotating or mirroring their meshes. The two rows
+Changes in travel direction swap original left/right/back illustrated views
+inside the unchanging planes instead of rotating or mirroring their meshes.
+Agents face toward the desks while working. The two rows
 of processing stations are staggered so agents remain visible while working.
 Distinct human-like workers with unique hair/clothes, poses, shallow backing
 layers, ground contact shadows, and directional silhouettes give the characters

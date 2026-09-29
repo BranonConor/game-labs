@@ -15,10 +15,10 @@ const palette = {
   cream: 0xffe2ad,
   lavender: 0xbba6eb,
 };
-const room = { halfWidth: 7.2, back: -5.2, front: 5.2, windowY: 1.72 };
+const room = { halfWidth: 7.7, back: -5.2, front: 5.8, windowY: 1.72 };
 const windowXs = [-4.8, 0, 4.8];
 const cutoutYaw = 0;
-const cameraBase = new THREE.Vector3(0, 19, 27);
+const cameraBase = new THREE.Vector3(0, 15, 20);
 const coreDisplay = { x: -3.8, z: -2.2 };
 const moonColor = new THREE.Color(0xa9c9ff);
 const moonAmbient = new THREE.Color(0xb8cbea);
@@ -171,12 +171,12 @@ function desk(scene: THREE.Object3D, x: number, z: number, index: number, track:
 
 function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt) {
   const group = new THREE.Group();
-  const backing = cutout(group, frames.idle.left, 0.035, 0.68, -0.065, 0.99, 1.35);
+  const backing = cutout(group, frames.idle.away, 0.035, 0.68, -0.065, 0.99, 1.35);
   (backing.material as THREE.MeshStandardMaterial).color.setHex(0x766577);
   (backing.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
   backing.castShadow = false;
   backing.receiveShadow = false;
-  const figure = cutout(group, frames.idle.left, 0, 0.67, 0, 0.95, 1.32);
+  const figure = cutout(group, frames.idle.away, 0, 0.67, 0, 0.95, 1.32);
   (figure.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.44;
   backing.rotation.y = 0;
   figure.rotation.y = 0;
@@ -187,7 +187,7 @@ function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt)
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.renderOrder = 3;
-  return { group, backing, figure, frames, facing: "left" as Facing, shadow };
+  return { group, backing, figure, frames, facing: "away" as Facing, shadow };
 }
 
 export type World = {
@@ -202,7 +202,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     artTextures.push(art);
     return art;
   };
-  const camera = new THREE.OrthographicCamera(-7.3, 7.3, 5.5, -5.5, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100);
   camera.position.copy(cameraBase);
   camera.lookAt(0, 0.4, 0);
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "low-power" });
@@ -213,7 +213,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.domElement.className = "world-canvas";
-  renderer.domElement.setAttribute("aria-label", "Front-facing orthographic view of the little AI office");
+  renderer.domElement.setAttribute("aria-label", "Perspective view of the little AI office");
   renderer.domElement.setAttribute("role", "img");
   host.appendChild(renderer.domElement);
   let contextLost = false;
@@ -320,9 +320,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   }
   block(scene, (wallStart + room.halfWidth) / 2, room.windowY, room.back,
     room.halfWidth - wallStart, 1.14, 0.2, palette.wall);
-  block(scene, -room.halfWidth + 0.1, 1.37, 0, 0.2, 2.75, room.front - room.back, palette.wall);
   block(scene, 0, 2.75, room.back, room.halfWidth * 2, 0.17, 0.3, palette.wallTop);
-  block(scene, -room.halfWidth + 0.1, 2.75, 0, 0.3, 0.17, room.front - room.back, palette.wallTop);
   block(scene, 0, 0.38, room.back + 0.12, room.halfWidth * 2 - 0.2, 0.55, 0.06, 0x775d66);
   block(scene, 0, 0.74, room.back + 0.16, room.halfWidth * 2 - 0.1, 0.08, 0.1, 0xd2a07c);
   const foliageMaterial = new THREE.MeshBasicMaterial({
@@ -535,11 +533,12 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
     const resolutionScale = width < 700 ? 0.75 : 0.9;
     renderer.setSize(Math.ceil(width * resolutionScale), Math.ceil(height * resolutionScale), false);
     const aspect = width / height;
-    const span = Math.max(5.8, 4.7 / aspect);
-    camera.left = -span * aspect;
-    camera.right = span * aspect;
-    camera.top = span;
-    camera.bottom = -span;
+    const minimumHalfWidth = 4.7;
+    const cameraDistance = cameraBase.distanceTo(new THREE.Vector3(0, 0.4, 0));
+    camera.aspect = aspect;
+    camera.fov = THREE.MathUtils.radToDeg(
+      2 * Math.atan(Math.max(Math.tan(THREE.MathUtils.degToRad(28 / 2)), minimumHalfWidth / (cameraDistance * aspect))),
+    );
     camera.updateProjectionMatrix();
   };
   const observer = new ResizeObserver(resize);
@@ -618,9 +617,14 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
         model.group.position.set(agent.x, 0, agent.z);
         model.shadow.position.set(agent.x, 0.095, agent.z);
         (model.shadow.material as THREE.MeshBasicMaterial).opacity = 0.62 + daylightShadow * 0.18;
-        if (agent.state === "walking" || agent.state === "returning") {
+        if (agent.state === "idle" || agent.state === "working") {
+          model.facing = "away";
+        } else {
           const dx = agent.target.x - agent.x;
-          if (Math.abs(dx) > 0.2) model.facing = dx < 0 ? "left" : "right";
+          const dz = agent.target.z - agent.z;
+          if (dz < -Math.abs(dx) * 0.85 && Math.abs(dz) > 0.2) model.facing = "away";
+          else if (Math.abs(dx) > 0.2) model.facing = dx < 0 ? "left" : "right";
+          else if (dz > 0.2) model.facing = "left";
         }
         const pose: keyof AgentArt = agent.state === "working" ? "working" :
           agent.carrying ? "carrying" :

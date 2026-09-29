@@ -1,8 +1,11 @@
 import * as THREE from "three";
 import type { Agent, Simulation } from "./simulation";
 import { sampleDaylight } from "./lighting";
-import { agentArt, coreSigilArt, monitorArt, plantArt, terminalArt } from "./sprite-art";
-import type { AgentArt } from "./sprite-art";
+import {
+  agentArt, chairArt, contextConsoleArt, coreBodyArt, deskArt,
+  monitorArt, plantArt, posterArt, stackArt, statusLightArt, terminalArt,
+} from "./sprite-art";
+import type { AgentArt, Facing } from "./sprite-art";
 
 const palette = {
   floor: 0xe9d6ae,
@@ -10,12 +13,8 @@ const palette = {
   edge: 0x75677f,
   wall: 0x9989a6,
   wallTop: 0xf2caaa,
-  wood: 0x856979,
   cream: 0xffebcc,
-  ink: 0x302d49,
-  mint: 0x77dfc6,
   lavender: 0xbba6eb,
-  peach: 0xffab92,
 };
 const billboardYaw = Math.atan2(12, 20);
 const coreDisplay = { x: -3.8, z: -2.2 };
@@ -83,35 +82,26 @@ function label(text: string, color = "#4e4762") {
 }
 
 function terminal(scene: THREE.Scene, art: THREE.Texture) {
-  block(scene, 3.45, 0.38, 1.75, 0.95, 0.75, 0.75, palette.wood);
-  block(scene, 3.45, 0.86, 1.75, 0.79, 0.13, 0.64, palette.cream);
-  cutout(scene, art, 3.45, 1.37, 1.72, 0.89, 1.05);
+  cutout(scene, art, 3.45, 0.99, 1.75, 1.05, 1.75);
   const sign = label("INCOMING");
   sign.position.set(3.45, 2.5, 1.75);
   scene.add(sign);
 }
 
-function desk(scene: THREE.Object3D, x: number, z: number, art: THREE.Texture) {
-  block(scene, x, 0.53, z - 0.62, 1.35, 0.13, 0.7, palette.wood);
-  for (const offset of [-0.53, 0.53]) {
-    block(scene, x + offset, 0.27, z - 0.62, 0.12, 0.47, 0.56, palette.edge);
-  }
-  cutout(scene, art, x, 0.95, z - 0.8, 0.84, 0.84);
-  block(scene, x, 0.62, z - 0.34, 0.62, 0.04, 0.19, palette.cream);
-  block(scene, x + 0.5, 0.65, z - 0.55, 0.16, 0.13, 0.16, palette.peach);
-  block(scene, x + 0.47, 0.87, z - 0.65, 0.06, 0.35, 0.06, palette.edge);
-  block(scene, x + 0.47, 1.06, z - 0.65, 0.21, 0.12, 0.21, palette.cream, 0xffb986, 0.8);
-  block(scene, x, 0.13, z + 0.49, 0.7, 0.17, 0.65, palette.edge);
+function desk(scene: THREE.Object3D, x: number, z: number, index: number, track: (art: THREE.CanvasTexture) => THREE.CanvasTexture) {
+  cutout(scene, track(deskArt(index)), x, 0.58, z - 0.56, 1.55, 1.23);
+  cutout(scene, track(monitorArt(index)), x - 0.1, 1.08, z - 0.67, 0.77, 0.77);
+  cutout(scene, track(chairArt()), x + 0.35, 0.49, z + 0.37, 0.66, 0.94);
 }
 
 function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt) {
   const group = new THREE.Group();
-  const backing = cutout(group, frames.idle, 0.045, 0.88, -0.085, 1.26, 1.76);
+  const backing = cutout(group, frames.idle.right, 0.045, 0.88, -0.085, 1.26, 1.76);
   (backing.material as THREE.MeshStandardMaterial).color.setHex(0x766577);
   (backing.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
   backing.castShadow = false;
   backing.receiveShadow = false;
-  const figure = cutout(group, frames.idle, 0, 0.87, 0, 1.22, 1.73);
+  const figure = cutout(group, frames.idle.right, 0, 0.87, 0, 1.22, 1.73);
   (figure.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
   backing.rotation.y = 0;
   figure.rotation.y = 0;
@@ -122,7 +112,7 @@ function createAgent(id: number, shadowTexture: THREE.Texture, frames: AgentArt)
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.renderOrder = 3;
-  return { group, backing, figure, frames, pose: "idle" as keyof AgentArt, shadow };
+  return { group, backing, figure, frames, facing: "right" as Facing, shadow };
 }
 
 export type World = {
@@ -260,9 +250,8 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       block(scene, x + offset, 1.4, -3.77, 0.08, 0.93, 0.15, palette.cream);
     }
   }
-  for (let z = -2; z <= 2; z += 2) {
-    block(scene, -4.98, 0.93, z, 0.07, 0.73, 0.84, palette.ink);
-    block(scene, -4.93, 0.93, z, 0.06, 0.51, 0.6, palette.lavender, palette.lavender, 0.12);
+  for (let i = 0; i < 3; i++) {
+    cutout(scene, track(posterArt(i)), -4.77, 1.05, -2 + i * 2, 0.78, 0.88);
   }
 
   // A soft circular floor marker gives the core and inbox distinct destinations.
@@ -272,17 +261,12 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   rug.position.set(coreDisplay.x, 0.05, coreDisplay.z);
   rug.receiveShadow = true;
   scene.add(rug);
-  block(scene, coreDisplay.x, 0.56, coreDisplay.z, 1.4, 0.95, 1.35, palette.ink);
-  block(scene, coreDisplay.x, 1.15, coreDisplay.z, 1.15, 0.26, 1.09, palette.edge);
-  const core = block(scene, coreDisplay.x, 1.77, coreDisplay.z, 0.88, 0.88, 0.88,
-    palette.mint, palette.mint, 0.65);
-  const coreCap = block(scene, coreDisplay.x, 2.24, coreDisplay.z, 1.07, 0.11, 1.07, palette.cream);
-  cutout(scene, track(coreSigilArt()), coreDisplay.x, 1.72, coreDisplay.z + 0.63, 0.61, 0.61);
-  for (let i = 0; i < 4; i++) {
-    block(scene, coreDisplay.x - 0.47 + (i % 2) * 0.94, 0.77,
-      coreDisplay.z - 0.48 + Math.floor(i / 2) * 0.94,
-      0.13, 1.44, 0.13, palette.cream);
-  }
+  const coreArt = track(coreBodyArt());
+  const coreBack = cutout(scene, coreArt, coreDisplay.x + 0.14, 1.15, coreDisplay.z - 0.18, 1.61, 2.29);
+  (coreBack.material as THREE.MeshStandardMaterial).color.setHex(0x79788e);
+  (coreBack.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
+  coreBack.castShadow = false;
+  const core = cutout(scene, coreArt, coreDisplay.x, 1.15, coreDisplay.z, 1.55, 2.26);
   const coreLabel = label("AI CORE");
   coreLabel.position.set(coreDisplay.x, 3.08, coreDisplay.z);
   scene.add(coreLabel);
@@ -302,7 +286,7 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const shadowTexture = new THREE.CanvasTexture(shadowCanvas);
   const makeAgentModel = (id: number) => {
     const frames = agentArt(id);
-    Object.values(frames).forEach(track);
+    Object.values(frames).flatMap((directions) => Object.values(directions)).forEach(track);
     const model = createAgent(id, shadowTexture, frames);
     scene.add(model.group, model.shadow);
     return model;
@@ -311,23 +295,15 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const contextRoom = new THREE.Group();
   contextRoom.visible = simulation.progress.context;
   block(contextRoom, 3, 0.08, -1.8, 3.05, 0.12, 2.85, palette.lavender);
-  for (const x of [1.65, 4.35]) {
-    for (const z of [-3.05, -0.55]) {
-      block(contextRoom, x, 0.68, z, 0.14, 1.2, 0.14, palette.cream);
-    }
+  cutout(contextRoom, track(contextConsoleArt()), 3, 0.76, -2.5, 1.45, 1.42);
+  for (let i = 0; i < 3; i++) {
+    cutout(contextRoom, track(stackArt(i)), 2.1 + i * 0.78, 0.48, -1.18, 0.66, 0.87);
   }
-  block(contextRoom, 3, 0.7, -2.5, 1.5, 0.68, 0.4, palette.ink);
-  block(contextRoom, 3, 1.12, -2.5, 1.15, 0.14, 0.27, palette.mint, palette.mint, 0.4);
-  for (let i = 0; i < 3; i++) block(contextRoom, 2.45 + i * 0.53, 0.38, -1.42, 0.39, 0.6, 0.25, palette.cream);
   const contextLabel = label("CONTEXT");
   contextLabel.position.set(3, 2.28, -2.1);
   contextRoom.add(contextLabel);
   scene.add(contextRoom);
   const lockedContext = new THREE.Group();
-  for (let i = 0; i < 4; i++) {
-    block(lockedContext, 1.75 + (i % 2) * 2.35, 0.11, -2.95 + Math.floor(i / 2) * 2.26,
-      0.6, 0.15, 0.6, palette.edge);
-  }
   const ghostLabel = label("CONTEXT  ?");
   ghostLabel.position.set(3, 1.34, -1.8);
   lockedContext.add(ghostLabel);
@@ -337,20 +313,17 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
   const deskPoints = [
     [-0.75, 0.15], [1.2, 0.15], [-0.75, 1.75], [1.2, 1.75],
   ];
-  deskPoints.forEach(([x, z], index) => desk(desks, x, z, track(monitorArt(index))));
+  deskPoints.forEach(([x, z], index) => desk(desks, x, z, index, track));
   // Unused stations are built but unlit, making added capacity legible at a glance.
   const stationLights = deskPoints.map(([x, z]) => {
-    const mesh = block(desks, x, 1.27, z - 0.65, 0.25, 0.1, 0.1, palette.mint, palette.mint, 0.6);
+    const mesh = cutout(desks, track(statusLightArt()), x + 0.43, 0.82, z - 0.55, 0.18, 0.27);
     return mesh;
   });
-  for (let i = 0; i < 5; i++) {
-    block(scene, -4.55, 0.1 + i * 0.21, 2.25, 0.55, 0.18, 0.52,
-      i % 2 ? palette.peach : palette.cream);
+  for (let i = 0; i < 2; i++) {
+    cutout(scene, track(stackArt(i)), -4.6 + i * 0.35, 0.43, 2.2, 0.65, 0.81);
   }
-  block(scene, -4.37, 0.3, 2.9, 0.44, 0.6, 0.44, palette.wood);
   const leaves = track(plantArt());
   const plantBack = cutout(scene, leaves, -4.42, 0.84, 2.83, 0.94, 1.14);
-  plantBack.rotation.y += 0.48;
   (plantBack.material as THREE.MeshStandardMaterial).color.setHex(0x8a9c94);
   cutout(scene, leaves, -4.37, 0.84, 2.99, 0.98, 1.16);
   const specks: THREE.Mesh[] = [];
@@ -488,40 +461,32 @@ export function createWorld(host: HTMLElement, simulation: Simulation): World {
       }
       const busy = simulation.agents.some((a) => a.state !== "idle");
       (core.material as THREE.MeshStandardMaterial).emissiveIntensity = (busy ? 0.65 : 0.37) + (reducedMotion ? 0 : Math.sin(elapsed * 3) * 0.15);
-      core.rotation.y = reducedMotion ? 0 : elapsed * 0.25;
-      coreCap.position.y = 2.24 + (reducedMotion ? 0 : Math.sin(elapsed * 2.5) * 0.035);
+      core.position.y = 1.15 + (reducedMotion ? 0 : Math.sin(elapsed * 2.5) * 0.025);
       contextRoom.visible = simulation.progress.context;
       lockedContext.visible = !simulation.progress.context;
       stationLights.forEach((light, i) => {
         (light.material as THREE.MeshStandardMaterial).emissiveIntensity = i < simulation.progress.capacity ? 0.8 : 0;
-        (light.material as THREE.MeshStandardMaterial).color.setHex(i < simulation.progress.capacity ? palette.mint : palette.edge);
+        (light.material as THREE.MeshStandardMaterial).color.setHex(i < simulation.progress.capacity ? 0xffffff : palette.edge);
       });
       agentMeshes.forEach((model, index) => {
         const agent: Agent = simulation.agents[index];
-        model.group.position.set(agent.x, reducedMotion ? 0 :
-          agent.state === "walking" || agent.state === "returning"
-            ? Math.abs(Math.sin(elapsed * 12 + index)) * 0.09 : Math.sin(elapsed * 2 + index) * 0.025, agent.z);
+        model.group.position.set(agent.x, 0, agent.z);
         model.shadow.position.set(agent.x, 0.095, agent.z);
         if (agent.state === "walking" || agent.state === "returning") {
-          if (Math.abs(agent.target.x - agent.x) > 0.2) {
-            model.group.scale.x = agent.target.x < agent.x ? -1 : 1;
-          }
-        } else {
-          model.group.scale.x = 1;
+          const dx = agent.target.x - agent.x;
+          if (Math.abs(dx) > 0.2) model.facing = dx < 0 ? "left" : "right";
         }
         const pose: keyof AgentArt = agent.state === "working" ? "working" :
           agent.carrying ? "carrying" :
           agent.state === "walking" || agent.state === "returning"
             ? !reducedMotion && Math.sin(elapsed * 11 + index) > 0 ? "stepA" : "stepB" : "idle";
-        if (pose !== model.pose) {
-          (model.figure.material as THREE.MeshStandardMaterial).map = model.frames[pose];
-          (model.figure.material as THREE.MeshStandardMaterial).emissiveMap = model.frames[pose];
-          (model.backing.material as THREE.MeshStandardMaterial).map = model.frames[pose];
-          (model.backing.material as THREE.MeshStandardMaterial).emissiveMap = model.frames[pose];
-          model.pose = pose;
+        const frame = model.frames[pose][model.facing];
+        if (frame !== (model.figure.material as THREE.MeshStandardMaterial).map) {
+          (model.figure.material as THREE.MeshStandardMaterial).map = frame;
+          (model.figure.material as THREE.MeshStandardMaterial).emissiveMap = frame;
+          (model.backing.material as THREE.MeshStandardMaterial).map = frame;
+          (model.backing.material as THREE.MeshStandardMaterial).emissiveMap = frame;
         }
-        if (agent.state === "working" && !reducedMotion) model.group.rotation.z = Math.sin(elapsed * 16 + index) * 0.038;
-        else model.group.rotation.z = 0;
       });
       specks.forEach((speck, i) => {
         speck.position.y = 2.5 + (reducedMotion ? 0 : Math.sin(elapsed * 1.7 + i * 2.1) * 0.34);

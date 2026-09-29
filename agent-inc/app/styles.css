@@ -51,7 +51,6 @@ button:focus-visible { outline: 3px solid #638c8e; outline-offset: 3px; }
 .scene-controls button:hover { background: #e7f5e9; }
 .sidebar { min-width: 0; display: flex; flex-direction: column; gap: 13px; padding: 18px 17px; border: 1px solid #e3d6c8; border-radius: 13px; background: #fffbf3; box-shadow: 0 4px 0 #e9ddd0; }
 .sidebar-heading, .section-title { display: flex; justify-content: space-between; align-items: center; font: 700 10px var(--mono); letter-spacing: .08em; }
-.heading-ornament { color: #c9b3b1; }
 .system-card { display: flex; align-items: center; gap: 13px; padding: 16px 12px; border-radius: 9px; background: #f2e8e5; border: 1px solid #e9d7d2; }
 .system-emblem { flex: none; display: grid; place-items: center; width: 49px; height: 49px; border-radius: 12px; color: #fef5d7; background: #857c9a; font-size: 27px; box-shadow: inset -4px -4px 0 #625a76; }
 .system-name { font-size: 14px; font-weight: 800; }
@@ -95,9 +94,6 @@ button:focus-visible { outline: 3px solid #638c8e; outline-offset: 3px; }
 .request-kind { color: #946fb0; font: 700 8px var(--mono); }
 .progress-track { position: absolute; bottom: 0; left: 0; height: 3px; width: 100%; background: #e9e4dc; }
 .progress-track span { display: block; height: 100%; background: #8ac8b6; transition: width .15s linear; }
-.page-footer { display: flex; justify-content: space-between; align-items: center; margin: 16px 2px 0; color: #9d919b; font: 700 9px var(--mono); letter-spacing: .05em; }
-.page-footer button { border: 0; padding: 5px; background: none; color: inherit; font: inherit; }
-.page-footer button:hover { color: #4c7266; }
 .debug-panel { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 8px; padding: 10px; background: #eee7de; font: 700 10px var(--mono); }
 .welcome-back { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 16px; background: #282437b3; }
 .welcome-card { width: min(440px, 100%); padding: 30px; border: 3px solid #d4bfaa; border-radius: 14px; background: #fff8ea; box-shadow: 10px 10px 0 #3a334b; text-align: center; }
@@ -142,4 +138,78 @@ button:focus-visible { outline: 3px solid #638c8e; outline-offset: 3px; }
   .feed-item:nth-child(odd) { border-right: 0; }
   .feed-caption { display: none; }
   .world-callout { font-size: 11px; left: 8px; bottom: 8px; }
+}
+
+/* The office is the workspace; every control floats above its single canvas. */
+html, body { height: 100%; overflow: hidden; }
+.shell { max-width: none; min-height: 100dvh; padding: 0; isolation: isolate; }
+.layout, .world-panel { display: contents; }
+.world-host { position: fixed; inset: 0; z-index: -1; width: 100vw; height: 100dvh; min-height: 0; border: 0; border-radius: 0; }
+.topbar, .scene-header, .scene-footer, .sidebar, .feed-panel, .debug-panel {
+  position: fixed; z-index: 2; margin: 0;
+  border: 1px solid #fff5e5a8; border-radius: 12px;
+  background: #fff8eae8; box-shadow: 0 8px 32px #1b193e30;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.topbar { top: 16px; left: 20px; right: 20px; min-height: 66px; padding: 8px 20px; }
+.scene-header { top: 96px; left: 20px; width: auto; height: 38px; padding: 0 13px; gap: 15px; }
+.scene-tools { gap: 8px; }
+.scene-divider { margin: 0 4px; }
+.world-callout { left: 20px; bottom: 265px; z-index: 1; max-width: 340px; }
+.scene-footer { bottom: 18px; right: 20px; height: 45px; padding: 0 10px 0 14px; }
+.sidebar { top: 96px; right: 20px; bottom: 77px; width: 315px; display: flex; overflow-y: auto; scrollbar-width: thin; }
+.sidebar-close, .system-toggle { display: none; }
+.feed-panel { bottom: 18px; left: 20px; width: min(445px, 42vw); max-height: min(230px, 28dvh); overflow: hidden; display: flex; flex-direction: column; }
+.feed-top { flex: none; padding: 12px 14px; }
+.feed-list { display: block; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.feed-item { border-right: 0 !important; }
+.debug-panel { bottom: 74px; right: 20px; width: 310px; padding: 12px; }
+.system-toggle, .sidebar-close { border: 0; background: transparent; color: #4b465e; font: 700 11px var(--mono); }
+@media (max-width: 900px) {
+  .feed-panel { width: min(360px, 43vw); }
+  .scene-live { max-width: 170px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .scene-footer { gap: 5px; }
+}
+@media (max-width: 980px) {
+  .topbar { top: 10px; left: 10px; right: 10px; min-height: 58px; padding: 7px 12px; }
+  .brand-icon { width: 36px; height: 36px; font-size: 22px; }
+  .brand { font-size: 21px; }
+  .top-stats { gap: 12px; }
+  .stat { min-width: auto; }
+  .stat strong { font-size: 17px; }
+  .stat-label { font-size: 8px; }
+  .system-toggle { display: block; padding: 7px 5px; }
+  .scene-header { top: 78px; left: 10px; right: auto; height: 36px; }
+  .scene-title, .scene-subtitle { display: none; }
+  .sidebar { display: none; top: 123px; right: 10px; bottom: 73px; width: min(340px, calc(100vw - 20px)); padding: 16px; }
+  .sidebar.sidebar-open { display: flex; }
+  .sidebar-close { display: block; font-size: 23px; line-height: 14px; }
+  .upgrade-list { display: flex; }
+  .world-callout { left: 10px; top: 124px; bottom: auto; max-width: min(330px, calc(100vw - 40px)); }
+  .feed-panel { bottom: 72px; left: 10px; right: 10px; width: auto; max-height: 145px; }
+  .scene-footer { bottom: 10px; left: 10px; right: 10px; height: 52px; padding: 0 8px; }
+  .scene-live { flex: 1; min-width: 0; max-width: none; }
+  .scene-controls { flex: none; }
+  .debug-panel { bottom: 220px; right: 10px; width: min(300px, calc(100vw - 20px)); }
+}
+@media (max-width: 540px) {
+  .topbar { gap: 7px; }
+  .brand-icon { width: 31px; height: 31px; }
+  .brand { font-size: 19px; }
+  .top-stats { gap: 9px; }
+  .stat strong { font-size: 16px; }
+  .stat-label { font-size: 7px; }
+  .scene-header { padding: 0 9px; }
+  .world-callout { left: auto; right: 10px; top: 122px; padding: 7px 9px; font-size: 10px; max-width: 195px; }
+  .feed-panel { max-height: 134px; }
+  .feed-top { padding: 9px 11px; }
+  .feed-item { min-height: 39px; padding: 5px 10px; font-size: 10px; }
+  .scene-footer { font-size: 9px; }
+  .scene-live .live-count { display: none; }
+  .scene-controls { gap: 4px; }
+  .scene-controls button { font-size: 8px; padding: 5px 4px; }
+}
+@media (max-width: 360px) {
+  .identity .brand { display: none; }
+  .top-stats { flex: 1; justify-content: space-between; }
 }

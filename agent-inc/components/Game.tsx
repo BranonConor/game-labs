@@ -23,6 +23,7 @@ export default function Game() {
   const [message, setMessage] = useState("A little intelligence is waking up.");
   const [storageError, setStorageError] = useState("");
   const [debug, setDebug] = useState(false);
+  const [systemOpen, setSystemOpen] = useState(false);
   const [fps, setFps] = useState(0);
   const [previewOffset, setPreviewOffset] = useState(0);
   const previewRef = useRef(0);
@@ -177,7 +178,7 @@ export default function Game() {
   return (
     <main className="shell">
       <header className="topbar">
-        <div className="identity">
+        <div className="identity" aria-label="Agent Inc.">
           <span className="brand-icon" aria-hidden="true">✦</span>
           <div>
             <div className="brand">agent<span>inc.</span></div>
@@ -188,6 +189,8 @@ export default function Game() {
           <div className="stat"><span className="stat-label">✧ &nbsp;TOKENS</span><strong>{progress?.tokens.toLocaleString() ?? "—"}</strong></div>
           <div className="stat"><span className="stat-label">◈ &nbsp;CAPACITY</span><strong>{progress?.capacity ?? 1} <small>/ {MAX_CAPACITY}</small></strong></div>
           <div className="stat desktop-stat"><span className="stat-label">◌ &nbsp;RESOLVED</span><strong>{progress?.completed ?? 0}</strong></div>
+          <button type="button" className="system-toggle" aria-expanded={systemOpen} aria-controls="system-panel"
+            onClick={() => setSystemOpen((open) => !open)}>{systemOpen ? "CLOSE" : "UPGRADES"} <span aria-hidden="true">✳</span></button>
         </div>
       </header>
 
@@ -196,7 +199,7 @@ export default function Game() {
           <div className="scene-header">
             <div><span className="online-dot" /> SYSTEM ONLINE <span className="scene-title"><span className="scene-divider">/</span> THE LITTLE OFFICE</span></div>
             <div className="scene-tools">
-              <span className="scene-subtitle">drag to look around · scroll to zoom</span>
+              <span className="scene-subtitle">drag to pan · scroll to zoom</span>
               <button type="button" className="time-preview" onClick={previewNextLight}
                 title="Preview the next six hours of office lighting" aria-label={`Office time ${daylight.label}; preview next six hours`}>
                 <span aria-hidden="true">{daylight.sun > 1 ? "☼" : daylight.sun > 0.1 ? "◑" : "✦"}</span> {daylight.label} <span className="time-arrow">↻</span>
@@ -211,16 +214,17 @@ export default function Game() {
             </div>
           </div>
           <div className="scene-footer">
-            <div className="scene-live"><span className="tiny-pulse" /> {simulation?.paused ? "SIMULATION PAUSED" : "SIMULATING"} <span className="footer-sep">·</span> {active} processing <span className="footer-sep">·</span> {queued} in queue</div>
+            <div className="scene-live"><span className="tiny-pulse" /> <span className="live-label">{simulation?.paused ? "SIMULATION PAUSED" : "SIMULATING"}</span><span className="live-count"> <span className="footer-sep">·</span> {active} processing <span className="footer-sep">·</span> {queued} in queue</span></div>
             <div className="scene-controls">
               <button type="button" onClick={togglePause} aria-label={simulation?.paused ? "Resume simulation" : "Pause simulation"}>{simulation?.paused ? "▶ RESUME" : "Ⅱ PAUSE"}</button>
               <button type="button" onClick={toggleSpeed} aria-label={`Set simulation to ${simulation?.speed === 1 ? "double" : "normal"} speed`}>{simulation?.speed ?? 1}× SPEED</button>
+              <button type="button" onClick={() => setDebug(!debug)} aria-expanded={debug}>{debug ? "HIDE" : "SHOW"} DEBUG</button>
             </div>
           </div>
         </section>
 
-        <aside className="sidebar">
-          <div className="sidebar-heading"><span>YOUR SYSTEM</span><span className="heading-ornament">✧ ─ ✧</span></div>
+        <aside id="system-panel" className={`sidebar ${systemOpen ? "sidebar-open" : ""}`}>
+          <div className="sidebar-heading"><span>YOUR SYSTEM</span><button type="button" className="sidebar-close" onClick={() => setSystemOpen(false)} aria-label="Close upgrades">×</button></div>
           <div className="system-card">
             <div className="system-emblem">✦</div>
             <div><div className="system-name">{progress?.context ? "The Thoughtful One" : "The Little Chatbot"}</div><div className="system-desc">You are the intelligence. Give your little processes room to grow.</div></div>
@@ -289,10 +293,6 @@ export default function Game() {
         </div>
       )}
       {storageError && <div className="storage-error" role="alert">{storageError}<button type="button" onClick={() => setStorageError("")} aria-label="Dismiss warning">×</button></div>}
-      <footer className="page-footer">
-        <span>AGENT INC. <span className="footer-sep">·</span> FIRST PLAYABLE PROTOTYPE</span>
-        <button type="button" onClick={() => setDebug(!debug)} aria-expanded={debug}>{debug ? "HIDE" : "SHOW"} DEBUG</button>
-      </footer>
       {debug && <div className="debug-panel">
         <span>SIM {simulation?.time.toFixed(1) ?? 0}s</span><span>FPS {fps}</span>
         <span>AGENTS {simulation?.agents.length ?? 0}</span><span>QUEUE {queued}</span>

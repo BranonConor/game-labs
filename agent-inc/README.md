@@ -48,10 +48,15 @@ the camera-facing scene angle; changes in travel direction swap left/right
 illustrated views instead of rotating or mirroring their meshes. Distinct
 machine silhouettes, poses, shallow backing layers, ground contact shadows,
 and sun-cast silhouettes give the characters depth without modeling them
-as people. Nearest-neighbor textures preserve their edges; modest emissive
-fill keeps faces readable when backlit. This cutout system lives in
-`game/sprite-art.ts` and does not drive simulation state. No external texture
-assets or network-fetched fonts are required.
+as people. The original 64×80 agent frames and small prop textures use
+hand-placed pixel clusters, stepped curves, selective dark contours, and
+short color ramps instead of smooth vector gradients or block-only shapes.
+This takes inspiration from the *fidelity and technique* of handheld-era
+pixel sprites, not any existing character designs or assets. Nearest-neighbor
+textures preserve their edges; modest emissive fill keeps faces readable when
+backlit. This cutout system lives in `game/sprite-art.ts` and does not drive
+simulation state. No external texture assets or network-fetched fonts are
+required.
 
 Three.js's shadow depth pass honors the cutout materials' alpha test, so the
 directional sun casts the illustrated silhouettes rather than rectangular

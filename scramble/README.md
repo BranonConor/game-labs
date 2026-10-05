@@ -167,6 +167,14 @@ is `Player`; existing accounts without a newly captured structured Google
 profile also show `Player` until they sign in again. This deliberately does
 not infer real names from email, handles, or unstructured full-name strings.
 
+A guest can sign in from the finished result card to sync that completed run
+to their private profile (provided the account has no saved run for that
+board). It does **not** become a ranked attempt: guest moves and timing were
+not verified by the server, and an existing account run is not overwritten
+by a guest result. Sign in before starting a daily board to earn a public
+ranking. Practice/seed runs have a direct link back to the daily puzzle in
+the footer and on the result card; they never enter rankings.
+
 ## Analytics
 
 Google Analytics tag `G-VKX4FBTEML` loads on production pages only, so local

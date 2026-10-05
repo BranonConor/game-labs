@@ -34,6 +34,7 @@ export function mountGame(authConfigured) {
   const guestStorageKey = `scramble-v6:${boardId}`;
   let storageKey = guestStorageKey;
   const $ = (id) => document.getElementById(id);
+  $("seed-daily").hidden = !practiceSeed;
   const eggAsset = (tier) => `/eggs/${tier.id}.svg`;
   const boardElement = $("board");
   const boardWrap = boardElement.parentElement;
@@ -779,8 +780,8 @@ export function mountGame(authConfigured) {
     $("tier-name").textContent = tier.name.toUpperCase();
     $("tier-range").textContent = `${tierRange(tier)} PTS`;
     $("tier-result").style.setProperty("--tier-color", tier.color);
-    const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "No valid scoring words remain." : state.endedReason === "finish" ? "Run complete." : "Time ran out.";
-    $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled. ${outcome}`;
+    const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "" : state.endedReason === "finish" ? "Run complete." : "Time ran out.";
+    $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled.${outcome ? ` ${outcome}` : ""}`;
     $("draft-heading").textContent = "THE FINAL PLATE";
     $("path-length").textContent = "RUN COMPLETE";
     $("compose-content").hidden = true;
@@ -793,10 +794,22 @@ export function mountGame(authConfigured) {
     const generation = ++resultRankingGeneration;
     const ranking = $("result-ranking");
     const status = $("result-ranking-status");
+    $("result-signin").hidden = Boolean(accountUser) || !authConfigured || Boolean(practiceSeed);
+    $("result-daily").hidden = !practiceSeed;
     ranking.hidden = true;
     status.textContent = "";
-    if (practiceSeed || !accountUser || !rankedAttemptExists) {
-      status.textContent = "Only signed-in, verified daily runs enter the ranking.";
+    if (practiceSeed) {
+      status.textContent = "Practice runs don't enter the daily ranking.";
+      return;
+    }
+    if (!accountUser) {
+      status.textContent = authConfigured
+        ? "Sign in to save this guest result to your profile. Ranked play must start while signed in."
+        : "Sign-in is unavailable here. Guest results cannot enter the ranking.";
+      return;
+    }
+    if (!rankedAttemptExists) {
+      status.textContent = "This unverified result appears in your profile, not the leaderboard.";
       return;
     }
     status.textContent = "Checking today's ranking...";
@@ -1282,6 +1295,7 @@ export function mountGame(authConfigured) {
     menuDialog.querySelector('[data-menu-page="scores"]').click();
   }
   $("result-scores").addEventListener("click", openScores);
+  $("result-signin").addEventListener("click", signInAccount);
   let accountError = null;
   function scoreDate(board) {
     return new Intl.DateTimeFormat("en", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })

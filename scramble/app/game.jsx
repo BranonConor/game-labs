@@ -105,6 +105,7 @@ export default function Game({ authConfigured, adminTools }) {
                     <div className="tier-score"><strong id="final-score">0</strong><span>POINTS</span></div>
                     <small id="tier-range" />
                   </div>
+                  <button id="share" className="score-copy" type="button" aria-label="Copy result" title="Copy result"><img className="copy-icon" src="/copy.svg" alt="" /></button>
                 </div>
                 <p id="final-summary" />
                 <div id="result-ranking" className="result-ranking" hidden>
@@ -114,8 +115,9 @@ export default function Game({ authConfigured, adminTools }) {
                   <div id="result-spread" className="result-spread" role="img" hidden />
                 </div>
                 <p id="result-ranking-status" className="result-ranking-status" role="status" />
+                <button id="result-signin" className="text-link result-scores" type="button" hidden>SIGN IN TO SAVE THIS RESULT ↗</button>
                 <button id="result-scores" className="text-link result-scores" type="button">SEE SCORES &amp; LEADERBOARDS ↗</button>
-                <button id="share" className="action-button" type="button">COPY RESULT <img className="copy-icon" src="/copy.svg" alt="" /></button>
+                <a id="result-daily" className="text-link result-scores" href="/" hidden>BACK TO DAILY PUZZLE ↗</a>
                 <p id="share-status" role="status" />
               </div>
             </section>
@@ -126,7 +128,7 @@ export default function Game({ authConfigured, adminTools }) {
             </section>
           </aside>
         </div>
-        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="terms-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="terms-dialog">TERMS ↗</button><button id="privacy-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="privacy-dialog">PRIVACY ↗</button>{adminTools && <><button id="reseed" className="text-link dev-link" type="button" hidden>DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button" hidden>DEV / SKIP TO END ↠</button></>}</div></footer>
+        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="terms-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="terms-dialog">TERMS ↗</button><button id="privacy-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="privacy-dialog">PRIVACY ↗</button><a id="seed-daily" className="text-link dev-link" href="/" hidden>DEV / DAILY PUZZLE ↩</a>{adminTools && <><button id="reseed" className="text-link dev-link" type="button" hidden>DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button" hidden>DEV / SKIP TO END ↠</button></>}</div></footer>
       </main>
 
       <dialog id="menu-dialog" className="menu-dialog" aria-label="Scramb menu">

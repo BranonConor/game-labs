@@ -111,7 +111,7 @@ adjacent unclaimed tiles and dictionary membership against
 full-board award. Client-supplied scores, timers, and snapshots are ignored.
 
 `GET /api/ranked?boardId=YYYY-MM-DD&cursor=YYYY-MM-DD` returns
-`{ "today": ..., "attempt": ..., "run": ..., "history": [...], "nextCursor": ... }`.
+`{ "boardId": ..., "today": ..., "attempt": ..., "run": ..., "history": [...], "nextCursor": ... }`.
 Both query parameters are optional: `boardId` defaults to today's UTC board;
 history contains only completed results strictly before `boardId` (past grids).
 `cursor` is an additional exclusive date for paging, newest first, 20
@@ -140,6 +140,32 @@ kept rather than a new row for every score update. Saved results from before
 ranked verification began are not retrospectively ranked. If move histories
 eventually outgrow the database budget, an archival policy can remove old move
 details after a review window while retaining dates and final scores.
+
+The final result card links directly to Scores and, for a verified daily run,
+shows today's live rank out of completed players, score spread, and the same
+percentile threshold (30 completed players) as Scores. Scores also includes
+two 20-row, server-paginated leaderboards: today's UTC puzzle and all-time
+verified points. Both use competition ranking (equal points share a rank),
+with account ID as an internal deterministic ordering key within ties; that
+ID is never returned. All-time `played` counts distinct daily boards (one
+ranked row per account and board), and `average` is total verified points
+divided by played boards. Expired runs count even when the player never pressed
+Finish. The daily leaderboard always queries the current UTC date and resets
+to page one at rollover. Guests can read leaderboards but have no current-user
+context; personalized comparisons and past grids require sign-in.
+
+`GET /api/leaderboards?kind=daily|allTime&page=1` responds with
+`{ kind, boardId, page, pageSize, total, entries, current }`; daily `boardId`
+is its UTC date and all-time `boardId` is null. Entries contain `rank`,
+`name`, `points`, `mine`, and for all-time `played` and `average`.
+`current` contains those metrics except `mine`, or null if the signed-in
+player has no completed ranked attempt. No other player's account ID, full
+name, email, words, or Google handle is returned. Google structured given
+and family name fields are converted at sign-in to only the first given word
+plus family initial. If either field is missing/unusable, the display name
+is `Player`; existing accounts without a newly captured structured Google
+profile also show `Player` until they sign in again. This deliberately does
+not infer real names from email, handles, or unstructured full-name strings.
 
 ## Analytics
 

@@ -199,6 +199,7 @@ export async function GET(request) {
     });
     const attempt = publicRankedRun(run, now);
     return runResponse({
+      boardId,
       attempt,
       run: attempt,
       today: {

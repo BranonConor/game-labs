@@ -147,6 +147,16 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .tier-score { display: flex; align-items: baseline; gap: 8px; }
 .tier-details small { color: #bcc8cc; font-size: 9px; }
 .inline-results #final-summary { margin: 0; color: #cbd4d4; font: 10px/1.7 "Silkscreen", monospace; }
+.result-ranking { display: grid; gap: 7px; padding: 12px 15px; border: 1px solid #826f7f; background: #293247; }
+.result-ranking .overline { color: #a9dbc4; }
+.result-ranking strong { color: #ffe2aa; font: 13px/1.4 "Silkscreen", monospace; }
+.result-ranking > span:last-of-type, .result-ranking-status { color: #cbd4d4; font: 9px/1.5 "Silkscreen", monospace; }
+.result-ranking-status { margin: 0; }
+.result-ranking-status:empty { display: none; }
+.result-spread { display: flex; align-items: end; gap: 3px; height: 24px; border-bottom: 1px solid #adabb0; }
+.result-spread span { flex: 1; background: #a9dbc4; }
+.result-spread span.mine { background: #ffcf83; }
+.result-scores { justify-self: start; color: #a9dbc4; font: 10px "Silkscreen", monospace; }
 .inline-results #share { width: auto; justify-self: end; }
 .copy-icon { width: 24px; height: 24px; flex: none; image-rendering: pixelated; filter: drop-shadow(2px 2px #966b61); }
 .inline-results #share-status { margin: 0; padding: 9px 11px; border: 1px solid #78bfa6; background: #2b424a; color: #a9e4bf; font: 10px/1.6 "Silkscreen", monospace; box-shadow: 2px 2px #101626; }
@@ -272,6 +282,24 @@ footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 12px 0 23px; 
 .scores-empty strong { color: #ffe2aa; font: 11px/1.4 "Silkscreen", monospace; }
 .scores-empty small { margin-top: 5px; color: #cbd4d4; font: 12px/1.5 "DM Sans", sans-serif; }
 .scores-more { margin-top: 15px; }
+.leaderboard { min-width: 0; }
+.leaderboard-scroll { overflow-x: auto; }
+.leaderboard table { width: 100%; min-width: 260px; margin-top: 15px; border-collapse: collapse; table-layout: fixed; }
+.leaderboard table.all-time-table { min-width: 345px; }
+.leaderboard th { padding: 0 4px 8px; border-bottom: 1px solid #667081; color: #a9dbc4; font: 8px "Silkscreen", monospace; text-align: left; }
+.leaderboard td { padding: 9px 4px; border-bottom: 1px solid #465568; color: #d7d8d5; font: 10px/1.4 "Silkscreen", monospace; overflow-wrap: anywhere; }
+.leaderboard tr.mine td { color: #ffe2aa; background: #ffffff0c; }
+.leaderboard th:first-child { width: 46px; }
+.leaderboard th:nth-child(n + 3), .leaderboard td:nth-child(n + 3) { text-align: right; }
+.leaderboard .all-time-table th:first-child { width: 40px; }
+.leaderboard .all-time-table th:nth-child(3) { width: 62px; }
+.leaderboard .all-time-table th:nth-child(4), .leaderboard .all-time-table th:nth-child(5) { width: 48px; }
+.leaderboard-status, .leaderboard-current { color: #cbd4d4; font: 11px/1.5 "DM Sans", sans-serif; }
+.leaderboard-current { color: #ffe2aa; }
+.leaderboard-status:empty { display: none; }
+.leaderboard-pages { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; color: #a9dbc4; font: 9px "Silkscreen", monospace; }
+.leaderboard-pages button { border: 0; background: none; color: #a9dbc4; font: inherit; cursor: pointer; }
+.leaderboard-pages button:disabled { opacity: .4; cursor: default; }
 .scores-status { color: #ffad9f; font: 11px/1.5 "DM Sans", sans-serif; }
 .modal { position: fixed; inset: 0; width: min(475px, calc(100% - 26px)); max-height: 90dvh; margin: auto; overflow: hidden; background: #242b45; border: 1px solid #afb0b1; color: #f7edde; box-shadow: 7px 7px 0 #101426, 0 25px 100px #070a15; padding: 0; }
 .modal[open] { display: flex; flex-direction: column; animation: recipe-in .3s cubic-bezier(.2, .85, .3, 1) both; }
@@ -407,6 +435,7 @@ footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 12px 0 23px; 
   .scores-placement { padding: 14px 0 0; border-top: 1px solid #6b6377; border-left: 0; }
   .scores-history-headings, .scores-history li:not(.scores-empty) { grid-template-columns: minmax(0, 1fr) auto minmax(90px, 1fr); gap: 7px; font-size: 8px; }
   .scores-history li:not(.scores-empty) span:last-child { overflow-wrap: anywhere; }
+  .leaderboard .all-time-table td { font-size: 8px; }
   .shell { width: calc(100% - 20px); padding-top: 10px; }
   .topbar { padding-bottom: 8px; }
   .brand-group { gap: 6px; }

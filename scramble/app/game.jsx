@@ -107,6 +107,14 @@ export default function Game({ authConfigured, adminTools }) {
                   </div>
                 </div>
                 <p id="final-summary" />
+                <div id="result-ranking" className="result-ranking" hidden>
+                  <span className="overline">DAILY RANKING</span>
+                  <strong id="result-place" />
+                  <span id="result-percentile" />
+                  <div id="result-spread" className="result-spread" role="img" hidden />
+                </div>
+                <p id="result-ranking-status" className="result-ranking-status" role="status" />
+                <button id="result-scores" className="text-link result-scores" type="button">SEE SCORES &amp; LEADERBOARDS ↗</button>
                 <button id="share" className="action-button" type="button">COPY RESULT <img className="copy-icon" src="/copy.svg" alt="" /></button>
                 <p id="share-status" role="status" />
               </div>
@@ -170,6 +178,20 @@ export default function Game({ authConfigured, adminTools }) {
                     <div className="scores-chart-axis"><span>0 PTS</span><span>450+ PTS</span></div>
                   </div>
                 </div>
+              </section>
+              <section className="scores-history leaderboard" aria-labelledby="daily-leaders-title">
+                <div className="scores-history-top"><h3 id="daily-leaders-title">TODAY'S LEADERS</h3><span>VERIFIED SCORES</span></div>
+                <div className="leaderboard-scroll"><table aria-label="Today's leaderboard"><thead><tr><th scope="col">RANK</th><th scope="col">PLAYER</th><th scope="col">POINTS</th></tr></thead><tbody id="daily-leaders-list" /></table></div>
+                <p id="daily-leaders-status" className="leaderboard-status" role="status" />
+                <div className="leaderboard-pages"><button id="daily-leaders-prev" type="button" disabled>← PREV</button><span id="daily-leaders-page" /><button id="daily-leaders-next" type="button" disabled>NEXT →</button></div>
+                <p id="daily-leaders-current" className="leaderboard-current" hidden />
+              </section>
+              <section className="scores-history leaderboard" aria-labelledby="all-time-leaders-title">
+                <div className="scores-history-top"><h3 id="all-time-leaders-title">ALL-TIME POINTS</h3><span>VERIFIED DAILY GRIDS</span></div>
+                <div className="leaderboard-scroll"><table className="all-time-table" aria-label="All-time points leaderboard"><thead><tr><th scope="col">RANK</th><th scope="col">PLAYER</th><th scope="col">POINTS</th><th scope="col">PLAYED</th><th scope="col">AVG</th></tr></thead><tbody id="all-time-leaders-list" /></table></div>
+                <p id="all-time-leaders-status" className="leaderboard-status" role="status" />
+                <div className="leaderboard-pages"><button id="all-time-leaders-prev" type="button" disabled>← PREV</button><span id="all-time-leaders-page" /><button id="all-time-leaders-next" type="button" disabled>NEXT →</button></div>
+                <p id="all-time-leaders-current" className="leaderboard-current" hidden />
               </section>
               <section className="scores-history" aria-labelledby="scores-history-title">
                 <div className="scores-history-top"><h3 id="scores-history-title">PAST GRIDS</h3><span>YOUR DAILY RECORD</span></div>
@@ -286,7 +308,7 @@ export default function Game({ authConfigured, adminTools }) {
           <h3>WHAT WE COLLECT</h3>
           <p>If you sign in with Google, we receive your Google account ID, name, email address, and profile image. We store your saved game progress, submitted words, scores, and daily attempts with your account ID. Guest progress stays in your browser's local storage; signed-in progress may also be cached there.</p>
           <h3>HOW WE USE IT</h3>
-          <p>We use this data to sign you in, sync your runs across devices, verify ranked scores, and show your own history and aggregate daily comparisons. Other players do not receive your account identity or individual word history through the Scores page.</p>
+          <p>We use this data to sign you in, sync your runs across devices, verify ranked scores, and show your own history and ranked leaderboards. Public rankings show only your Google given name and family initial (or “Player” if unavailable), verified points, rank, and for all-time rankings your games played and average. Other players do not receive your account ID, email, full name, or individual word history through leaderboards.</p>
           <h3>COOKIES &amp; SERVICE PROVIDERS</h3>
           <p>Sign-in uses session cookies. The production site also uses Google Analytics, which may use cookies or similar technologies to measure visits and usage. Google provides sign-in and analytics, Vercel hosts the site, and Neon stores signed-in runs. Those services may process technical data under their own privacy terms.</p>
           <h3>RETENTION &amp; YOUR CHOICES</h3>

@@ -21,3 +21,8 @@ CREATE TABLE IF NOT EXISTS ranked_runs (
 );
 
 CREATE INDEX IF NOT EXISTS ranked_runs_board_score_idx ON ranked_runs (board_id, score);
+
+CREATE TABLE IF NOT EXISTS leaderboard_profiles (
+  user_id text PRIMARY KEY,
+  display_name text NOT NULL
+);

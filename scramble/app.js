@@ -785,6 +785,54 @@ export function mountGame(authConfigured) {
     $("path-length").textContent = "RUN COMPLETE";
     $("compose-content").hidden = true;
     $("results-content").hidden = false;
+    void loadResultRanking();
+  }
+
+  let resultRankingGeneration = 0;
+  async function loadResultRanking() {
+    const generation = ++resultRankingGeneration;
+    const ranking = $("result-ranking");
+    const status = $("result-ranking-status");
+    ranking.hidden = true;
+    status.textContent = "";
+    if (practiceSeed || !accountUser || !rankedAttemptExists) {
+      status.textContent = "Only signed-in, verified daily runs enter the ranking.";
+      return;
+    }
+    status.textContent = "Checking today's ranking...";
+    try {
+      const response = await fetch(`/api/ranked?boardId=${encodeURIComponent(day)}`, { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `Scores request failed: HTTP ${response.status}`);
+      if (generation !== resultRankingGeneration || !state.finished) return;
+      if (data.today.rank == null) {
+        status.textContent = "Your verified place is pending. Open Scores to check it.";
+        return;
+      }
+      const today = data.today;
+      $("result-place").textContent = `${today.tied ? "TIED " : ""}#${today.rank} OF ${today.total} PLAYERS`;
+      $("result-percentile").textContent = today.percentile == null
+        ? `${today.total} FINISHED · PERCENTILES AT 30` : `AROUND THE ${displayPercentile(today.percentile)}TH PERCENTILE`;
+      const spread = $("result-spread");
+      spread.replaceChildren();
+      if (today.total && today.distribution?.length) {
+        const max = Math.max(...today.distribution.map((bucket) => bucket.count));
+        for (const bucket of today.distribution) {
+          const bar = document.createElement("span");
+          bar.style.height = `${bucket.count ? Math.max(4, bucket.count / max * 100) : 0}%`;
+          bar.classList.toggle("mine", Math.min(Math.floor(today.score / 50), 9) * 50 === bucket.score);
+          spread.append(bar);
+        }
+        spread.setAttribute("aria-label", `Score distribution for ${today.total} players today`);
+        spread.hidden = false;
+      } else spread.hidden = true;
+      ranking.hidden = false;
+      status.textContent = today.final ? "FINAL COMPARISON" : "LIVE · PLACE MAY CHANGE";
+    } catch (error) {
+      if (generation !== resultRankingGeneration) return;
+      console.error("Could not load result ranking:", error);
+      status.textContent = "Ranking unavailable. Open Scores to retry.";
+    }
   }
 
   function playFinale(reason) {
@@ -822,10 +870,12 @@ export function mountGame(authConfigured) {
     }
     if (reason === "full") state.fullBoardBonusAwarded = true;
     if (rankedMode === "active" && reason === "stuck") {
-      void requestRanked("finish").catch((error) => {
-        console.error("Could not finish ranked run:", error);
-        message("Your ranked result could not be finalized. Reopen Scores to check it.", "error");
-      });
+      void requestRanked("finish")
+        .then(() => { if (state.finished) void loadResultRanking(); })
+        .catch((error) => {
+          console.error("Could not finish ranked run:", error);
+          message("Your ranked result could not be finalized. Reopen Scores to check it.", "error");
+        });
     }
     rankedMode = "unranked";
     moveWorker?.terminate();
@@ -1174,6 +1224,64 @@ export function mountGame(authConfigured) {
   let scoresGeneration = 0;
   let scoresCursor = null;
   let scoresLoading = false;
+  const leaderboards = {
+    daily: { prefix: "daily-leaders", page: 1, generation: 0, boardId: null },
+    allTime: { prefix: "all-time-leaders", page: 1, generation: 0 },
+  };
+  async function loadLeaderboard(kind, page = 1) {
+    const board = leaderboards[kind];
+    const generation = ++board.generation;
+    const prefix = board.prefix;
+    $(prefix + "-status").textContent = "Loading leaderboard...";
+    $(prefix + "-list").replaceChildren();
+    $(prefix + "-prev").disabled = true;
+    $(prefix + "-next").disabled = true;
+    $(prefix + "-current").hidden = true;
+    try {
+      const response = await fetch(`/api/leaderboards?kind=${kind}&page=${page}`, { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `Leaderboard request failed: HTTP ${response.status}`);
+      if (generation !== board.generation || menuDialog.dataset.page !== "scores") return;
+      board.page = page;
+      if (kind === "daily") board.boardId = data.boardId;
+      const list = $(prefix + "-list");
+      for (const entry of data.entries) {
+        const item = document.createElement("tr");
+        if (entry.mine) item.className = "mine";
+        for (const value of [
+          `#${entry.rank}`, entry.name, entry.points.toLocaleString(),
+          ...(kind === "allTime" ? [entry.played.toLocaleString(), entry.average.toFixed(1)] : []),
+        ]) {
+          const cell = document.createElement("td");
+          cell.textContent = value;
+          item.append(cell);
+        }
+        list.append(item);
+      }
+      $(prefix + "-status").textContent = data.total ? "" : kind === "daily"
+        ? "No finished runs for today's grid yet." : "No verified daily runs yet.";
+      $(prefix + "-page").textContent = data.total ? `PAGE ${page} / ${Math.ceil(data.total / data.pageSize)}` : "";
+      $(prefix + "-prev").disabled = page <= 1;
+      $(prefix + "-next").disabled = page * data.pageSize >= data.total;
+      const current = $(prefix + "-current");
+      current.hidden = !data.current || data.entries.some((entry) => entry.mine);
+      if (data.current) current.textContent = `YOUR PLACE: #${data.current.rank} · ${data.current.points.toLocaleString()} PTS`
+        + (kind === "allTime" ? ` · ${data.current.played} PLAYED · ${data.current.average.toFixed(1)} AVG` : "");
+    } catch (error) {
+      if (generation !== board.generation) return;
+      console.error(`Could not load ${kind} leaderboard:`, error);
+      $(prefix + "-status").textContent = "Leaderboard unavailable. Close and reopen Scores to retry.";
+    }
+  }
+  for (const [kind, board] of Object.entries(leaderboards)) {
+    $(board.prefix + "-prev").addEventListener("click", () => { void loadLeaderboard(kind, board.page - 1); });
+    $(board.prefix + "-next").addEventListener("click", () => { void loadLeaderboard(kind, board.page + 1); });
+  }
+  function openScores() {
+    if (!menuDialog.open) menuDialog.showModal();
+    menuDialog.querySelector('[data-menu-page="scores"]').click();
+  }
+  $("result-scores").addEventListener("click", openScores);
   let accountError = null;
   function scoreDate(board) {
     return new Intl.DateTimeFormat("en", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" })
@@ -1207,7 +1315,10 @@ export function mountGame(authConfigured) {
     empty.append(copy);
     $("scores-history-list").replaceChildren(empty);
   }
-  $("scores-play").addEventListener("click", closeMenu);
+  $("scores-play").addEventListener("click", () => {
+    if (day !== utcDailyBoardId()) location.reload();
+    else closeMenu();
+  });
   async function loadScores(append = false, refresh = false) {
     if (!accountUser || scoresLoading) return;
     scoresLoading = true;
@@ -1229,7 +1340,7 @@ export function mountGame(authConfigured) {
       scoresCursor = null;
     }
     try {
-      const params = new URLSearchParams({ boardId: day });
+      const params = new URLSearchParams();
       if (append && scoresCursor) params.set("cursor", scoresCursor);
       let response;
       try {
@@ -1245,7 +1356,7 @@ export function mountGame(authConfigured) {
       }
       if (generation !== scoresGeneration || !accountUser) return;
       const today = result.today;
-      $("scores-date").textContent = scoreDate(day).toUpperCase() + " UTC";
+      $("scores-date").textContent = scoreDate(result.boardId).toUpperCase() + " UTC";
       $("scores-phase").textContent = today.final ? "FINAL" : "LIVE";
       $("scores-today-empty").hidden = today.score != null;
       $("scores-today-result").hidden = today.score == null;
@@ -1268,6 +1379,8 @@ export function mountGame(authConfigured) {
         && !(state.startedAt && rankedMode === "unranked" && !practiceSeed);
       $("scores-empty-copy").hidden = offerPlay;
       $("scores-play").hidden = !offerPlay;
+      $("scores-play").textContent = day === result.boardId
+        ? "PLAY TODAY'S GRID ↗" : "REFRESH TO PLAY TODAY'S GRID ↗";
       const chart = $("scores-distribution");
       chart.replaceChildren();
       if (today.total > 0 && today.distribution?.length) {
@@ -1315,8 +1428,14 @@ export function mountGame(authConfigured) {
   }
   $("scores-more").addEventListener("click", () => { void loadScores(true); });
   window.setInterval(() => {
-    if (menuDialog.open && menuDialog.dataset.page === "scores" && accountUser
-      && $("scores-phase").textContent !== "FINAL") void loadScores(false, true);
+    if (menuDialog.open && menuDialog.dataset.page === "scores") {
+      if (leaderboards.daily.boardId !== utcDailyBoardId()) {
+        leaderboards.daily.page = 1;
+        void loadLeaderboard("daily");
+        if (accountUser) void loadScores();
+      } else void loadLeaderboard("daily", leaderboards.daily.page);
+      if (accountUser && $("scores-phase").textContent !== "FINAL") void loadScores(false, true);
+    }
   }, 30000);
   async function loadHistory() {
     const generation = ++historyGeneration;
@@ -1374,6 +1493,8 @@ export function mountGame(authConfigured) {
     }
     scoresGeneration++;
     scoresLoading = false;
+    resultRankingGeneration++;
+    if (state.finished) void loadResultRanking();
     if (!user) {
       historyGeneration++;
       $("profile-score").textContent = "0";
@@ -1381,7 +1502,7 @@ export function mountGame(authConfigured) {
       $("scores-score").textContent = "—";
       $("scores-rank").textContent = "No ranked result yet";
       $("scores-percentile").textContent = "";
-      $("scores-date").textContent = scoreDate(day).toUpperCase() + " UTC";
+      $("scores-date").textContent = scoreDate(utcDailyBoardId()).toUpperCase() + " UTC";
       $("scores-phase").textContent = "LIVE";
       $("scores-today-empty").hidden = false;
       $("scores-today-result").hidden = true;
@@ -1501,6 +1622,7 @@ export function mountGame(authConfigured) {
     menuDialog.removeAttribute("data-page");
     scoresGeneration++;
     scoresLoading = false;
+    for (const board of Object.values(leaderboards)) board.generation++;
     $("menu-home").hidden = false;
     menuPage.hidden = true;
     if (!document.querySelector("dialog[open]")) $("menu-toggle").focus();
@@ -1526,6 +1648,10 @@ export function mountGame(authConfigured) {
       } else if (isScores) {
         scoresGeneration++;
         scoresLoading = false;
+        for (const [kind, board] of Object.entries(leaderboards)) {
+          board.page = 1;
+          void loadLeaderboard(kind);
+        }
         if (accountUser) void loadScores();
       } else {
         $("menu-page-title").textContent = page.toUpperCase();

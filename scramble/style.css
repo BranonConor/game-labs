@@ -157,8 +157,7 @@ button:focus-visible, .tile:focus-visible { outline: 3px solid #ffe297; outline-
 .result-spread span { flex: 1; background: #a9dbc4; }
 .result-spread span.mine { background: #ffcf83; }
 .result-scores { justify-self: start; color: #a9dbc4; font: 10px "Silkscreen", monospace; }
-.inline-results #share { position: absolute; top: 9px; right: 9px; display: grid; place-items: center; width: 32px; height: 32px; padding: 4px; border: 1px solid #bfa386; background: #453d51; cursor: pointer; }
-.inline-results #share:hover { background: #64516a; }
+.inline-results #share { position: absolute; top: 9px; right: 9px; display: grid; place-items: center; width: 32px; height: 32px; padding: 4px; cursor: pointer; }
 .copy-icon { width: 21px; height: 21px; flex: none; image-rendering: pixelated; filter: drop-shadow(2px 2px #966b61); }
 .inline-results #share-status { margin: 0; padding: 9px 11px; border: 1px solid #78bfa6; background: #2b424a; color: #a9e4bf; font: 10px/1.6 "Silkscreen", monospace; box-shadow: 2px 2px #101626; }
 .inline-results #share-status.entering { animation: share-status-in .22s ease-out both; }

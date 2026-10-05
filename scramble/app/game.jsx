@@ -105,7 +105,7 @@ export default function Game({ authConfigured, adminTools }) {
                     <div className="tier-score"><strong id="final-score">0</strong><span>POINTS</span></div>
                     <small id="tier-range" />
                   </div>
-                  <button id="share" className="score-copy" type="button" aria-label="Copy result" title="Copy result"><img className="copy-icon" src="/copy.svg" alt="" /></button>
+                  <button id="share" className="action-button score-copy" type="button" aria-label="Copy result" title="Copy result"><img className="copy-icon" src="/copy.svg" alt="" /></button>
                 </div>
                 <p id="final-summary" />
                 <div id="result-ranking" className="result-ranking" hidden>

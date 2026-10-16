@@ -12,6 +12,8 @@ export function validBoardId(boardId) {
 export function validRunState(state) {
   if (!state || typeof state !== "object" || Array.isArray(state)) return false;
   if (!validTimestamp(state.startedAt) || !validTimestamp(state.endedAt)) return false;
+  if (state.pausedAt != null && !validTimestamp(state.pausedAt)) return false;
+  if (state.pausedAt && (!state.startedAt || state.pausedAt < state.startedAt || state.finished)) return false;
   if (typeof state.finished !== "boolean" || typeof state.fullBoardBonusAwarded !== "boolean") return false;
   if (!Number.isSafeInteger(state.score) || state.score < 0 || state.score > 100000) return false;
   if (state.finished !== Boolean(state.endedAt)) return false;

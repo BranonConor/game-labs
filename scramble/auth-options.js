@@ -1,6 +1,6 @@
 import GoogleProviderPackage from "next-auth/providers/google";
 import { neon } from "@neondatabase/serverless";
-import { publicPlayerName } from "./leaderboard.js";
+import { publicPlayerName, publicInitials } from "./leaderboard.js";
 
 const GoogleProvider = GoogleProviderPackage.default ?? GoogleProviderPackage;
 const ADMIN_EMAIL = "branoneusebio@gmail.com";
@@ -31,6 +31,15 @@ export const authOptions = {
           INSERT INTO leaderboard_profiles (user_id, display_name) VALUES (${token.sub}, ${displayName})
           ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name
         `;
+      }
+      if (token.sub && token.name && process.env.DATABASE_URL) {
+        const initials = publicInitials(token.name);
+        if (initials !== "Player") {
+          const sql = neon(process.env.DATABASE_URL);
+          await sql`INSERT INTO leaderboard_profiles (user_id, display_name) VALUES (${token.sub}, ${initials})
+            ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name
+            WHERE leaderboard_profiles.display_name = 'Player'`;
+        }
       }
       return token;
     },

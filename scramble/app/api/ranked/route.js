@@ -1,6 +1,8 @@
+import { scoreLandscape } from "../../../score-landscape";
+import { scoreModel, modelPercentile } from "../../../score-model";
 import { runContext, runResponse } from "../../../run-db";
 import { utcDailyBoardId, validRankedBoardId } from "../../../ranked-board";
-import { comparison, historyBefore, isFrozen, publicRankedRun, scoreDistribution, verifyWord } from "../../../ranked-run";
+import { comparison, isExpired, historyBefore, isFrozen, publicRankedRun, verifyWord } from "../../../ranked-run";
 
 export const runtime = "nodejs";
 
@@ -14,7 +16,7 @@ function logUnexpected(operation, error) {
 
 async function findRun(sql, userId, boardId) {
   const [run] = await sql`
-    SELECT board_id::text AS board_id, started_at, sequence, played, moves, score,
+    SELECT board_id::text AS board_id, started_at, deadline_at, paused_at, sequence, played, moves, score,
            finished_at, ended_reason
     FROM ranked_runs WHERE user_id = ${userId} AND board_id = ${boardId}::date
   `;
@@ -23,35 +25,24 @@ async function findRun(sql, userId, boardId) {
 
 async function countsFor(sql, boardId, score) {
   const [counts] = await sql`
-    SELECT count(*)::integer AS total,
+    SELECT avg(score) AS mean, stddev_pop(score) AS deviation, count(*)::integer AS total,
            count(*) FILTER (WHERE score < ${score ?? -1})::integer AS lower,
            count(*) FILTER (WHERE score > ${score ?? -1})::integer AS higher
     FROM ranked_runs
     WHERE board_id = ${boardId}::date
-      AND (finished_at IS NOT NULL OR started_at + interval '4 minutes' <= clock_timestamp())
+      AND (finished_at IS NOT NULL OR ((paused_at IS NULL AND deadline_at <= clock_timestamp()) OR clock_timestamp() >= ((board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes'))
   `;
   return counts;
 }
 
-async function distributionFor(sql, boardId) {
-  const rows = await sql`
-    SELECT least(score / 50, 9) * 50 AS score, count(*)::integer AS count
-    FROM ranked_runs
-    WHERE board_id = ${boardId}::date
-      AND (finished_at IS NOT NULL OR started_at + interval '4 minutes' <= clock_timestamp())
-    GROUP BY 1 ORDER BY 1
-  `;
-  return scoreDistribution(rows);
-}
-
 function completed(run, now) {
-  return Boolean(run?.finished_at) || Boolean(run && now >= new Date(run.started_at).getTime() + 240000);
+  return Boolean(run?.finished_at) || Boolean(run && isExpired(run, now));
 }
 
 function rejectConflict(run, now) {
   if (!run) return runResponse({ error: "Ranked run not started.", code: "NOT_STARTED" }, 404);
   if (run.finished_at) return runResponse({ error: "Ranked run already finished.", code: "FINISHED" }, 409);
-  if (now >= new Date(run.started_at).getTime() + 240000) {
+  if (isExpired(run, now)) {
     return runResponse({ error: "Ranked run has timed out.", code: "EXPIRED" }, 410);
   }
   return runResponse({ error: "Outdated ranked sequence. Reload the run.", code: "STALE_SEQUENCE" }, 409);
@@ -70,7 +61,7 @@ export async function POST(request) {
     return runResponse({ error: "Invalid ranked request." }, 400);
   }
   if (!input || typeof input !== "object" || Array.isArray(input)
-      || !["start", "word", "finish"].includes(input.action)
+      || !["start", "word", "finish", "pause", "resume"].includes(input.action)
       || !validRankedBoardId(input.boardId)) {
     return runResponse({ error: "Invalid ranked action or daily board ID." }, 400);
   }
@@ -94,6 +85,17 @@ export async function POST(request) {
     }
     const run = await findRun(sql, userId, boardId);
     if (!run) return rejectConflict(null, Date.now());
+    if (["pause", "resume"].includes(input.action)) {
+      // Conditional updates are idempotent. Server time is the only clock authority.
+      await sql`UPDATE ranked_runs SET
+        deadline_at = CASE WHEN ${input.action} = 'resume' AND paused_at IS NOT NULL
+          THEN least(deadline_at + (clock_timestamp() - paused_at), ((board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes') ELSE deadline_at END,
+        paused_at = CASE WHEN ${input.action} = 'pause' THEN coalesce(paused_at, clock_timestamp()) ELSE NULL END
+        WHERE user_id = ${userId} AND board_id = ${boardId}::date AND finished_at IS NULL
+          AND (paused_at IS NOT NULL OR deadline_at > clock_timestamp())
+          AND clock_timestamp() < ((board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes'`;
+      return runResponse(publicRankedRun(await findRun(sql, userId, boardId)));
+    }
     if (input.action === "finish") {
       if (completed(run, arrivedAt.getTime())) {
         return runResponse({ score: run.score, finished: true, sequence: run.sequence, endedAt: publicRankedRun(run).endedAt });
@@ -103,9 +105,9 @@ export async function POST(request) {
           ended_reason = 'finish'
         WHERE user_id = ${userId} AND board_id = ${boardId}::date
           AND finished_at IS NULL
-          AND ${arrivedAt.toISOString()}::timestamptz < started_at + interval '4 minutes'
+          AND ${arrivedAt.toISOString()}::timestamptz < deadline_at
           AND clock_timestamp() < ((board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes'
-        RETURNING board_id::text AS board_id, started_at, sequence, played, moves, score,
+        RETURNING board_id::text AS board_id, started_at, deadline_at, paused_at, sequence, played, moves, score,
                   finished_at, ended_reason
       `;
       if (!updated) {
@@ -117,7 +119,8 @@ export async function POST(request) {
       }
       return runResponse({ score: updated.score, finished: true, sequence: updated.sequence, endedAt: updated.finished_at });
     }
-    if (run.finished_at || input.sequence !== run.sequence || arrivedAt.getTime() >= new Date(run.started_at).getTime() + 240000) {
+    if (run.paused_at) return runResponse({ error: "Resume your run before submitting a word.", code: "PAUSED" }, 409);
+    if (run.finished_at || input.sequence !== run.sequence || isExpired(run, arrivedAt.getTime())) {
       return rejectConflict(run, Date.now());
     }
     let verified;
@@ -135,10 +138,10 @@ export async function POST(request) {
         finished_at = CASE WHEN ${verified.full} THEN clock_timestamp() ELSE NULL END,
         ended_reason = CASE WHEN ${verified.full} THEN 'full' ELSE NULL END
       WHERE user_id = ${userId} AND board_id = ${boardId}::date
-        AND sequence = ${input.sequence} AND finished_at IS NULL
-        AND ${arrivedAt.toISOString()}::timestamptz < started_at + interval '4 minutes'
+        AND sequence = ${input.sequence} AND finished_at IS NULL AND paused_at IS NULL
+        AND ${arrivedAt.toISOString()}::timestamptz < deadline_at
         AND clock_timestamp() < ((board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes'
-      RETURNING board_id::text AS board_id, started_at, sequence, played, moves, score,
+      RETURNING board_id::text AS board_id, started_at, deadline_at, paused_at, sequence, played, moves, score,
                 finished_at, ended_reason
     `;
     if (!updated) return rejectConflict(await findRun(sql, userId, boardId), Date.now());
@@ -170,31 +173,38 @@ export async function GET(request) {
     const ranked = completed(run, now)
       ? comparison(run.score, counts.total, counts.lower, counts.higher, isFrozen(boardId, now))
       : null;
+    const { distribution, model } = await scoreLandscape(sql, boardId);
     const before = historyBefore(boardId, cursor);
     const rows = await sql`
       WITH page AS (
         SELECT board_id, score FROM ranked_runs
         WHERE user_id = ${userId} AND board_id < ${before}::date
-          AND (finished_at IS NOT NULL OR started_at + interval '4 minutes' <= clock_timestamp())
+          AND (finished_at IS NOT NULL OR ((paused_at IS NULL AND deadline_at <= clock_timestamp()) OR clock_timestamp() >= ((board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes'))
         ORDER BY board_id DESC LIMIT 21
       )
       SELECT page.board_id::text AS board_id, page.score,
-             tally.total, tally.lower, tally.higher
+             tally.total, tally.lower, tally.higher, tally.mean, tally.deviation,
+             prior.count AS prior_count, prior.mean AS prior_mean, prior.deviation AS prior_deviation
       FROM page CROSS JOIN LATERAL (
-        SELECT count(*)::integer AS total,
+        SELECT avg(r.score) AS mean, stddev_pop(r.score) AS deviation, count(*)::integer AS total,
                count(*) FILTER (WHERE r.score < page.score)::integer AS lower,
                count(*) FILTER (WHERE r.score > page.score)::integer AS higher
         FROM ranked_runs r
         WHERE r.board_id = page.board_id
-          AND (r.finished_at IS NOT NULL OR r.started_at + interval '4 minutes' <= clock_timestamp())
-      ) tally
+          AND (r.finished_at IS NOT NULL OR ((r.paused_at IS NULL AND r.deadline_at <= clock_timestamp()) OR clock_timestamp() >= ((r.board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes'))
+      ) tally CROSS JOIN LATERAL (
+        SELECT count(*)::integer AS count, avg(r.score) AS mean, stddev_pop(r.score) AS deviation
+        FROM ranked_runs r WHERE r.board_id < page.board_id
+          AND (r.finished_at IS NOT NULL OR (r.paused_at IS NULL AND r.deadline_at <= clock_timestamp())
+            OR clock_timestamp() >= ((r.board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes')
+      ) prior
       ORDER BY page.board_id DESC
     `;
     const history = rows.slice(0, 20).map((row) => {
       const rank = comparison(row.score, row.total, row.lower, row.higher, isFrozen(row.board_id, now));
       return {
         boardId: row.board_id, score: row.score, rank: rank.rank, tied: rank.tied,
-        total: rank.total, percentile: rank.percentile, final: rank.frozen,
+        total: rank.total, percentile: modelPercentile(row.score, scoreModel(row.board_id, row.total, [], {count: row.prior_count, mean: row.prior_mean, deviation: row.prior_deviation}, row)), comparisonSource: row.total < 30 ? "projected" : "adjusted", final: rank.frozen,
       };
     });
     const attempt = publicRankedRun(run, now);
@@ -207,10 +217,12 @@ export async function GET(request) {
         rank: ranked?.rank ?? null,
         tied: ranked?.tied ?? false,
         total: counts.total,
-        percentile: ranked?.percentile ?? null,
+        percentile: ranked ? modelPercentile(run.score, model) : null,
+        comparisonSource: model.source,
+        model,
         final: isFrozen(boardId, now),
         eligible: Boolean(run) || boardId === daily(),
-        distribution: await distributionFor(sql, boardId),
+        distribution,
       },
       history,
       nextCursor: rows.length > 20 ? rows[19].board_id : null,

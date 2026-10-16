@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "next dev --webpack -H 127.0.0.1",
     "build": "node db/migrate.mjs && next build --webpack",
-    "start": "next start -H 127.0.0.1"
+    "start": "next start -H 127.0.0.1",
+    "seed:dev": "node db/seed-dev.mjs",
+    "seed:clear": "node db/seed-dev.mjs --clear"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

@@ -20,7 +20,7 @@ test("profile totals include completed days beyond recent results without counti
     const query = strings.join("?");
     assert.equal(userId, "player-1");
     assert.match(query, /FROM ranked_runs r/);
-    assert.match(query, /r\.finished_at IS NOT NULL OR r\.started_at \+ interval '4 minutes'/);
+    assert.match(query, /r\.paused_at IS NULL AND r\.deadline_at <= clock_timestamp/);
     assert.match(query, /g\.state->>'finished' = 'true'/);
     assert.match(query, /g\.board_id ~ '\^\[0-9\]\{4\}/);
     assert.match(query, /NOT EXISTS \([\s\S]*r\.board_id::text = g\.board_id/);

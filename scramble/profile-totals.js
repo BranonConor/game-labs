@@ -4,7 +4,7 @@ export async function profileTotals(sql, userId) {
       SELECT r.score, jsonb_array_length(r.moves) AS words
       FROM ranked_runs r
       WHERE r.user_id = ${userId}
-        AND (r.finished_at IS NOT NULL OR r.started_at + interval '4 minutes' <= clock_timestamp())
+        AND (r.finished_at IS NOT NULL OR ((r.paused_at IS NULL AND r.deadline_at <= clock_timestamp()) OR clock_timestamp() >= ((r.board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes'))
       UNION ALL
       SELECT (g.state->>'score')::integer AS score,
              jsonb_array_length(g.state->'words') AS words
@@ -15,7 +15,7 @@ export async function profileTotals(sql, userId) {
         AND NOT EXISTS (
           SELECT 1 FROM ranked_runs r
           WHERE r.user_id = g.user_id AND r.board_id::text = g.board_id
-            AND (r.finished_at IS NOT NULL OR r.started_at + interval '4 minutes' <= clock_timestamp())
+            AND (r.finished_at IS NOT NULL OR ((r.paused_at IS NULL AND r.deadline_at <= clock_timestamp()) OR clock_timestamp() >= ((r.board_id + 1)::timestamp AT TIME ZONE 'UTC') + interval '4 minutes'))
         )
     )
     SELECT coalesce(sum(score), 0)::bigint AS points,

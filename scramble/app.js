@@ -1,3 +1,5 @@
+import { modelPercentile } from "./score-model.js";
+import { renderScoreChart } from "./score-chart.js";
 import { startAtmosphere } from "./atmosphere.js";
 import { createGoogleAuth, googleAuthError } from "./auth.js";
 import { dailyPuzzleNumber, DURATION_MS, FULL_BOARD_BONUS, generateBoard, SIZE, utcDailyBoardId, VALUES } from "./ranked-board.js";
@@ -26,7 +28,7 @@ export function mountGame(authConfigured) {
   let moveCheckId = 0;
   let inspectedRoute = null;
   let shareStatusTimer = null;
-  let shareExitTimer = null;
+
   const day = utcDailyBoardId();
   const requestedSeed = new URLSearchParams(location.search).get("seed");
   const practiceSeed = requestedSeed && /^[\w-]{1,64}$/.test(requestedSeed) ? requestedSeed : null;
@@ -120,11 +122,13 @@ export function mountGame(authConfigured) {
     if (!response.ok) throw new Error(result.error || `Run request failed: HTTP ${response.status}`);
     return result;
   }
+  let pendingWordRequest = Promise.resolve();
   async function requestRanked(action, input = {}) {
     const response = await fetch("/api/ranked", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, boardId: day, ...input }),
+      keepalive: action === "pause",
     });
     const result = await response.json();
     if (!response.ok) {
@@ -169,6 +173,7 @@ export function mountGame(authConfigured) {
 
   function applyLoadedRun(nextState) {
     state = nextState;
+    $("pause-overlay").hidden = !state.pausedAt || state.finished;
     path = [];
     draft = [];
     moveWorker?.terminate();
@@ -188,7 +193,8 @@ export function mountGame(authConfigured) {
     rankedAttemptExists = true;
     rankedSequence = run.sequence;
     applyLoadedRun({
-      startedAt: Date.parse(run.startedAt),
+      startedAt: (run.endedAt ? Date.parse(run.endedAt) : Date.now()) - (DURATION - run.remainingMs),
+      pausedAt: run.pausedAt && !run.finished ? Date.now() : null,
       endedAt: run.endedAt ? Date.parse(run.endedAt) : null,
       endedReason: run.endedReason,
       finished: run.finished,
@@ -288,7 +294,7 @@ export function mountGame(authConfigured) {
   }
 
   function checkRemainingMoves() {
-    if (!syncReady || !moveWorkerReady || !state.startedAt || state.finished) return;
+    if (!syncReady || !moveWorkerReady || !state.startedAt || state.pausedAt || state.finished) return;
     moveWorker.postMessage({
       type: "check",
       id: ++moveCheckId,
@@ -307,7 +313,7 @@ export function mountGame(authConfigured) {
         if (data.type === "ready") {
           moveWorkerReady = true;
           checkRemainingMoves();
-        } else if (data.type === "result" && data.id === moveCheckId && syncReady && !state.finished && !data.hasMove) {
+        } else if (data.type === "result" && data.id === moveCheckId && syncReady && !state.pausedAt && !state.finished && !data.hasMove) {
           finish("stuck");
         }
       };
@@ -351,8 +357,42 @@ export function mountGame(authConfigured) {
   }
 
   function remaining() {
-    return Math.max(0, DURATION - ((state.endedAt || Date.now()) - state.startedAt));
+    return Math.max(0, DURATION - ((state.endedAt || state.pausedAt || Date.now()) - state.startedAt));
   }
+
+  let pauseQueue = Promise.resolve();
+  function pauseRun() {
+    if (!state.startedAt || state.pausedAt || state.finished) return;
+    state.pausedAt = Date.now();
+    $("pause-overlay").hidden = false;
+    clearPath();
+    save();
+    if (rankedMode === "active") {
+      // Start the keepalive fetch synchronously, before the document can unload.
+      const pauseRequest = requestRanked("pause");
+      pauseQueue = pauseRequest.then(async () => {
+        await pendingWordRequest.catch(() => {});
+        const run = await readRankedAttempt();
+        applyRankedRun(run);
+      }).catch(error => message("Could not confirm pause. Reconnect before resuming.", "error"));
+    }
+  }
+  $("resume-run").addEventListener("click", async () => {
+    if (!state.pausedAt) return;
+    const button = $("resume-run"); button.disabled = true;
+    try {
+      await pauseQueue;
+      if (rankedMode === "active") applyRankedRun(await requestRanked("resume"));
+      else { state.startedAt += Date.now() - state.pausedAt; state.pausedAt = null; }
+      $("pause-overlay").hidden = Boolean(!state.pausedAt || state.finished);
+      save(); renderProgress(); tick(); checkRemainingMoves();
+    } catch (error) { message("Could not resume. Please try again.", "error"); }
+    finally { button.disabled = false; }
+  });
+  const onVisibility = () => { if (document.hidden) pauseRun(); };
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("pagehide", pauseRun);
+  window.addEventListener("blur", pauseRun);
 
   function straightSegment(from, to) {
     const fromRow = Math.floor(from / SIZE);
@@ -406,7 +446,8 @@ export function mountGame(authConfigured) {
     const focusedIndex = boardElement.contains(document.activeElement) ? Number(document.activeElement.dataset.index) : -1;
     const next = nextEmptyPosition();
     const claimed = claimedTiles();
-    boardElement.setAttribute("aria-hidden", state.startedAt ? "false" : "true");
+    boardElement.setAttribute("aria-hidden", state.startedAt && !state.pausedAt ? "false" : "true");
+    boardElement.inert = Boolean(state.pausedAt);
     const tiles = fixed.map((seed, index) => {
       const played = state.played[index];
       const pathPosition = path.indexOf(index);
@@ -433,7 +474,7 @@ export function mountGame(authConfigured) {
         tile.style.setProperty("--route-color", color.light);
         tile.style.setProperty("--route-deep", color.deep);
       }
-      tile.disabled = !syncReady || rankedPending || !state.startedAt || (!state.finished && !dictionary);
+      tile.disabled = !syncReady || rankedPending || !state.startedAt || Boolean(state.pausedAt) || (!state.finished && !dictionary);
       tile.setAttribute("aria-label", state.finished
         ? `Row ${Math.floor(index / SIZE) + 1}, column ${index % SIZE + 1}: ${letter || "empty"}${lastRoute ? `, part of ${lastRoute.word}, ${lastRoute.points} points` : ""}`
         : state.startedAt
@@ -681,7 +722,7 @@ export function mountGame(authConfigured) {
   }
 
   function beginSelection(index) {
-    if (!syncReady || rankedPending || !state.startedAt || state.finished) return;
+    if (!syncReady || rankedPending || !state.startedAt || state.pausedAt || state.finished) return;
     if (claimedTiles().has(index)) {
       message("Tiles in submitted words cannot be used again.", "error");
       return;
@@ -696,7 +737,7 @@ export function mountGame(authConfigured) {
   }
 
   async function submitWord() {
-    if (!syncReady || rankedPending || !state.startedAt || state.finished) return;
+    if (!syncReady || rankedPending || !state.startedAt || state.pausedAt || state.finished) return;
     if (remaining() <= 0) { finish("time"); return; }
     const result = verdict();
     if (!result.word) {
@@ -710,11 +751,12 @@ export function mountGame(authConfigured) {
       renderBoard();
       renderDraft();
       try {
-        rankedResult = await requestRanked("word", {
+        pendingWordRequest = requestRanked("word", {
           sequence: rankedSequence,
           path: [...path],
           letters: draft.join(""),
         });
+        rankedResult = await pendingWordRequest;
         if (generation !== syncGeneration) return;
         rankedSequence = rankedResult.sequence;
         if (rankedResult.move.word !== result.word || rankedResult.move.points !== result.points) {
@@ -724,7 +766,7 @@ export function mountGame(authConfigured) {
         if (generation !== syncGeneration) return;
         console.error("Could not verify ranked word:", error);
         rankedPending = false;
-        if (["STALE_SEQUENCE", "FINISHED"].includes(error.code)) {
+        if (["STALE_SEQUENCE", "FINISHED", "PAUSED"].includes(error.code)) {
           try {
             const latest = await readRankedAttempt();
             if (generation !== syncGeneration) return;
@@ -781,7 +823,7 @@ export function mountGame(authConfigured) {
     $("tier-range").textContent = `${tierRange(tier)} PTS`;
     $("tier-result").style.setProperty("--tier-color", tier.color);
     const outcome = state.endedReason === "full" ? `You filled the board! +${FULL_BOARD_BONUS} full-board bonus.` : state.endedReason === "stuck" ? "" : state.endedReason === "finish" ? "Run complete." : "Time ran out.";
-    $("final-summary").textContent = `${state.words.length} words · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled.${outcome ? ` ${outcome}` : ""}`;
+    $("final-summary").textContent = `${state.words.length} ${state.words.length === 1 ? "word" : "words"} · ${initialFilled + Object.keys(state.played).length} of 64 tiles filled.${outcome ? ` ${outcome}` : ""}`;
     $("draft-heading").textContent = "THE FINAL PLATE";
     $("path-length").textContent = "RUN COMPLETE";
     $("compose-content").hidden = true;
@@ -797,50 +839,31 @@ export function mountGame(authConfigured) {
     $("result-signin").hidden = Boolean(accountUser) || !authConfigured || Boolean(practiceSeed);
     $("result-daily").hidden = !practiceSeed;
     ranking.hidden = true;
+    $("result-placement").hidden = true;
     status.textContent = "";
     if (practiceSeed) {
       status.textContent = "Practice runs don't enter the daily ranking.";
       return;
     }
-    if (!accountUser) {
-      status.textContent = authConfigured
-        ? "Sign in to save this guest result to your profile. Ranked play must start while signed in."
-        : "Sign-in is unavailable here. Guest results cannot enter the ranking.";
-      return;
-    }
-    if (!rankedAttemptExists) {
-      status.textContent = "This unverified result appears in your profile, not the leaderboard.";
-      return;
-    }
+    const verified = Boolean(accountUser && rankedAttemptExists);
     status.textContent = "Checking today's ranking...";
     try {
-      const response = await fetch(`/api/ranked?boardId=${encodeURIComponent(day)}`, { cache: "no-store" });
+      const response = await fetch(verified ? `/api/ranked?boardId=${encodeURIComponent(day)}` : "/api/leaderboards?kind=daily", { cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `Scores request failed: HTTP ${response.status}`);
       if (generation !== resultRankingGeneration || !state.finished) return;
-      if (data.today.rank == null) {
+      if (verified && data.today.rank == null) {
         status.textContent = "Your verified place is pending. Open Scores to check it.";
         return;
       }
-      const today = data.today;
-      $("result-place").textContent = `${today.tied ? "TIED " : ""}#${today.rank} OF ${today.total} PLAYERS`;
-      $("result-percentile").textContent = today.percentile == null
-        ? `${today.total} FINISHED · PERCENTILES AT 30` : `AROUND THE ${displayPercentile(today.percentile)}TH PERCENTILE`;
+      const today = verified ? { ...data.today, score: state.score, percentile: modelPercentile(state.score, data.today.model) } : { ...data.landscape, score: state.score,
+        percentile: modelPercentile(state.score, data.landscape.model) };
+      $("result-percentile").textContent = `${Math.round(today.percentile)}%`;
+      $("result-placement").hidden = false;
       const spread = $("result-spread");
-      spread.replaceChildren();
-      if (today.total && today.distribution?.length) {
-        const max = Math.max(...today.distribution.map((bucket) => bucket.count));
-        for (const bucket of today.distribution) {
-          const bar = document.createElement("span");
-          bar.style.height = `${bucket.count ? Math.max(4, bucket.count / max * 100) : 0}%`;
-          bar.classList.toggle("mine", Math.min(Math.floor(today.score / 50), 9) * 50 === bucket.score);
-          spread.append(bar);
-        }
-        spread.setAttribute("aria-label", `Score distribution for ${today.total} players today`);
-        spread.hidden = false;
-      } else spread.hidden = true;
+      renderScoreChart(spread, today);
       ranking.hidden = false;
-      status.textContent = today.final ? "FINAL COMPARISON" : "LIVE · PLACE MAY CHANGE";
+      status.textContent = "";
     } catch (error) {
       if (generation !== resultRankingGeneration) return;
       console.error("Could not load result ranking:", error);
@@ -876,6 +899,8 @@ export function mountGame(authConfigured) {
     if (tutorialDialog.open) tutorialDialog.close();
     state.endedAt = Date.now();
     state.endedReason = reason;
+    state.pausedAt = null;
+    $("pause-overlay").hidden = true;
     state.finished = true;
     if (reason === "full" && rankedMode !== "active") {
       state.score += FULL_BOARD_BONUS;
@@ -904,7 +929,7 @@ export function mountGame(authConfigured) {
 
   boardElement.addEventListener("pointerdown", (event) => {
     const tile = event.target.closest(".tile");
-    if (!tile || rankedPending || !state.startedAt || state.finished) return;
+    if (!tile || rankedPending || !state.startedAt || state.pausedAt || state.finished) return;
     event.preventDefault();
     if (claimedTiles().has(Number(tile.dataset.index))) {
       message("Tiles in submitted words cannot be used again.", "error");
@@ -962,7 +987,7 @@ export function mountGame(authConfigured) {
     boardElement.children[next].focus();
   });
   wordEntry.addEventListener("input", () => {
-    if (rankedPending) return;
+    if (rankedPending || state.pausedAt) return;
     const blanks = path.filter((index) => !letterAt(index)).length;
     draft = [...wordEntry.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, blanks)];
     renderBoard();
@@ -970,14 +995,14 @@ export function mountGame(authConfigured) {
   });
   mobileKeyboard.addEventListener("click", (event) => {
     const key = event.target.closest("[data-key]");
-    if (!key || key.disabled || rankedPending || state.finished) return;
+    if (!key || key.disabled || rankedPending || state.pausedAt || state.finished) return;
     if (key.dataset.key === "Backspace") draft.pop();
     else draft.push(key.dataset.key);
     renderBoard();
     renderDraft();
   });
   document.addEventListener("keydown", (event) => {
-    if (!state.startedAt || rankedPending || state.finished || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || document.querySelector("dialog[open]")) return;
+    if (!state.startedAt || state.pausedAt || rankedPending || state.finished || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || document.querySelector("dialog[open]")) return;
     if (event.key === "Escape") {
       if (path.length) { event.preventDefault(); clearPath(); message("Path and unsubmitted letters cleared."); }
     } else if (event.key === "Enter" && path.length && (!event.target.matches("button") || event.target.id === "submit")) {
@@ -1182,7 +1207,7 @@ export function mountGame(authConfigured) {
     }
   }
   function showTutorial() {
-    $("tutorial-clock").hidden = !state.startedAt || state.finished;
+    $("tutorial-clock").hidden = !state.startedAt || state.pausedAt || state.finished;
     tutorialDialog.showModal();
     showTutorialStep(0, !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }
@@ -1246,7 +1271,18 @@ export function mountGame(authConfigured) {
     const generation = ++board.generation;
     const prefix = board.prefix;
     $(prefix + "-status").textContent = "Loading leaderboard...";
-    $(prefix + "-list").replaceChildren();
+    const loadingList = $(prefix + "-list");
+    loadingList.setAttribute("aria-busy", "true");
+    if (!loadingList.children.length) {
+      for (let i = 0; i < 5; i++) {
+        const row = document.createElement("tr"); row.className = "skeleton-row";
+        for (let j = 0; j < (kind === "daily" ? 3 : 5); j++) {
+          const cell = document.createElement("td"); const block = document.createElement("span");
+          block.className = "skeleton"; cell.append(block); row.append(cell);
+        }
+        loadingList.append(row);
+      }
+    }
     $(prefix + "-prev").disabled = true;
     $(prefix + "-next").disabled = true;
     $(prefix + "-current").hidden = true;
@@ -1256,13 +1292,26 @@ export function mountGame(authConfigured) {
       if (!response.ok) throw new Error(data.error || `Leaderboard request failed: HTTP ${response.status}`);
       if (generation !== board.generation || menuDialog.dataset.page !== "scores") return;
       board.page = page;
-      if (kind === "daily") board.boardId = data.boardId;
+      if (kind === "daily") {
+        board.boardId = data.boardId;
+        if (!accountUser && state.finished && !practiceSeed && data.boardId === day && data.landscape) {
+          const today = { ...data.landscape, score: state.score, percentile: modelPercentile(state.score, data.landscape.model) };
+          $("scores-today-empty").hidden = true;
+          $("scores-today-result").hidden = false;
+          $("scores-score").textContent = state.score.toLocaleString();
+          $("scores-rank").textContent = `${Math.round(today.percentile)}%`;
+          $("scores-percentile").textContent = "";
+          renderScoreChart($("scores-distribution"), today);
+          $("scores-chart").hidden = false;
+        }
+      }
       const list = $(prefix + "-list");
+      list.replaceChildren(); list.removeAttribute("aria-busy");
       for (const entry of data.entries) {
         const item = document.createElement("tr");
         if (entry.mine) item.className = "mine";
         for (const value of [
-          `#${entry.rank}`, entry.name, entry.points.toLocaleString(),
+          `#${entry.rank}`, `${entry.name}${entry.mine ? " · YOU" : ""}`, entry.points.toLocaleString(),
           ...(kind === "allTime" ? [entry.played.toLocaleString(), entry.average.toFixed(1)] : []),
         ]) {
           const cell = document.createElement("td");
@@ -1271,8 +1320,11 @@ export function mountGame(authConfigured) {
         }
         list.append(item);
       }
+      const section = list.closest(".leaderboard");
+      section.classList.toggle("leaderboard-empty", !data.total);
+      section.querySelector(".leaderboard-pages").hidden = data.total <= data.pageSize;
       $(prefix + "-status").textContent = data.total ? "" : kind === "daily"
-        ? "No finished runs for today's grid yet." : "No verified daily runs yet.";
+        ? "The first plate is still cooking. Finish today’s grid to join." : "A fresh start. Your first daily score starts the story.";
       $(prefix + "-page").textContent = data.total ? `PAGE ${page} / ${Math.ceil(data.total / data.pageSize)}` : "";
       $(prefix + "-prev").disabled = page <= 1;
       $(prefix + "-next").disabled = page * data.pageSize >= data.total;
@@ -1282,6 +1334,9 @@ export function mountGame(authConfigured) {
         + (kind === "allTime" ? ` · ${data.current.played} PLAYED · ${data.current.average.toFixed(1)} AVG` : "");
     } catch (error) {
       if (generation !== board.generation) return;
+      $(prefix + "-list").removeAttribute("aria-busy");
+      $(prefix + "-list").querySelectorAll(".skeleton-row").forEach(row => row.remove());
+      $(prefix + "-list").closest(".leaderboard").classList.toggle("leaderboard-empty", !$(prefix + "-list").children.length);
       console.error(`Could not load ${kind} leaderboard:`, error);
       $(prefix + "-status").textContent = "Leaderboard unavailable. Close and reopen Scores to retry.";
     }
@@ -1311,9 +1366,7 @@ export function mountGame(authConfigured) {
     const points = document.createElement("span");
     points.textContent = `${run.score.toLocaleString()} PTS`;
     const placing = document.createElement("span");
-    placing.textContent = run.total
-      ? `${run.tied ? "TIED " : ""}#${run.rank} / ${run.total}${run.percentile == null ? "" : ` · ~${displayPercentile(run.percentile)}TH`}`
-      : "NO COMPARISON";
+    placing.textContent = run.percentile == null ? "—" : `${Math.round(run.percentile)}%`;
     item.append(date, points, placing);
     return item;
   }
@@ -1342,6 +1395,8 @@ export function mountGame(authConfigured) {
     let networkFailure = false;
     let failureMessage = "Scores are unavailable right now.";
     if (!append && !refresh) {
+      $("scores-content").classList.add("scores-loading");
+      $("scores-content").setAttribute("aria-busy", "true");
       $("scores-today-empty").hidden = false;
       $("scores-today-result").hidden = true;
       $("scores-empty-title").textContent = "CHECKING THE GRID";
@@ -1370,23 +1425,22 @@ export function mountGame(authConfigured) {
       }
       if (generation !== scoresGeneration || !accountUser) return;
       const today = result.today;
+      if (today.score == null && state.finished && !practiceSeed && result.boardId === day && today.model) {
+        today.score = state.score;
+        today.percentile = modelPercentile(state.score, today.model);
+        today.localCompleted = true;
+      }
       $("scores-date").textContent = scoreDate(result.boardId).toUpperCase() + " UTC";
       $("scores-phase").textContent = today.final ? "FINAL" : "LIVE";
       $("scores-today-empty").hidden = today.score != null;
       $("scores-today-result").hidden = today.score == null;
       $("scores-score").textContent = today.score == null ? "—" : today.score.toLocaleString();
-      $("scores-rank").textContent = today.rank == null
+      $("scores-rank").textContent = today.rank == null && !today.localCompleted
         ? today.score == null ? "No ranked result yet" : "Run in progress · rank after completion"
-        : `${today.tied ? "Tied " : ""}#${today.rank} of ${today.total} today`;
-      $("scores-percentile").textContent = today.percentile == null ? "" : `AROUND THE ${displayPercentile(today.percentile)}TH PERCENTILE`;
-      const note = today.note || (today.score == null
-        ? state.startedAt && rankedMode === "unranked" && !practiceSeed
-          ? "This run isn't server-verified, so it stays in Profile rather than today's ranking."
-          : "Start today's grid to join the ranking."
-        : today.rank == null ? "Your score becomes comparable when the run ends."
-          : today.percentile == null ? `Percentiles start at 30 completed players; ${today.total} so far.`
-            : today.final ? "This comparison is final." : "Live comparison: your place may move as more people finish.");
-      $("scores-note").textContent = note;
+        : `${Math.round(today.percentile)}%`;
+      $("scores-percentile").textContent = "";
+      const note = today.score == null ? "Finish today's grid to see your score spread." : "";
+      $("scores-note").textContent = "";
       $("scores-empty-title").textContent = "THE GRID IS WAITING";
       $("scores-empty-copy").textContent = note;
       const offerPlay = today.score == null && !today.note
@@ -1396,19 +1450,8 @@ export function mountGame(authConfigured) {
       $("scores-play").textContent = day === result.boardId
         ? "PLAY TODAY'S GRID ↗" : "REFRESH TO PLAY TODAY'S GRID ↗";
       const chart = $("scores-distribution");
-      chart.replaceChildren();
-      if (today.total > 0 && today.distribution?.length) {
-        const max = Math.max(...today.distribution.map((bucket) => bucket.count));
-        for (const bucket of today.distribution) {
-          const bar = document.createElement("span");
-          bar.style.height = `${bucket.count ? Math.max(4, bucket.count / max * 100) : 0}%`;
-          bar.classList.toggle("mine", today.score != null
-            && Math.min(Math.floor(today.score / 50), 9) * 50 === bucket.score);
-          chart.append(bar);
-        }
-        chart.setAttribute("aria-label", `Score distribution for ${today.total} players today`);
-        $("scores-chart").hidden = false;
-      } else $("scores-chart").hidden = true;
+      renderScoreChart(chart, today.rank == null && !today.localCompleted ? { ...today, score: null } : today);
+      $("scores-chart").hidden = (today.rank == null && !today.localCompleted) || !today.model;
       if (!refresh) {
         const list = $("scores-history-list");
         if (!append) list.replaceChildren();
@@ -1437,7 +1480,11 @@ export function mountGame(authConfigured) {
         showEmptyScores("RECORD UNAVAILABLE", "Your completed grids could not be loaded.");
       }
     } finally {
-      if (generation === scoresGeneration) scoresLoading = false;
+      if (generation === scoresGeneration) {
+        scoresLoading = false;
+        $("scores-content").classList.remove("scores-loading");
+        $("scores-content").removeAttribute("aria-busy");
+      }
     }
   }
   $("scores-more").addEventListener("click", () => { void loadScores(true); });
@@ -1619,7 +1666,8 @@ export function mountGame(authConfigured) {
   }
   profileSignOutButton.addEventListener("click", signOutAccount);
   $("menu-toggle").addEventListener("click", () => {
-    $("menu-footnote").hidden = !state.startedAt || state.finished;
+    pauseRun();
+    $("menu-footnote").hidden = !state.startedAt || state.pausedAt || state.finished;
     menuContent.scrollTop = 0;
     menuDialog.showModal();
   });
@@ -1701,18 +1749,19 @@ export function mountGame(authConfigured) {
   });
   function showShareStatus(text, error = false) {
     window.clearTimeout(shareStatusTimer);
-    window.clearTimeout(shareExitTimer);
-    const status = $("share-status");
-    status.textContent = text;
-    status.classList.remove("leaving");
-    status.classList.add("entering");
-    status.classList.toggle("error", error);
+    const button = $("share");
+    button.classList.toggle("copied", !error);
+    button.classList.toggle("copy-error", error);
+    button.querySelector("img").src = error ? "/copy.svg" : "/check.svg";
+    button.setAttribute("aria-label", text);
+    button.title = text;
+    $("share-status").textContent = text;
     shareStatusTimer = window.setTimeout(() => {
-      status.classList.replace("entering", "leaving");
-      shareExitTimer = window.setTimeout(() => {
-        status.textContent = "";
-        status.classList.remove("leaving", "error");
-      }, 240);
+      button.classList.remove("copied", "copy-error");
+      button.querySelector("img").src = "/copy.svg";
+      button.setAttribute("aria-label", "Copy result");
+      button.title = "Copy result";
+      $("share-status").textContent = "";
     }, 3000);
   }
   $("share").addEventListener("click", async () => {
@@ -1748,6 +1797,7 @@ export function mountGame(authConfigured) {
     item.append(image, label);
     $("tier-guide").append(item);
   }
+  $("pause-overlay").hidden = !state.pausedAt || state.finished;
   renderProgress();
   void loadDictionary();
   void startAtmosphere($("atmosphere"));

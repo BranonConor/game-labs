@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { ScoresTodayCard, LeaderboardTable } from "./scores-ui";
 
 export default function Game({ authConfigured, adminTools }) {
   useEffect(() => {
@@ -45,7 +46,8 @@ export default function Game({ authConfigured, adminTools }) {
               <div className="hud-stat hud-score"><span>SCORE</span><strong id="score">0000</strong></div>
             </div>
             <div className="board-wrap">
-              <div id="board" className="board covered" role="group" aria-label="Eight by eight letter grid" />
+              <div id="pause-overlay" className="pause-overlay" hidden><strong>CLOCK PAUSED</strong><p>Your grid will be here when you’re ready.</p><button id="resume-run" className="primary" type="button">RESUME GAME →</button></div>
+            <div id="board" className="board covered" role="group" aria-label="Eight by eight letter grid" />
               <div id="selection-preview" className="selection-preview" hidden>
                 <div className="selection-preview-header">
                   <span aria-hidden="true">CURRENT WORD</span>
@@ -102,18 +104,18 @@ export default function Game({ authConfigured, adminTools }) {
                   <img id="tier-egg" src="/egg.svg" alt="" />
                   <div className="tier-details">
                     <span id="tier-name" className="tier-name" />
-                    <div className="tier-score"><strong id="final-score">0</strong><span>POINTS</span></div>
+                    <div className="result-score-row">
+                      <div className="result-score-stat"><span>YOUR SCORE</span><strong id="final-score">0</strong><small>POINTS</small></div>
+                      <div id="result-placement" className="result-score-stat" hidden><span id="result-place">YOUR PLACE</span><strong id="result-percentile" /><small>AHEAD OF OTHERS</small></div>
+                    </div>
                     <small id="tier-range" />
                   </div>
                   <button id="share" className="action-button score-copy" type="button" aria-label="Copy result" title="Copy result"><img className="copy-icon" src="/copy.svg" alt="" /></button>
                 </div>
-                <p id="final-summary" />
                 <div id="result-ranking" className="result-ranking" hidden>
-                  <span className="overline">DAILY RANKING</span>
-                  <strong id="result-place" />
-                  <span id="result-percentile" />
                   <div id="result-spread" className="result-spread" role="img" hidden />
                 </div>
+                <p id="final-summary" />
                 <p id="result-ranking-status" className="result-ranking-status" role="status" />
                 <button id="result-signin" className="text-link result-scores" type="button" hidden>SIGN IN TO SAVE THIS RESULT ↗</button>
                 <button id="result-scores" className="text-link result-scores" type="button">SEE SCORES &amp; LEADERBOARDS ↗</button>
@@ -162,35 +164,18 @@ export default function Game({ authConfigured, adminTools }) {
             </div>
             <div id="scores-content" className="scores-content" hidden>
               <div className="scores-heading"><h2 id="scores-title">SCORES</h2><span id="scores-date" className="scores-date" /></div>
-              <section className="scores-card" aria-labelledby="scores-today-title">
-                <div className="scores-card-top"><span id="scores-today-title" className="overline">TODAY'S GRID</span><span id="scores-phase" className="scores-phase">LIVE</span></div>
-                <div id="scores-today-empty" className="scores-today-empty">
-                  <img src="/egg.svg" alt="" />
-                  <div><strong id="scores-empty-title">THE GRID IS WAITING</strong><p id="scores-empty-copy">Sign in and finish today's grid to join the ranking.</p><button id="scores-play" className="text-link scores-play" type="button" hidden>PLAY TODAY'S GRID ↗</button></div>
-                </div>
-                <div id="scores-today-result" hidden>
-                  <div className="scores-result-grid">
-                    <div className="scores-feature"><span>YOUR SCORE</span><strong id="scores-score">—</strong><small>POINTS</small></div>
-                    <div className="scores-placement"><span>YOUR PLACE</span><strong id="scores-rank">Run in progress</strong><span id="scores-percentile" /></div>
-                  </div>
-                  <p id="scores-note" className="scores-note" />
-                  <div id="scores-chart" className="scores-chart" hidden>
-                    <span className="overline">TODAY'S SCORE SPREAD</span>
-                    <div id="scores-distribution" className="scores-distribution" role="img" aria-label="Today's score distribution" />
-                    <div className="scores-chart-axis"><span>0 PTS</span><span>450+ PTS</span></div>
-                  </div>
-                </div>
-              </section>
+              <div className="score-skeleton" aria-hidden="true"><span className="skeleton" /><span className="skeleton" /><span className="skeleton" /></div>
+              <ScoresTodayCard />
               <section className="scores-history leaderboard" aria-labelledby="daily-leaders-title">
                 <div className="scores-history-top"><h3 id="daily-leaders-title">TODAY'S LEADERS</h3><span>VERIFIED SCORES</span></div>
-                <div className="leaderboard-scroll"><table aria-label="Today's leaderboard"><thead><tr><th scope="col">RANK</th><th scope="col">PLAYER</th><th scope="col">POINTS</th></tr></thead><tbody id="daily-leaders-list" /></table></div>
+                <LeaderboardTable />
                 <p id="daily-leaders-status" className="leaderboard-status" role="status" />
                 <div className="leaderboard-pages"><button id="daily-leaders-prev" type="button" disabled>← PREV</button><span id="daily-leaders-page" /><button id="daily-leaders-next" type="button" disabled>NEXT →</button></div>
                 <p id="daily-leaders-current" className="leaderboard-current" hidden />
               </section>
               <section className="scores-history leaderboard" aria-labelledby="all-time-leaders-title">
                 <div className="scores-history-top"><h3 id="all-time-leaders-title">ALL-TIME POINTS</h3><span>VERIFIED DAILY GRIDS</span></div>
-                <div className="leaderboard-scroll"><table className="all-time-table" aria-label="All-time points leaderboard"><thead><tr><th scope="col">RANK</th><th scope="col">PLAYER</th><th scope="col">POINTS</th><th scope="col">PLAYED</th><th scope="col">AVG</th></tr></thead><tbody id="all-time-leaders-list" /></table></div>
+                <LeaderboardTable kind="allTime" />
                 <p id="all-time-leaders-status" className="leaderboard-status" role="status" />
                 <div className="leaderboard-pages"><button id="all-time-leaders-prev" type="button" disabled>← PREV</button><span id="all-time-leaders-page" /><button id="all-time-leaders-next" type="button" disabled>NEXT →</button></div>
                 <p id="all-time-leaders-current" className="leaderboard-current" hidden />
@@ -310,7 +295,7 @@ export default function Game({ authConfigured, adminTools }) {
           <h3>WHAT WE COLLECT</h3>
           <p>If you sign in with Google, we receive your Google account ID, name, email address, and profile image. We store your saved game progress, submitted words, scores, and daily attempts with your account ID. Guest progress stays in your browser's local storage; signed-in progress may also be cached there.</p>
           <h3>HOW WE USE IT</h3>
-          <p>We use this data to sign you in, sync your runs across devices, verify ranked scores, and show your own history and ranked leaderboards. Public rankings show only your Google given name and family initial (or “Player” if unavailable), verified points, rank, and for all-time rankings your games played and average. Other players do not receive your account ID, email, full name, or individual word history through leaderboards.</p>
+          <p>We use this data to sign you in, sync your runs across devices, verify ranked scores, and show your own history and ranked leaderboards. Public rankings show only your Google first and last initials (or “Player” if unavailable), verified points, rank, and for all-time rankings your games played and average. Other players do not receive your account ID, email, full name, or individual word history through leaderboards.</p>
           <h3>COOKIES &amp; SERVICE PROVIDERS</h3>
           <p>Sign-in uses session cookies. The production site also uses Google Analytics, which may use cookies or similar technologies to measure visits and usage. Google provides sign-in and analytics, Vercel hosts the site, and Neon stores signed-in runs. Those services may process technical data under their own privacy terms.</p>
           <h3>RETENTION &amp; YOUR CHOICES</h3>

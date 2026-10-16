@@ -80,8 +80,12 @@ saved snapshots. Guests and practice/seed boards cannot enter ranked results. A 
 account gets exactly one attempt per UTC date, including attempts abandoned
 without pressing Finish. `ranked_runs` stores the first server start timestamp,
 server-verified moves and score, and one row per account and daily board. The
-four-minute clock starts on the server; only words arriving before its deadline
-can score. Results for a UTC board freeze four minutes after that day ends.
+four-minute active-play clock starts on the server; only words arriving before its deadline
+can score. Leaving the tab, navigating away, or opening the menu pauses play and covers the grid.
+A deliberate Resume restores the remaining time. `pause` and `resume` actions are idempotent;
+only the server extends `deadline_at`, and paused runs cannot submit words.
+Guest pause state is saved locally. Pause delivery requires connectivity; an abrupt crash
+without a lifecycle event cannot notify the server. Results for a UTC board freeze four minutes after that day ends.
 
 `POST /api/ranked` accepts JSON:
 
@@ -127,10 +131,20 @@ overwrite it with a `game_runs` client snapshot. Timestamps are ISO strings.
 attempts: score boundaries 0, 50, …, 400 represent 50-point ranges, and
 450 represents all scores of 450 or higher. History entries have `boardId`,
 `score`, `rank`, `tied`, `total`, `percentile`, and `final`. Rank is
-competition-style (ties share a rank); percentile is the empirical midpoint
-of tied scores (percentage of lower scores plus half of tied scores).
-Percentile is null until at least 30 completed/expired attempts exist for the
-board. Before freeze, comparison values may change as more attempts complete;
+competition-style (ties share a rank). Percentiles are modeled from a normal distribution
+truncated at zero, available from the first completed attempt. `comparisonSource` is
+`projected` below 30 completions and `adjusted` thereafter. `model` includes the mean,
+standard deviation, actual sample size, and observed weight. It creates no fake runs.
+The bootstrap prior is 160 ± 70 points, adjusted (within ±20%) for the board's fixed
+letters, rare-letter constraints, and access to bonuses. Once 30 earlier completed
+runs exist, their mean and deviation replace those bootstrap constants. These are
+heuristics, not a calibrated human solver or measured early player population.
+Today's exact mean and variance contribute weight n/(n+30), continuously through
+30 completions. Variance includes between-group mean differences. Historical pages
+use only earlier-board data for their priors. The prior remains worth 30 observations;
+with large samples the fitted normal curve is dominated by actual scores. The fit
+is approximate when the real scores are skewed. Raw points and actual leaderboard
+ranks always come from verified runs. Before freeze, comparison values may change as more attempts complete;
 the verified raw score does not. Responses never contain other players' IDs.
 These checks validate game rules, not the human origin of requests; deployment
 should also apply abuse/rate limits appropriate to its traffic.
@@ -142,8 +156,9 @@ eventually outgrow the database budget, an archival policy can remove old move
 details after a review window while retaining dates and final scores.
 
 The final result card links directly to Scores and, for a verified daily run,
-shows today's live rank out of completed players, score spread, and the same
-percentile threshold (30 completed players) as Scores. Scores also includes
+shows today's live rank out of completed players, score curve, and the same
+modeled percentile as Scores. The curve marks your score and the expected average;
+small columns show only real completions. Loading regions reserve space with skeletons. Scores also includes
 two 20-row, server-paginated leaderboards: today's UTC puzzle and all-time
 verified points. Both use competition ranking (equal points share a rank),
 with account ID as an internal deterministic ordering key within ties; that
@@ -161,11 +176,11 @@ is its UTC date and all-time `boardId` is null. Entries contain `rank`,
 `current` contains those metrics except `mine`, or null if the signed-in
 player has no completed ranked attempt. No other player's account ID, full
 name, email, words, or Google handle is returned. Google structured given
-and family name fields are converted at sign-in to only the first given word
-plus family initial. If either field is missing/unusable, the display name
-is `Player`; existing accounts without a newly captured structured Google
-profile also show `Player` until they sign in again. This deliberately does
-not infer real names from email, handles, or unstructured full-name strings.
+and family name fields are converted at sign-in to first and last initials (e.g. B.E.).
+Legacy stored display names are reduced to initials at the API boundary. Existing
+sessions with a usable Google name fill missing `Player` profiles with initials on
+the next authenticated request. Accounts never seen again retain `Player`; no name
+is guessed from an email, handle, or account ID.
 
 A guest can sign in from the finished result card to sync that completed run
 to their private profile (provided the account has no saved run for that
@@ -179,3 +194,31 @@ the footer and on the result card; they never enter rankings.
 
 Google Analytics tag `G-VKX4FBTEML` loads on production pages only, so local
 development visits do not appear in analytics.
+
+## Local score design preview
+
+In development, `/preview/scores` shows clearly labeled sample data with controls
+for player count and score, using the same model and chart as Scores. It writes
+nothing to the database and returns 404 in production. Run `node --test *.test.js`
+from this directory for the scoring, timer, leaderboard, and game regression tests.
+Run `node db/migrate.mjs` against your development database before using the new
+pause API locally. Production builds apply the idempotent migration automatically.
+
+The side menu and Score Kitchen share `app/scores-ui.jsx` for the score card and
+leaderboard tables. The score spread appears only after the puzzle is complete. Guests can compare
+a completed local daily score using public aggregate data without entering the
+verified leaderboard. Points and percentile sit side by side above the same
+Silkscreen curve and pixel egg marker in Scores and the game’s final plate.
+Normalization labels and participant counts are omitted from the score display.
+Copy confirms on the button with a green check for three seconds; the result
+announcement remains available to screen readers without a visible banner.
+
+## Development score fixtures
+
+Run `npm run seed:dev` to populate the database from `.env.local` with 64 sample
+players and 18 days of scores. The fixtures use only `scramb-dev-seed-v1:` account
+IDs and never replace real accounts' records. They are synthetic display data,
+not human attempts. Re-running updates those fixtures. `npm run seed:clear`
+removes only that namespace. Both commands reject production process environments
+and read `.env.local` directly rather than an inherited database URL. Keep that
+file pointed at the development Neon branch.

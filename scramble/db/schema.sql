@@ -26,3 +26,10 @@ CREATE TABLE IF NOT EXISTS leaderboard_profiles (
   user_id text PRIMARY KEY,
   display_name text NOT NULL
 );
+
+-- Persist server-authoritative active time across navigation and device changes.
+ALTER TABLE ranked_runs ADD COLUMN IF NOT EXISTS deadline_at timestamptz;
+ALTER TABLE ranked_runs ADD COLUMN IF NOT EXISTS paused_at timestamptz;
+UPDATE ranked_runs SET deadline_at = started_at + interval '4 minutes' WHERE deadline_at IS NULL;
+ALTER TABLE ranked_runs ALTER COLUMN deadline_at SET DEFAULT (clock_timestamp() + interval '4 minutes');
+ALTER TABLE ranked_runs ALTER COLUMN deadline_at SET NOT NULL;

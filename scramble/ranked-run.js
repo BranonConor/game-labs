@@ -13,7 +13,8 @@ function dictionary() {
 }
 
 export function isExpired(run, now = Date.now()) {
-  return now >= new Date(run.started_at).getTime() + DURATION_MS;
+  const board = typeof run.board_id === "string" ? run.board_id.slice(0, 10) : run.board_id?.toISOString().slice(0, 10);
+  return (board && isFrozen(board, now)) || (!run.paused_at && now >= new Date(run.deadline_at ?? new Date(new Date(run.started_at).getTime() + DURATION_MS)).getTime());
 }
 
 export function isFrozen(boardId, now = Date.now()) {
@@ -54,12 +55,14 @@ export function publicRankedRun(run, now = Date.now()) {
     move.path.forEach((tile, position) => { used[tile] = move.word[position]; });
     return { ...move, letters, color: move.color ?? index % 6 };
   });
-  const deadline = new Date(new Date(run.started_at).getTime() + DURATION_MS).toISOString();
-  const expired = isExpired(run, now);
+  const deadline = new Date(run.deadline_at ?? new Date(new Date(run.started_at).getTime() + DURATION_MS)).toISOString();
+  const expired = !run.finished_at && isExpired(run, now);
   return {
     boardId,
     startedAt: run.started_at,
     deadline,
+    pausedAt: expired || run.finished_at ? null : run.paused_at ?? null,
+    remainingMs: expired ? 0 : Math.max(0, Math.min(DURATION_MS, Date.parse(deadline) - new Date(run.finished_at ?? run.paused_at ?? now).getTime())),
     endedAt: run.finished_at ?? (expired ? deadline : null),
     finished: Boolean(run.finished_at) || expired,
     completed: Boolean(run.finished_at) || expired,

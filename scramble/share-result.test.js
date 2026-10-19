@@ -24,6 +24,8 @@ test("shares stats and only the three best words, without the tile diagram", () 
     "1. HOUSE +33",
     "2. CATS +33",
     "3. PLANT +28",
+    "",
+    "https://scramb.io",
   ].join("\n"));
 });
 
@@ -31,6 +33,8 @@ test("an empty practice run does not invent top words", () => {
   const result = formatShareResult({
     day: "2026-09-25", practice: true, score: 0, tilesFilled: 14, words: [],
   });
-  assert.equal(result.split("\n").length, 3);
+  assert.equal(result.split("\n").length, 5);
+  assert.ok(result.endsWith("\n\nhttps://scramb.io"));
+  assert.doesNotMatch(result, /Top words:/);
   assert.match(result, /^SCRAMB · 2026-09-25 · practice\n/);
 });

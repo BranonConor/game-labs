@@ -8,5 +8,7 @@ export function formatShareResult({ day, practice, score, words, tilesFilled }) 
     `${score} points · ${tierForScore(score).name} egg`,
     `${words.length} words · ${tilesFilled}/64 tiles filled`,
     ...(topWords.length ? ["Top words:", ...topWords.map((entry, index) => `${index + 1}. ${entry.word} +${entry.points}`)] : []),
+    "",
+    "https://scramb.io",
   ].join("\n");
 }

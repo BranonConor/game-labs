@@ -333,14 +333,14 @@ footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 12px 0 23px; 
 .tutorial-demo .tile .value, .tutorial-demo .tile .path-order { font-size: 7px; }
 .tutorial-demo .tile .path-order { top: 0; left: 2px; }
 .tutorial-dialog[data-step="1"] .demo-route { animation: tutorial-trace .45s var(--trace-delay) ease-out both; }
-.tutorial-dialog:not([data-step="1"]) .demo-route { outline: 2px solid #ffcf83; outline-offset: -2px; }
-.tutorial-dialog[data-step="2"] .demo-fill .demo-letter { animation: tutorial-letter .5s var(--letter-delay) both; }
-.tutorial-dialog[data-step="4"] .demo-route { outline-color: #a9dbc4; }
-.tutorial-dialog[data-step="4"] .demo-added { animation: tutorial-trace .45s var(--trace-delay) both; }
-.tutorial-dialog[data-step="4"] .demo-added.demo-fill .demo-letter { animation: tutorial-letter .45s var(--letter-delay) both; }
+.tutorial-dialog:not([data-step="1"]):not([data-step="2"]) .demo-route { outline: 2px solid #ffcf83; outline-offset: -2px; }
+.tutorial-dialog[data-step="3"] .demo-fill .demo-letter { animation: tutorial-letter .5s var(--letter-delay) both; }
+.tutorial-dialog[data-step="5"] .demo-route { outline-color: #a9dbc4; }
+.tutorial-dialog[data-step="5"] .demo-added { animation: tutorial-trace .45s var(--trace-delay) both; }
+.tutorial-dialog[data-step="5"] .demo-added.demo-fill .demo-letter { animation: tutorial-letter .45s var(--letter-delay) both; }
 .tutorial-stamp { position: absolute; z-index: 6; right: 5px; bottom: -13px; padding: 6px 8px; border: 1px solid #ffcf83; background: #293247; color: #ffe2aa; opacity: 0; font: 11px "Silkscreen", monospace; box-shadow: 3px 3px #101626; pointer-events: none; }
 .tutorial-stamp #tutorial-demo-points { color: #a9dbc4; }
-.tutorial-dialog[data-step="3"] .tutorial-stamp, .tutorial-dialog[data-step="4"] .tutorial-stamp { opacity: 1; animation: tutorial-letter .35s both; }
+.tutorial-dialog[data-step="4"] .tutorial-stamp, .tutorial-dialog[data-step="5"] .tutorial-stamp { opacity: 1; animation: tutorial-letter .35s both; }
 .tutorial-tooltip { align-self: center; }
 .tutorial-tooltip h3 { margin: 12px 0; color: #ffe2aa; font: 18px/1.3 "Silkscreen", monospace; }
 .tutorial-dialog .tutorial-tooltip p { margin: 0; color: #d7d8d5; font: 14px/1.6 "DM Sans", sans-serif; }
@@ -550,3 +550,7 @@ footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 12px 0 23px; 
 .tutorial-practice { display: inline-block; margin: 0 0 12px; color: #ffcf83; font: 10px/1.5 "Silkscreen", monospace; }
 .tutorial-links { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
 .tutorial-links .tutorial-practice { margin: 0; }
+
+.tutorial-dialog[data-step="2"] .demo-route { animation: tutorial-trace .45s var(--trace-delay) ease-out both; }
+.inline-results .practice-daily { justify-content: center; text-decoration: none; margin-top: 4px; }
+.inline-results #practice-again { justify-self: center; }

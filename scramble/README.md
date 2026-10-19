@@ -231,9 +231,14 @@ independently of the live daily grid. Its examples include an existing letter in
 the middle of a word, and their legality and point totals are verified in tests.
 
 Practice has a five-minute active-play clock and unlimited restarts from the
-practice banner or finished result. Restart clears only the practice run and
+finished result. The practice result leads with a primary Try the daily button
+and a Restart practice link; it omits the Scores and leaderboards link. Restart clears only the practice run and
 restores the identical board. It persists locally across navigation and dates,
 including for signed-in users, and does not sync to account history or enter the
 ranked API. Daily play keeps its four-minute clock and separate save key. The
 practice banner, footer, and result all link back to the daily puzzle. Opening
 the tutorial pauses an active run until the player explicitly resumes.
+
+The tutorial has five steps, including an explicit snaking-path step: up, down,
+left, and right, no diagonals, and a four-letter minimum. Copied results end
+with a blank line followed by `https://scramb.io`.

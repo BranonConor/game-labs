@@ -38,7 +38,7 @@ export default function Game({ authConfigured, adminTools, practiceMode = false 
         </header>
         <section id="practice-banner" className="practice-banner" aria-label="Practice mode" hidden={!practiceMode}>
           <div><strong>THE PRACTICE KITCHEN</strong><p>Same grid. Five minutes. Unlimited fresh starts.</p></div>
-          <div className="practice-actions"><button id="practice-restart" className="text-link" type="button">RESTART PRACTICE ↻</button><a className="text-link" href="/">READY FOR THE DAILY? ↗</a></div>
+          <div className="practice-actions"><a className="text-link" href="/">READY FOR THE DAILY? ↗</a></div>
         </section>
         <p id="game-error" className="game-error" role="alert" hidden>Game unavailable. Reload to try again.</p>
 
@@ -122,9 +122,9 @@ export default function Game({ authConfigured, adminTools, practiceMode = false 
                 <p id="final-summary" />
                 <p id="result-ranking-status" className="result-ranking-status" role="status" />
                 <button id="result-signin" className="text-link result-scores" type="button" hidden>SIGN IN TO SAVE THIS RESULT ↗</button>
-                <button id="result-scores" className="text-link result-scores" type="button">SEE SCORES &amp; LEADERBOARDS ↗</button>
-                <button id="practice-again" className="text-link result-scores" type="button" hidden>PRACTICE AGAIN ↻</button>
-                <a id="result-daily" className="text-link result-scores" href="/" hidden>BACK TO DAILY PUZZLE ↗</a>
+                <button id="result-scores" className="text-link result-scores" type="button" hidden={practiceMode}>SEE SCORES &amp; LEADERBOARDS ↗</button>
+                <a id="result-daily" className={practiceMode ? "action-button practice-daily" : "text-link result-scores"} href="/" hidden>{practiceMode ? "TRY THE DAILY ↗" : "BACK TO DAILY PUZZLE ↗"}</a>
+                <button id="practice-again" className="text-link result-scores" type="button" hidden>RESTART PRACTICE ↻</button>
                 <p id="share-status" role="status" />
               </div>
             </section>
@@ -153,7 +153,7 @@ export default function Game({ authConfigured, adminTools, practiceMode = false 
                 </span>
               </button>
               <button className="menu-item" type="button" data-menu-page="scores"><span>SCORES<small>TODAY &amp; HISTORY</small></span><span aria-hidden="true">↗</span></button>
-              <a className="menu-item practice-menu-link" href="/?practice=1"><span>PRACTICE<small>5 MIN · SAME GRID · UNLIMITED TRIES</small></span><span aria-hidden="true">↗</span></a>
+              <a className="menu-item practice-menu-link" href="/?practice=1"><span>PRACTICE<small>Unlimited tries</small></span><span aria-hidden="true">↗</span></a>
               <button className="menu-item" type="button" data-menu-page="settings"><span>SETTINGS<small>COMING SOON</small></span><span aria-hidden="true">↗</span></button>
             </nav>
             <p id="account-status" className="menu-account-error" role="alert" hidden />
@@ -239,7 +239,7 @@ export default function Game({ authConfigured, adminTools, practiceMode = false 
             <div className="tutorial-stamp"><span id="tutorial-demo-word" /> <span id="tutorial-demo-points" /></div>
           </div>
           <div className="tutorial-tooltip" aria-live="polite">
-            <span id="tutorial-progress" className="overline">STEP 1 / 4</span>
+            <span id="tutorial-progress" className="overline">STEP 1 / 5</span>
             <h3 id="tutorial-step-title">PICK A PATH</h3>
             <p id="tutorial-step-copy">Make a selection on the board to add any word you can come up with - you have to include at least one existing letter every time!</p>
           </div>

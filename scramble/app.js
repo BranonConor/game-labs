@@ -839,6 +839,7 @@ export function mountGame(authConfigured) {
     const status = $("result-ranking-status");
     $("result-signin").hidden = Boolean(accountUser) || !authConfigured || Boolean(practiceSeed);
     $("result-daily").hidden = !practiceSeed;
+    $("result-scores").hidden = Boolean(practiceSeed);
     ranking.hidden = true;
     $("result-placement").hidden = true;
     status.textContent = "";
@@ -1072,7 +1073,6 @@ export function mountGame(authConfigured) {
     save();
     message("Fresh practice board. Five minutes, as many tries as you like.");
   }
-  $("practice-restart").addEventListener("click", restartPractice);
   $("practice-again").addEventListener("click", restartPractice);
   const textDialogTimers = new WeakMap();
   function closeTextDialog(dialog) {
@@ -1147,6 +1147,7 @@ export function mountGame(authConfigured) {
   $("tutorial-demo-points").textContent = `+${example.points} PTS`;
   const tutorialSteps = [
     ["PICK A PATH", "Make a selection on the board to add any word you can come up with - you have to include at least one existing letter every time!"],
+    ["SNAKE YOUR PATH", "You can snake your selection up, down, left, and right—just no diagonals. Every word must be at least 4 letters long."],
     ["FILL THE GAPS", `The ${example.word[example.anchorPosition]} in ${example.word} is already on the board. Existing letters can go anywhere in your word. Type only the missing letters: ${[...example.letters].join(", ")}.`],
     ["SUBMIT WORD", `Submit ${example.word} to claim those tiles. The new letters earn ${example.points} points${example.path.some((tile) => demoEffects.has(tile)) ? ", including the bonus tile" : ""}.`],
     ["KEEP GOING", "Find more words on unused tiles. Keep going until time runs out, the board fills, or no moves remain. Fill the board for 50 bonus points."],
@@ -1200,9 +1201,9 @@ export function mountGame(authConfigured) {
     $("tutorial-demo-points").textContent = `+${example.points} PTS`;
     example.path.forEach((tileIndex, position) => {
       const tile = demoBoard.children[tileIndex];
-      tile.firstElementChild.textContent = !demoFixed[tileIndex] && index > 0 ? example.word[position] : demoFixed[tileIndex] || "";
-      tile.classList.toggle("draft", !demoFixed[tileIndex] && index === 1);
-      tile.classList.toggle("played", !demoFixed[tileIndex] && index >= 2);
+      tile.firstElementChild.textContent = !demoFixed[tileIndex] && index >= 2 ? example.word[position] : demoFixed[tileIndex] || "";
+      tile.classList.toggle("draft", !demoFixed[tileIndex] && index === 2);
+      tile.classList.toggle("played", !demoFixed[tileIndex] && index >= 3);
     });
     if (index === tutorialSteps.length - 1) {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {

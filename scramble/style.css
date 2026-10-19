@@ -541,3 +541,12 @@ footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 12px 0 23px; 
 .scores-history:has(.scores-empty) { min-height: 0; }
 .score-curve-egg { transform-box: fill-box; transform-origin: center; animation: egg-float 15s ease-in-out -4s infinite; }
 @media (prefers-reduced-motion: reduce) { .score-curve-egg { animation: none; } }
+.practice-banner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding: 16px; margin-bottom: 16px; border: 1px solid #7fa599; background: #283e43; }
+.practice-banner strong { color: #ffe2aa; font: 12px/1.5 "Silkscreen", monospace; }
+.practice-banner p { margin: 5px 0 0; color: #d7d8d5; font: 13px/1.5 "DM Sans", sans-serif; }
+.practice-actions { display: flex; flex-wrap: wrap; gap: 14px; }
+.practice-actions .text-link { color: #b7e9cf; font: 9px/1.5 "Silkscreen", monospace; }
+.practice-menu-link { text-decoration: none; }
+.tutorial-practice { display: inline-block; margin: 0 0 12px; color: #ffcf83; font: 10px/1.5 "Silkscreen", monospace; }
+.tutorial-links { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; }
+.tutorial-links .tutorial-practice { margin: 0; }

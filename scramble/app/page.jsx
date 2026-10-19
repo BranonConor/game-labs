@@ -4,7 +4,8 @@ import { authConfigured, authOptions } from "../auth-options";
 
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
+export default async function Page({ searchParams }) {
+  const practiceMode = (await searchParams)?.practice === "1";
   const session = authConfigured ? await getServerSession(authOptions) : null;
-  return <Game authConfigured={authConfigured} adminTools={session?.user?.isAdmin === true} />;
+  return <Game practiceMode={practiceMode} authConfigured={authConfigured} adminTools={session?.user?.isAdmin === true} />;
 }

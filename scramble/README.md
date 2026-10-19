@@ -8,7 +8,7 @@ The page markup lives in `app/game.jsx`; the existing game
 controller is initialized on the client from `app.js`. Images and the word list
 are served from `public/`.
 The start screen offers an animated tutorial demonstrating three legal words on the
-current grid without starting the clock; the
+fixed practice grid without starting the clock; the
 header help button reopens it during play. Reduced-motion users can step
 through it manually. The last step closes with Got It; the tutorial also
 links to the full written recipe. Copy Result shares the score, run stats, and
@@ -222,3 +222,18 @@ not human attempts. Re-running updates those fixtures. `npm run seed:clear`
 removes only that namespace. Both commands reject production process environments
 and read `.env.local` directly rather than an inherited database URL. Keep that
 file pointed at the development Neon branch.
+
+## Tutorial and permanent practice board
+
+The menu and tutorial link to `/?practice=1`. The practice board uses the versioned,
+date-independent seed `2026-09-25:practice-v1`; the tutorial renders that same board,
+independently of the live daily grid. Its examples include an existing letter in
+the middle of a word, and their legality and point totals are verified in tests.
+
+Practice has a five-minute active-play clock and unlimited restarts from the
+practice banner or finished result. Restart clears only the practice run and
+restores the identical board. It persists locally across navigation and dates,
+including for signed-in users, and does not sync to account history or enter the
+ranked API. Daily play keeps its four-minute clock and separate save key. The
+practice banner, footer, and result all link back to the daily puzzle. Opening
+the tutorial pauses an active run until the player explicitly resumes.

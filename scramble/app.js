@@ -1,8 +1,9 @@
+import { playMode, PRACTICE_BOARD_ID } from "./play-mode.js";
 import { modelPercentile } from "./score-model.js";
 import { renderScoreChart } from "./score-chart.js";
 import { startAtmosphere } from "./atmosphere.js";
 import { createGoogleAuth, googleAuthError } from "./auth.js";
-import { dailyPuzzleNumber, DURATION_MS, FULL_BOARD_BONUS, generateBoard, SIZE, utcDailyBoardId, VALUES } from "./ranked-board.js";
+import { dailyPuzzleNumber, FULL_BOARD_BONUS, generateBoard, SIZE, utcDailyBoardId, VALUES } from "./ranked-board.js";
 import { validRunState } from "./run-state.js";
 import { SCORE_TIERS, tierForScore, tierRange } from "./score-tiers.js";
 import { formatShareResult } from "./share-result.js";
@@ -11,7 +12,6 @@ import { tutorialExamples } from "./tutorial-example.js";
 export function mountGame(authConfigured) {
   "use strict";
 
-  const DURATION = DURATION_MS;
   const FINALE_DURATION = 2100;
   const ROUTE_COLORS = [
     { light: "#ffac6d", deep: "#a45148" },
@@ -30,13 +30,13 @@ export function mountGame(authConfigured) {
   let shareStatusTimer = null;
 
   const day = utcDailyBoardId();
-  const requestedSeed = new URLSearchParams(location.search).get("seed");
-  const practiceSeed = requestedSeed && /^[\w-]{1,64}$/.test(requestedSeed) ? requestedSeed : null;
-  const boardId = practiceSeed ? `${day}:${practiceSeed}` : day;
+  const { practice: isPractice, practiceSeed, boardId, duration: DURATION } = playMode(location.search, day);
   const guestStorageKey = `scramble-v6:${boardId}`;
   let storageKey = guestStorageKey;
   const $ = (id) => document.getElementById(id);
   $("seed-daily").hidden = !practiceSeed;
+  $("practice-banner").hidden = !isPractice;
+  $("practice-again").hidden = !isPractice;
   const eggAsset = (tier) => `/eggs/${tier.id}.svg`;
   const boardElement = $("board");
   const boardWrap = boardElement.parentElement;
@@ -59,7 +59,8 @@ export function mountGame(authConfigured) {
     return rowDistance + colDistance === 1;
   }
   const { fixed, initialFilled, effectTiles } = generateBoard(boardId);
-  const examples = tutorialExamples(fixed, effectTiles);
+  const { fixed: demoFixed, effectTiles: demoEffects } = generateBoard(PRACTICE_BOARD_ID);
+  const examples = tutorialExamples(demoFixed, demoEffects);
   const example = examples[0];
   const freshState = () => ({ startedAt: null, endedAt: null, finished: false, played: {}, words: [], spentEffects: [], score: 0, fullBoardBonusAwarded: false });
   let state = freshState();
@@ -211,7 +212,7 @@ export function mountGame(authConfigured) {
     rankedPending = false;
     syncReady = false;
     $("start-button").disabled = true;
-    if (!user) {
+    if (!user || isPractice) {
       activeUserId = null;
       rankedMode = "unranked";
       rankedAttemptExists = false;
@@ -626,7 +627,7 @@ export function mountGame(authConfigured) {
 
   function renderProgress() {
     inspectedRoute = null;
-    $("board-kind").textContent = practiceSeed ? "DEV PRACTICE"
+    $("board-kind").textContent = isPractice ? "PRACTICE GRID" : practiceSeed ? "DEV PRACTICE"
       : rankedMode === "replay" ? "UNRANKED PRACTICE"
         : "DAILY GRID";
     boardElement.classList.remove("inspecting");
@@ -883,6 +884,7 @@ export function mountGame(authConfigured) {
     boardWrap.classList.toggle("finale-full", reason === "full");
     boardElement.classList.add("finale");
     window.setTimeout(() => {
+      if (!state.finished) return;
       $("finale").hidden = true;
       boardWrap.classList.remove("finale-active", "finale-full");
       boardElement.classList.remove("finale");
@@ -1034,7 +1036,7 @@ export function mountGame(authConfigured) {
     if (!dictionary) { void loadDictionary(); return; }
     if (!syncReady) return;
     if (state.startedAt) return;
-    if (day !== utcDailyBoardId()) {
+    if (!isPractice && day !== utcDailyBoardId()) {
       message("A new daily grid is ready. Refresh to start today's run.", "error");
       return;
     }
@@ -1061,6 +1063,17 @@ export function mountGame(authConfigured) {
     tick();
     checkRemainingMoves();
   });
+  function restartPractice() {
+    if (!isPractice) return;
+    $("finale").hidden = true;
+    boardWrap.classList.remove("finale-active", "finale-full");
+    boardElement.classList.remove("finale");
+    applyLoadedRun(freshState());
+    save();
+    message("Fresh practice board. Five minutes, as many tries as you like.");
+  }
+  $("practice-restart").addEventListener("click", restartPractice);
+  $("practice-again").addEventListener("click", restartPractice);
   const textDialogTimers = new WeakMap();
   function closeTextDialog(dialog) {
     if (!dialog.open || dialog.classList.contains("closing")) return;
@@ -1103,24 +1116,24 @@ export function mountGame(authConfigured) {
   const stamp = demoBoard.querySelector(".tutorial-stamp");
   for (let index = 0; index < SIZE * SIZE; index++) {
     const tile = document.createElement("span");
-    const effect = effectTiles.get(index);
-    tile.className = `tile${fixed[index] ? " fixed" : ""}${effect ? ` effect-${effect}` : ""}`;
+    const effect = demoEffects.get(index);
+    tile.className = `tile${demoFixed[index] ? " fixed" : ""}${effect ? ` effect-${effect}` : ""}`;
     const letter = document.createElement("span");
     letter.className = "demo-letter";
-    letter.textContent = fixed[index] || "";
+    letter.textContent = demoFixed[index] || "";
     tile.append(letter);
-    if (fixed[index]) {
+    if (demoFixed[index]) {
       const value = document.createElement("span");
       value.className = "value";
-      value.textContent = VALUES[fixed[index]];
+      value.textContent = VALUES[demoFixed[index]];
       tile.append(value);
     }
     const position = example.path.indexOf(index);
     if (position !== -1) {
       tile.classList.add("demo-route");
-      if (position) {
+      if (!demoFixed[index]) {
         tile.classList.add("demo-fill");
-        tile.style.setProperty("--letter-delay", `${(position - 1) * .26}s`);
+        tile.style.setProperty("--letter-delay", `${example.path.slice(0, position).filter(tile => !demoFixed[tile]).length * .26}s`);
       }
       tile.style.setProperty("--trace-delay", `${position * .27}s`);
       const order = document.createElement("span");
@@ -1133,9 +1146,9 @@ export function mountGame(authConfigured) {
   $("tutorial-demo-word").textContent = example.word;
   $("tutorial-demo-points").textContent = `+${example.points} PTS`;
   const tutorialSteps = [
-    ["PICK A PATH", "Start with a letter already on the grid. Drag or tap through neighboring tiles—no diagonals."],
-    ["FILL THE GAPS", `${example.word[0]} is already on the board. Type only the missing letters: ${[...example.letters].join(", ")}.`],
-    ["SUBMIT WORD", `Submit ${example.word} to claim those tiles. The new letters earn ${example.points} points${example.path.some((tile) => effectTiles.has(tile)) ? ", including the bonus tile" : ""}.`],
+    ["PICK A PATH", "Make a selection on the board to add any word you can come up with - you have to include at least one existing letter every time!"],
+    ["FILL THE GAPS", `The ${example.word[example.anchorPosition]} in ${example.word} is already on the board. Existing letters can go anywhere in your word. Type only the missing letters: ${[...example.letters].join(", ")}.`],
+    ["SUBMIT WORD", `Submit ${example.word} to claim those tiles. The new letters earn ${example.points} points${example.path.some((tile) => demoEffects.has(tile)) ? ", including the bonus tile" : ""}.`],
     ["KEEP GOING", "Find more words on unused tiles. Keep going until time runs out, the board fills, or no moves remain. Fill the board for 50 bonus points."],
   ];
   let tutorialStep = 0;
@@ -1150,7 +1163,7 @@ export function mountGame(authConfigured) {
       const tile = demoBoard.children[tileIndex];
       tile.classList.add("demo-route", "demo-added");
       tile.style.setProperty("--trace-delay", `${position * .18}s`);
-      if (position) {
+      if (!demoFixed[tileIndex]) {
         tile.classList.add("demo-fill", "played");
         tile.style.setProperty("--letter-delay", `${position * .18}s`);
         tile.firstElementChild.textContent = move.word[position];
@@ -1180,16 +1193,16 @@ export function mountGame(authConfigured) {
       for (const tileIndex of move.path) {
         const tile = demoBoard.children[tileIndex];
         tile.classList.remove("demo-route", "demo-added", "demo-fill", "played");
-        tile.firstElementChild.textContent = fixed[tileIndex] || "";
+        tile.firstElementChild.textContent = demoFixed[tileIndex] || "";
       }
     }
     $("tutorial-demo-word").textContent = example.word;
     $("tutorial-demo-points").textContent = `+${example.points} PTS`;
     example.path.forEach((tileIndex, position) => {
       const tile = demoBoard.children[tileIndex];
-      tile.firstElementChild.textContent = position && index > 0 ? example.word[position] : fixed[tileIndex] || "";
-      tile.classList.toggle("draft", position > 0 && index === 1);
-      tile.classList.toggle("played", position > 0 && index >= 2);
+      tile.firstElementChild.textContent = !demoFixed[tileIndex] && index > 0 ? example.word[position] : demoFixed[tileIndex] || "";
+      tile.classList.toggle("draft", !demoFixed[tileIndex] && index === 1);
+      tile.classList.toggle("played", !demoFixed[tileIndex] && index >= 2);
     });
     if (index === tutorialSteps.length - 1) {
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -1207,7 +1220,8 @@ export function mountGame(authConfigured) {
     }
   }
   function showTutorial() {
-    $("tutorial-clock").hidden = !state.startedAt || state.pausedAt || state.finished;
+    pauseRun();
+    $("tutorial-clock").hidden = !state.startedAt || state.finished;
     tutorialDialog.showModal();
     showTutorialStep(0, !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }
@@ -1547,7 +1561,7 @@ export function mountGame(authConfigured) {
     const isAdmin = user?.isAdmin === true;
     const reseed = $("reseed");
     const skipToEnd = $("skip-to-end");
-    if (reseed) reseed.hidden = !isAdmin;
+    if (reseed) reseed.hidden = !isAdmin || isPractice;
     if (skipToEnd) {
       skipToEnd.hidden = !isAdmin;
       skipToEnd.disabled = !isAdmin || !syncReady || state.finished;
@@ -1783,7 +1797,7 @@ export function mountGame(authConfigured) {
 
   const dateLabel = new Intl.DateTimeFormat("en", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" }).format(new Date(`${day}T12:00:00Z`));
   const puzzleNumber = dailyPuzzleNumber(day);
-  $("date-label").textContent = `${dateLabel}${puzzleNumber === null ? "" : ` / #${puzzleNumber}`}`;
+  $("date-label").textContent = isPractice ? "5 MIN / REPLAY ANYTIME" : `${dateLabel}${puzzleNumber === null ? "" : ` / #${puzzleNumber}`}`;
   for (const tier of SCORE_TIERS) {
     const item = document.createElement("li");
     const image = document.createElement("img");

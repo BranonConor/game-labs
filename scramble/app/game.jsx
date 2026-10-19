@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { ScoresTodayCard, LeaderboardTable } from "./scores-ui";
 
-export default function Game({ authConfigured, adminTools }) {
+export default function Game({ authConfigured, adminTools, practiceMode = false }) {
   useEffect(() => {
     let mounted = true;
     import("../app.js").then(({ mountGame }) => {
@@ -32,16 +32,20 @@ export default function Game({ authConfigured, adminTools }) {
             <h1 className="brand"><img className="egg-logo" src="/egg.svg" alt="" /> <span>SCRAMB</span><span className="brand-star" aria-hidden="true">✳</span></h1>
           </div>
           <div className="header-actions">
-            <div className="edition"><span id="board-kind">DAILY GRID</span><strong id="date-label" /></div>
+            <div className="edition"><span id="board-kind">{practiceMode ? "PRACTICE GRID" : "DAILY GRID"}</span><strong id="date-label">{practiceMode ? "5 MIN / REPLAY ANYTIME" : ""}</strong></div>
             <button id="rules" className="help-button" type="button" aria-label="How to play tutorial" aria-haspopup="dialog" aria-controls="tutorial-dialog"><span className="help-label">HOW TO PLAY</span><span className="help-icon" aria-hidden="true">?</span></button>
           </div>
         </header>
+        <section id="practice-banner" className="practice-banner" aria-label="Practice mode" hidden={!practiceMode}>
+          <div><strong>THE PRACTICE KITCHEN</strong><p>Same grid. Five minutes. Unlimited fresh starts.</p></div>
+          <div className="practice-actions"><button id="practice-restart" className="text-link" type="button">RESTART PRACTICE ↻</button><a className="text-link" href="/">READY FOR THE DAILY? ↗</a></div>
+        </section>
         <p id="game-error" className="game-error" role="alert" hidden>Game unavailable. Reload to try again.</p>
 
         <div className="game-layout">
-          <section className="board-panel" aria-label="Daily letter grid">
+          <section className="board-panel" aria-label={practiceMode ? "Practice letter grid" : "Daily letter grid"}>
             <div className="board-hud" aria-label="Run status">
-              <div className="hud-stat"><span>TIME LEFT</span><strong id="timer">04:00</strong></div>
+              <div className="hud-stat"><span>TIME LEFT</span><strong id="timer">{practiceMode ? "05:00" : "04:00"}</strong></div>
               <div className="hud-center"><span id="filled-count">0/64 FILLED</span></div>
               <div className="hud-stat hud-score"><span>SCORE</span><strong id="score">0000</strong></div>
             </div>
@@ -119,6 +123,7 @@ export default function Game({ authConfigured, adminTools }) {
                 <p id="result-ranking-status" className="result-ranking-status" role="status" />
                 <button id="result-signin" className="text-link result-scores" type="button" hidden>SIGN IN TO SAVE THIS RESULT ↗</button>
                 <button id="result-scores" className="text-link result-scores" type="button">SEE SCORES &amp; LEADERBOARDS ↗</button>
+                <button id="practice-again" className="text-link result-scores" type="button" hidden>PRACTICE AGAIN ↻</button>
                 <a id="result-daily" className="text-link result-scores" href="/" hidden>BACK TO DAILY PUZZLE ↗</a>
                 <p id="share-status" role="status" />
               </div>
@@ -130,7 +135,7 @@ export default function Game({ authConfigured, adminTools }) {
             </section>
           </aside>
         </div>
-        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="terms-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="terms-dialog">TERMS ↗</button><button id="privacy-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="privacy-dialog">PRIVACY ↗</button><a id="seed-daily" className="text-link dev-link" href="/" hidden>DEV / DAILY PUZZLE ↩</a>{adminTools && <><button id="reseed" className="text-link dev-link" type="button" hidden>DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button" hidden>DEV / SKIP TO END ↠</button></>}</div></footer>
+        <footer><div className="footer-actions"><a className="text-link" href="https://branon.dev" target="_blank" rel="noopener noreferrer">a branon.dev creation ↗</a><a className="text-link" href="/lexicon-license.txt" target="_blank" rel="noopener">WORD LIST ↗</a><button id="terms-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="terms-dialog">TERMS ↗</button><button id="privacy-link" className="text-link" type="button" aria-haspopup="dialog" aria-controls="privacy-dialog">PRIVACY ↗</button><a id="seed-daily" className="text-link dev-link" href="/" hidden>DAILY PUZZLE ↗</a>{adminTools && <><button id="reseed" className="text-link dev-link" type="button" hidden>DEV / RESEED ↻</button><button id="skip-to-end" className="text-link dev-link" type="button" hidden>DEV / SKIP TO END ↠</button></>}</div></footer>
       </main>
 
       <dialog id="menu-dialog" className="menu-dialog" aria-label="Scramb menu">
@@ -148,6 +153,7 @@ export default function Game({ authConfigured, adminTools }) {
                 </span>
               </button>
               <button className="menu-item" type="button" data-menu-page="scores"><span>SCORES<small>TODAY &amp; HISTORY</small></span><span aria-hidden="true">↗</span></button>
+              <a className="menu-item practice-menu-link" href="/?practice=1"><span>PRACTICE<small>5 MIN · SAME GRID · UNLIMITED TRIES</small></span><span aria-hidden="true">↗</span></a>
               <button className="menu-item" type="button" data-menu-page="settings"><span>SETTINGS<small>COMING SOON</small></span><span aria-hidden="true">↗</span></button>
             </nav>
             <p id="account-status" className="menu-account-error" role="alert" hidden />
@@ -235,14 +241,17 @@ export default function Game({ authConfigured, adminTools }) {
           <div className="tutorial-tooltip" aria-live="polite">
             <span id="tutorial-progress" className="overline">STEP 1 / 4</span>
             <h3 id="tutorial-step-title">PICK A PATH</h3>
-            <p id="tutorial-step-copy">Start with a letter already on the grid. Drag or tap through neighboring tiles—no diagonals.</p>
+            <p id="tutorial-step-copy">Make a selection on the board to add any word you can come up with - you have to include at least one existing letter every time!</p>
           </div>
-          <p id="tutorial-clock" className="tutorial-clock" hidden>The clock keeps ticking while you watch.</p>
+          <p id="tutorial-clock" className="tutorial-clock" hidden>Your game is paused while you learn.</p>
           <div className="tutorial-controls">
             <button id="tutorial-prev" className="menu-back" type="button" disabled>← BACK</button>
             <button id="tutorial-next" className="action-button" type="button">NEXT STEP <span aria-hidden="true">↗</span></button>
           </div>
-          <button id="tutorial-rules" className="text-link" type="button">READ THE FULL RULES ↗</button>
+          <div className="tutorial-links">
+            <a className="text-link tutorial-practice" href="/?practice=1">TRY PRACTICE ↗</a>
+            <button id="tutorial-rules" className="text-link" type="button">READ FULL RULES ↗</button>
+          </div>
         </div>
       </dialog>
       <dialog id="rules-dialog" className="modal" aria-labelledby="rules-title">
@@ -251,9 +260,9 @@ export default function Game({ authConfigured, adminTools }) {
           <p className="overline">THE RECIPE</p><h2 id="rules-title">Make words.<br />Fill the board.</h2>
         </div>
         <div className="modal-content">
-          <p><strong>Pick a path.</strong>&nbsp;Drag or tap through tiles next to each other. You can go all directions except for diagonally. Always include an existing letter in your selection.</p>
+          <p><strong>Pick a path.</strong>&nbsp;Drag or tap through tiles next to each other. You can go all directions except for diagonally. Always include at least one existing letter in your selection. That letter can be anywhere in the word, including the middle or end.</p>
           <p><strong>Fill the gaps.</strong>&nbsp;Type letters into the empty tiles to make a word; letters already on the board fill themselves in. Press&nbsp;<strong>ENTER</strong>&nbsp;to submit, or&nbsp;<strong>ESC</strong>&nbsp;to clear the word/path. On phones, use the game keys and tap ENTER or CLEAR. With a keyboard, use arrow keys and Space to choose tiles.</p>
-          <p><strong>Fill the board.</strong>&nbsp;Tiles in a submitted word can't be used again. Make more words and try to fill the board entirely (you get a lil' bonus if you do). The game ends if the 4 minutes runs out, if the board is fully complette, or if no scorable word remains.</p>
+          <p><strong>Fill the board.</strong>&nbsp;Tiles in a submitted word can't be used again. Make more words and try to fill the board entirely (you get a lil' bonus if you do). The game ends when time runs out (4 minutes for the daily puzzle, 5 minutes for practice), the board is full, or no scorable word remains.</p>
           <p><strong>Score big.</strong>&nbsp;Letters have different values. Each letter you add earns its value plus 2 points. Some starting letters give a one-time&nbsp;<strong>+5</strong>&nbsp;or&nbsp;<strong>×2</strong>&nbsp;bonus. Fill all 64 tiles for another&nbsp;<strong>+50</strong>.</p>
           <div className="recipe-tiers">
             <p className="overline">EGG TIERS / SCORE BANDS</p>

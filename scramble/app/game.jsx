@@ -123,8 +123,10 @@ export default function Game({ authConfigured, adminTools, practiceMode = false 
                 <p id="result-ranking-status" className="result-ranking-status" role="status" />
                 <button id="result-signin" className="text-link result-scores" type="button" hidden>SIGN IN TO SAVE THIS RESULT ↗</button>
                 <button id="result-scores" className="text-link result-scores" type="button" hidden={practiceMode}>SEE SCORES &amp; LEADERBOARDS ↗</button>
-                <a id="result-daily" className={practiceMode ? "action-button practice-daily" : "text-link result-scores"} href="/" hidden>{practiceMode ? "TRY THE DAILY ↗" : "BACK TO DAILY PUZZLE ↗"}</a>
-                <button id="practice-again" className="text-link result-scores" type="button" hidden>RESTART PRACTICE ↻</button>
+                <div className={practiceMode ? "result-exit-actions practice-result-actions" : "result-exit-actions"}>
+                  <button id="practice-again" className="text-link result-scores" type="button" hidden>RESTART PRACTICE ↻</button>
+                  <a id="result-daily" className={practiceMode ? "action-button practice-daily" : "text-link result-scores"} href="/" hidden>{practiceMode ? "TRY THE DAILY ↗" : "BACK TO DAILY PUZZLE ↗"}</a>
+                </div>
                 <p id="share-status" role="status" />
               </div>
             </section>

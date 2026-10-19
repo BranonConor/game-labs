@@ -552,5 +552,6 @@ footer { flex-wrap: wrap; gap: 12px 20px; color: #aab8bd; padding: 12px 0 23px; 
 .tutorial-links .tutorial-practice { margin: 0; }
 
 .tutorial-dialog[data-step="2"] .demo-route { animation: tutorial-trace .45s var(--trace-delay) ease-out both; }
-.inline-results .practice-daily { justify-content: center; text-decoration: none; margin-top: 4px; }
-.inline-results #practice-again { justify-self: center; }
+.result-exit-actions { display: contents; }
+.inline-results .practice-result-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 12px 18px; margin-top: 4px; }
+.inline-results .practice-daily { flex: 0 0 auto; width: auto; justify-content: center; text-decoration: none; }
